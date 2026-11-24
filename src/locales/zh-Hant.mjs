@@ -1020,6 +1020,7 @@ export const zhHant = {
   "office.tab.ai": "詢問 AI",
   "office.sideAria": "文件",
   "office.openFile": "開啟檔案",
+  "office.createWithAi": "使用 AI 建立",
   "office.formatFilterAria": "依格式篩選",
   "office.format.all": "全部",
   "office.format.docx": "DOCX",

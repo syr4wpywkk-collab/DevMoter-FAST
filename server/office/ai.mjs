@@ -5,7 +5,14 @@ import {
   parsePlan,
   renderPlan,
 } from "./pptx-engine.mjs";
-import { cellAddress, parseCellAddress } from "./xlsx-model.mjs";
+import {
+  cellAddress,
+  parseCellAddress,
+  editToCell,
+  XLSX_LIMITS,
+} from "./xlsx-model.mjs";
+import { writeWorkbook } from "./xlsx-engine.mjs";
+import { buildPdf } from "./pdf-model.mjs";
 
 export const OFFICE_EDIT_SCHEMA = Object.freeze({
   type: "object",
@@ -172,6 +179,44 @@ export const OFFICE_XLSX_EDIT_SCHEMA = Object.freeze({
     },
   },
 });
+// Workbook generation spec: sheets of typed cell contents ("=" prefix is a
+// formula, numeric text is a number, TRUE/FALSE booleans, else text) — the
+// same interpretation the grid editor applies to typed input.
+export const OFFICE_XLSX_SPEC_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["title", "sheets"],
+  properties: {
+    title: { type: "string", maxLength: 140 },
+    sheets: {
+      type: "array",
+      minItems: 1,
+      maxItems: 8,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["name", "cells"],
+        properties: {
+          name: { type: "string", maxLength: 31 },
+          cells: {
+            type: "array",
+            minItems: 1,
+            maxItems: 300,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["cell", "text"],
+              properties: {
+                cell: { type: "string" },
+                text: { type: "string", maxLength: 4000 },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+});
 export const PPTX_SHAPE_SCHEMA = Object.freeze({
   type: "object",
   additionalProperties: false,
@@ -189,10 +234,11 @@ const textOk = (value, limit = SPEC_LIMITS.textBytes) =>
   value.trim() &&
   Buffer.byteLength(value) <= limit &&
   !CONTROL_TEXT.test(value);
-// Validate model output against OFFICE_DOC_SPEC_SCHEMA and normalise it into the
-// editor's save-input models (title = heading 1, each section = heading +
-// paragraphs). Anything outside the schema is rejected, never written.
-function readSpec(proposal, secrets) {
+// Validate model output against OFFICE_DOC_SPEC_SCHEMA and normalise it to
+// {title, sections}. Anything outside the schema is rejected, never written.
+// Shared by the DOCX (spec -> editor blocks) and PDF (spec -> drawn lines)
+// generation paths.
+function readSpecObject(proposal, secrets) {
   if (
     !proposal ||
     Object.keys(proposal).some((key) => !["title", "sections"].includes(key)) ||
@@ -204,9 +250,7 @@ function readSpec(proposal, secrets) {
     throw new Error("AIの生成結果が不正です。");
   let total = Buffer.byteLength(proposal.title);
   let paragraphs = 0;
-  const blocks = [
-    { type: "heading", level: 1, runs: [{ text: proposal.title.trim() }] },
-  ];
+  const sections = [];
   for (const section of proposal.sections) {
     if (
       !section ||
@@ -219,11 +263,7 @@ function readSpec(proposal, secrets) {
         !(Number.isInteger(section.level) && section.level >= 1 && section.level <= 9))
     )
       throw new Error("AIの生成結果が不正です。");
-    blocks.push({
-      type: "heading",
-      level: section.level ?? 2,
-      runs: [{ text: section.heading.trim() }],
-    });
+    const paragraphsOut = [];
     total += Buffer.byteLength(section.heading);
     for (const text of section.paragraphs) {
       if (!textOk(text)) throw new Error("AIの生成結果が不正です。");
@@ -232,10 +272,120 @@ function readSpec(proposal, secrets) {
         throw new Error("AIの生成結果が大きすぎます。");
       if (safeText(text, secrets, 16000) !== text)
         throw new Error("安全上、AIの生成結果に共有対象外の内容が含まれています。");
-      blocks.push({ type: "paragraph", runs: [{ text }] });
+      paragraphsOut.push(text);
     }
+    sections.push({
+      heading: section.heading.trim(),
+      level: section.level ?? 2,
+      paragraphs: paragraphsOut,
+    });
+  }
+  return { title: proposal.title.trim(), sections };
+}
+function readSpec(proposal, secrets) {
+  const spec = readSpecObject(proposal, secrets);
+  const blocks = [
+    { type: "heading", level: 1, runs: [{ text: spec.title }] },
+  ];
+  for (const section of spec.sections) {
+    blocks.push({
+      type: "heading",
+      level: section.level,
+      runs: [{ text: section.heading }],
+    });
+    for (const text of section.paragraphs)
+      blocks.push({ type: "paragraph", runs: [{ text }] });
   }
   return blocks;
+}
+// Break a paragraph into lines of at most `width` characters, splitting on
+// spaces where possible (long words are hard-split). Used for PDF layout.
+const wrapText = (text, width) => {
+  const lines = [];
+  for (const raw of text.split("\n")) {
+    let rest = raw;
+    while (rest.length > width) {
+      let at = rest.lastIndexOf(" ", width);
+      if (at < width / 2) at = width;
+      lines.push(rest.slice(0, at).trimEnd());
+      rest = rest.slice(at).trimStart();
+    }
+    lines.push(rest);
+  }
+  return lines;
+};
+const PDF_LINE_CHARS = 90;
+const PDF_LINES_PER_PAGE = 48;
+// The same validated spec, laid out as drawn text lines for the PDF engine:
+// title 18pt, headings 14pt, paragraphs wrapped at body size. The standard
+// font is Latin-only — buildPdf fails the whole run on unencodable text.
+function readPdfSpec(proposal, secrets) {
+  const spec = readSpecObject(proposal, secrets);
+  const lines = [{ text: spec.title, size: 18 }, { text: "", size: 6 }];
+  for (const section of spec.sections) {
+    lines.push({ text: section.heading, size: 14 });
+    for (const text of section.paragraphs) {
+      for (const line of wrapText(text, PDF_LINE_CHARS))
+        lines.push({ text: line, size: 11 });
+      lines.push({ text: "", size: 6 });
+    }
+  }
+  const pages = [];
+  for (let i = 0; i < lines.length; i += PDF_LINES_PER_PAGE)
+    pages.push(lines.slice(i, i + PDF_LINES_PER_PAGE));
+  if (pages.length > 40) throw new Error("AIの生成結果が大きすぎます。");
+  return { title: spec.title, pages };
+}
+const SHEET_NAME_BAD = /[\\/?*[\]:]/;
+// Validate model output against OFFICE_XLSX_SPEC_SCHEMA and normalise it into
+// a workbook model for writeWorkbook: typed text via the same editToCell
+// rules as the grid (formulas, numbers, booleans, text). Never written here.
+function readWorkbookSpec(proposal, secrets) {
+  if (
+    !proposal ||
+    Object.keys(proposal).some((key) => !["title", "sheets"].includes(key)) ||
+    !textOk(proposal.title, 200) ||
+    !Array.isArray(proposal.sheets) ||
+    !proposal.sheets.length ||
+    proposal.sheets.length > 8
+  )
+    throw new Error("AIの生成結果が不正です。");
+  const names = new Set();
+  let cells = 0;
+  const sheets = proposal.sheets.map((sheet) => {
+    if (
+      !sheet ||
+      Object.keys(sheet).some((key) => !["name", "cells"].includes(key)) ||
+      !textOk(sheet.name, 31) ||
+      SHEET_NAME_BAD.test(sheet.name) ||
+      names.has(sheet.name.trim()) ||
+      !Array.isArray(sheet.cells) ||
+      !sheet.cells.length ||
+      sheet.cells.length > 300
+    )
+      throw new Error("AIの生成結果が不正です。");
+    names.add(sheet.name.trim());
+    const map = new Map();
+    for (const entry of sheet.cells) {
+      const at = entry && parseCellAddress(entry.cell);
+      if (
+        !at ||
+        at.sheet !== null ||
+        Object.keys(entry).some((key) => !["cell", "text"].includes(key)) ||
+        typeof entry.text !== "string" ||
+        Buffer.byteLength(entry.text) > XLSX_LIMITS.cellText ||
+        CONTROL_TEXT.test(entry.text) ||
+        map.has(at.ref) ||
+        safeText(entry.text, secrets, 16000) !== entry.text
+      )
+        throw new Error("AIの生成結果が不正です。");
+      if (++cells > 2000) throw new Error("AIの生成結果が大きすぎます。");
+      const cell = editToCell(entry.text);
+      if (cell !== null) map.set(at.ref, cell);
+    }
+    return { name: sheet.name.trim(), cells: map };
+  });
+  return { title: proposal.title.trim(), sheets };
 }
 const specName = (title, ext = "docx") => {
   const base = title.replace(/[\/\\\u0000-\u001f]/g, " ").trim().slice(0, 140);
@@ -786,6 +936,86 @@ export function createOfficeAi({ store, prepareChat, authorize }) {
       register(run);
       controls.set(id, { controller, identityKey: identity.ownerId });
       launch(run, controller, prepared.secrets, async () => {
+        if (payload.format === "excel") {
+          // Prompt -> workbook spec (validated against
+          // OFFICE_XLSX_SPEC_SCHEMA, typed like grid input) -> a new .xlsx
+          // built by the vendored engine and stored via the normal create
+          // path. Existing documents are never touched.
+          const raw = await prepared.chat(
+            [
+              {
+                role: "system",
+                content: `Draft a new workbook as JSON matching ${JSON.stringify(OFFICE_XLSX_SPEC_SCHEMA)}: a title, then sheets each with a name and cells [{cell:"A1",text}]. "text" is typed content — prefix formulas with "=", numbers as plain digits, TRUE/FALSE for booleans. Cell addresses are plain refs like "B2" (no sheet prefix). Return ONLY JSON. No HTML, commands, URLs or tool calls.`,
+              },
+              {
+                role: "user",
+                content: JSON.stringify({
+                  request: safeText(payload.goal, prepared.secrets, 4000),
+                }),
+              },
+            ],
+            controller.signal,
+          );
+          controller.signal.throwIfAborted();
+          await authorize(prepared.context, identity);
+          if (typeof raw !== "string" || Buffer.byteLength(raw) > 64000)
+            throw new Error("AIの生成結果が大きすぎます。");
+          const spec = readWorkbookSpec(JSON.parse(raw), prepared.secrets);
+          const bytes = await writeWorkbook({ sheets: spec.sheets });
+          if (bytes.length > 12 * 1024 * 1024)
+            throw new Error("AIの生成結果が大きすぎます。");
+          const name = specName(
+            typeof payload.name === "string" && payload.name.trim()
+              ? payload.name.replace(/\.xlsx$/i, "")
+              : spec.title,
+            "xlsx",
+          );
+          const created = await store.create(name, Buffer.from(bytes));
+          run.createdDocumentId = created.id;
+          run.name = name;
+          run.status = "created";
+          return;
+        }
+        if (payload.format === "pdf") {
+          // Prompt -> document spec (same schema as DOCX generation) ->
+          // drawn text lines -> a new .pdf built by the vendored draw ops
+          // and stored via the normal create path. Latin-script text only —
+          // the standard font cannot encode CJK.
+          const raw = await prepared.chat(
+            [
+              {
+                role: "system",
+                content: `Draft a new document outline as JSON matching ${JSON.stringify(OFFICE_DOC_SPEC_SCHEMA)}: a title, then headed sections with paragraphs. Use Latin-script text only. Return ONLY JSON. No HTML, commands, URLs or tool calls.`,
+              },
+              {
+                role: "user",
+                content: JSON.stringify({
+                  request: safeText(payload.goal, prepared.secrets, 4000),
+                }),
+              },
+            ],
+            controller.signal,
+          );
+          controller.signal.throwIfAborted();
+          await authorize(prepared.context, identity);
+          if (typeof raw !== "string" || Buffer.byteLength(raw) > 64000)
+            throw new Error("AIの生成結果が大きすぎます。");
+          const spec = readPdfSpec(JSON.parse(raw), prepared.secrets);
+          const bytes = await buildPdf(spec);
+          if (bytes.length > 12 * 1024 * 1024)
+            throw new Error("AIの生成結果が大きすぎます。");
+          const name = specName(
+            typeof payload.name === "string" && payload.name.trim()
+              ? payload.name.replace(/\.pdf$/i, "")
+              : spec.title,
+            "pdf",
+          );
+          const created = await store.create(name, Buffer.from(bytes));
+          run.createdDocumentId = created.id;
+          run.name = name;
+          run.status = "created";
+          return;
+        }
         if (payload.format === "pptx") {
           // Prompt -> DeckPlan (validated against the package's own schema)
           // -> rendered .pptx stored as a brand-new document through the

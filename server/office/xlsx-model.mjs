@@ -174,7 +174,7 @@ const NUMBER_TEXT = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/;
  * TRUE/FALSE -> boolean, anything else -> text.
  * Returns the new cell content; `ref` must already be validated.
  */
-function editToCell(text) {
+export function editToCell(text) {
   if (text === "") return null;
   if (text.startsWith("=")) {
     const formula = text.slice(1);

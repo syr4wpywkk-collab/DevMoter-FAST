@@ -18,6 +18,7 @@ import {
   stampText,
   getMetadata,
   setMetadata,
+  createDocument,
 } from "./pdf-engine.mjs";
 
 export const PDF_LIMITS = Object.freeze({
@@ -328,6 +329,44 @@ export function validatePdfShapeOps(model, ops) {
     }
     return validatePdfOp(model, op);
   });
+}
+
+/**
+ * Build a brand-new PDF from drawn text lines (AI document generation).
+ * `pages` is pre-laid-out [{text, size}] lines; the standard font is
+ * Latin-only so callers keep generated text in that repertoire — anything
+ * the engine cannot encode fails the whole generation, never a partial file.
+ */
+export async function buildPdf({ title, pages }) {
+  if (
+    !Array.isArray(pages) ||
+    !pages.length ||
+    pages.length > PDF_LIMITS.pages ||
+    pages.some(
+      (lines) =>
+        !Array.isArray(lines) ||
+        !lines.length ||
+        lines.length > 60 ||
+        lines.some(
+          (line) =>
+            !line ||
+            typeof line.text !== "string" ||
+            Buffer.byteLength(line.text) > PDF_LIMITS.pageText ||
+            CONTROL.test(line.text) ||
+            (line.size !== undefined &&
+              !(Number.isFinite(line.size) && line.size >= 6 && line.size <= 72)),
+        ),
+    )
+  )
+    throw fail("AIの生成結果が不正です。");
+  try {
+    return await createDocument({
+      title: typeof title === "string" ? title : undefined,
+      pages,
+    });
+  } catch {
+    throw fail("AIの生成結果をPDF化できませんでした。");
+  }
 }
 
 /** Apply a validated op to stored bytes; returns new whole-document bytes. */

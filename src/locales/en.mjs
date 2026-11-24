@@ -1020,6 +1020,7 @@ export const en = {
   "office.tab.ai": "Ask AI",
   "office.sideAria": "Documents",
   "office.openFile": "Open file",
+  "office.createWithAi": "Create with AI",
   "office.formatFilterAria": "Filter by format",
   "office.format.all": "All",
   "office.format.docx": "DOCX",

@@ -7,7 +7,7 @@ import {
   StandardFonts,
   type RGB,
 } from "pdf-lib";
-import { loadPdf } from "./internal/io.js";
+import { createPdf, loadPdf, savePdf } from "./internal/io.js";
 
 /** RGB color with components in the 0..1 range. */
 export interface Color {
@@ -197,6 +197,54 @@ export async function stampText(
     }
   }
   return doc.save();
+}
+
+/** One line of text on a generated page; `size` defaults to 11pt body. */
+export interface GeneratedLine {
+  text: string;
+  size?: number;
+}
+
+export interface CreateDocumentOptions {
+  /** Becomes the document Title metadata. */
+  title?: string;
+  creator?: string;
+  /** Pages of pre-laid-out lines; at least one page required. */
+  pages: GeneratedLine[][];
+}
+
+/**
+ * Create a brand-new PDF from drawn text lines (US Letter, 72pt margins,
+ * Helvetica). Standard fonts are WinAnsi/Latin-only — callers validate the
+ * text; pdf-lib throws on characters it cannot encode.
+ */
+export async function createDocument(
+  opts: CreateDocumentOptions,
+): Promise<Uint8Array> {
+  if (!opts.pages.length || opts.pages.some((lines) => !lines.length))
+    throw new Error("createDocument requires at least one line per page");
+  const doc = await createPdf();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  if (opts.title !== undefined) doc.setTitle(opts.title);
+  doc.setCreator(opts.creator ?? "DevMoter Office");
+  doc.setProducer("DevMoter Office");
+  for (const lines of opts.pages) {
+    const page = doc.addPage([612, 792]);
+    let y = 792 - 72;
+    for (const line of lines) {
+      const size = line.size ?? 11;
+      y -= size * 1.4;
+      if (y < 72) break;
+      page.drawText(line.text, {
+        x: 72,
+        y,
+        size,
+        font: size >= 14 ? bold : font,
+      });
+    }
+  }
+  return savePdf(doc);
 }
 
 export interface PdfMetadata {
