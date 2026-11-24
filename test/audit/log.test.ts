@@ -13,6 +13,9 @@ test('an operation is described by its kind only', () => {
   assert.equal(sqlOperation("'password=hunter2'", 'postgresql'), 'OTHER');
   assert.equal(sqlOperation('hunter2hunter2hunter2 x', 'postgresql'), 'OTHER');
   assert.equal(sqlOperation('', 'postgresql'), 'OTHER');
+  assert.equal(sqlOperation('\ufeffSELECT 1', 'sqlite'), 'SELECT');
+  assert.equal(sqlOperation('-- note\rUPDATE t SET a = 1', 'postgresql'), 'UPDATE');
+  assert.equal(sqlOperation('analyse t', 'postgresql'), 'ANALYSE');
   // A word that is not an SQL statement keyword is part of the request, not its kind.
   assert.equal(sqlOperation('hunter x', 'postgresql'), 'OTHER');
   assert.equal(sqlOperation('swordfish', 'postgresql'), 'OTHER');

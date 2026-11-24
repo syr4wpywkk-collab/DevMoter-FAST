@@ -10,7 +10,7 @@
 
 import pg from 'pg';
 
-import { sqlShape } from './sql-text.ts';
+import { POSTGRESQL_SQL, sqlShape } from './sql-text.ts';
 import { EngineError, resolveTimeout, sqlHealth, type QueryOptions, type QueryParam, type QueryResult, type ResultSet, type SqlAdapter } from './types.ts';
 
 export const MAX_SQL_BYTES = 1024 * 1024;
@@ -66,7 +66,7 @@ export function copiesThroughClient(sql: string): boolean {
   let copy = false;
   let depth = 0;
   let previous = '';
-  sqlShape(sql, {}, (token) => {
+  sqlShape(sql, POSTGRESQL_SQL, (token) => {
     if (token === ';') {
       first = true;
       copy = false;

@@ -41,6 +41,7 @@ test('COPY through the connection is recognised from the text, so it is refused 
     'COPY t FROM STDIN',
     'SELECT 1; /* c */ COPY t TO -- c\n STDOUT',
     "COPY (SELECT ')') TO STDOUT",
+    'SELECT 1; -- c\rCOPY t TO STDOUT',
   ]) {
     assert.equal(copiesThroughClient(sql), true, sql);
     assert.throws(() => validatePostgresqlRequest(sql, []), (error: unknown) => error instanceof EngineError && error.code === 'invalid_request' && /COPY/.test(error.message), sql);
