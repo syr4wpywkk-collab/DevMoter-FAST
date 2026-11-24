@@ -30,6 +30,13 @@ The Codex browser UI bundles independently maintained libraries for parsing and 
 
 Resolved versions are recorded in `package-lock.json`. The license copies are included in Vite's static output under `/licenses/`. jsdom is used only by development tests and is not bundled into the browser UI.
 
+## Bundled office engines
+
+`server/office/xlsx-engine.mjs` is generated from vendored `@devmoter/xlsx`
+sources (devmoter-office, `packages/xlsx`) retained under `vendor/xlsx/`.
+Origin, license and runtime dependencies (jszip, fast-xml-parser — both MIT,
+resolved externally) are recorded in `vendor/xlsx/NOTICE.md`.
+
 ## Bundled visual assets
 
 The current source tree does not bundle upstream provider logos, third-party photographs, illustrations, or font files. Provider names are presented textually for interoperability. See `RELEASE_LEGAL_AUDIT.md` for the review rule that applies before adding third-party visual assets.

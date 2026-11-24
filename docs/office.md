@@ -1,7 +1,13 @@
 # Office Docs v1
 
-Office is available from Home and the manual Tools section. The first format is
-DOCX; XLSX, PPTX and PDF are subsequent phases, not placeholder apps.
+Office is available from Home and the manual Tools section. Documents are
+classified at ingest into `docx`, `pptx`, `pdf` or `excel` (from `.docx`,
+`.pptx`, `.pdf`, `.xlsx`), decided by extension plus a content sniff; mismatches
+are rejected. Every library record carries a `format` field — records stored
+before classification read as `docx` without rewriting stored metadata. DOCX is
+still the only format with parse/edit/AI support; other formats are stored with
+their immutable originals and can be listed, renamed, downloaded and deleted.
+Per-format features are subsequent phases, not placeholder apps.
 
 ## Architecture and scope
 
@@ -65,6 +71,7 @@ restore, and restart. Browser verification uses an isolated host and synthetic
 DOCX samples; no customer documents or real credentials are used.
 
 Next: rich selection editing and table editing with lossless validation, advanced
-numbering/page layout, an interoperability fixture corpus, then XLSX/PPTX/PDF.
+numbering/page layout, an interoperability fixture corpus, then per-format
+parsing/editing for XLSX/PPTX/PDF (classification is already in place).
 Native Codex execution is not connected; provider preparation and proposal
 validation are separate so future backends can reuse the same review/save boundary.

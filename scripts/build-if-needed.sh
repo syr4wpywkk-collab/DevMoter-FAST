@@ -13,10 +13,10 @@ if [ ! -d node_modules ]; then
 fi
 
 build_inputs=(
-  src public vendor/genoffice
+  src public vendor/genoffice vendor/xlsx
   index.html package.json package-lock.json
   tsconfig.json vite.config.ts
-  scripts/build-office-engine.mjs scripts/build-id.mjs
+  scripts/build-office-engine.mjs scripts/build-xlsx-engine.mjs scripts/build-id.mjs
   scripts/service-worker-cache.mjs
 )
 fingerprint="$(
