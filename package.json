@@ -17,7 +17,7 @@
     "security:audit": "node scripts/security-audit.mjs",
     "deps:graph": "node scripts/module-graph.mjs",
     "size": "node scripts/bundle-size.mjs",
-    "build:office": "node scripts/build-office-engine.mjs && node scripts/build-xlsx-engine.mjs",
+    "build:office": "node scripts/build-office-engine.mjs && node scripts/build-xlsx-engine.mjs && node scripts/build-pptx-engine.mjs",
     "test:workspace-browser": "node --test e2e/*.test.mjs",
     "test:workspace-browser:setup": "playwright install --with-deps webkit"
   },
@@ -42,6 +42,7 @@
     "marked": "^18.2.1",
     "node-pty": "^1.1.0",
     "oauth4webapi": "3.8.8",
+    "pptxgenjs": "4.0.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "utif2": "4.1.0",

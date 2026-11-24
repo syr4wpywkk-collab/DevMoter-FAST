@@ -808,3 +808,105 @@
     padding: 0 16px;
   }
 }
+
+/* ------------------------------------------------------------- deck ------- */
+/* PPTX outline surface: slide list, per-shape text editing, slide ops. */
+.dm-office .office-deck {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px 48px;
+}
+.dm-office .deck-slides {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dm-office .deck-slide {
+  border: 1px solid var(--of-line);
+  border-radius: 8px;
+  background: var(--of-card);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dm-office .deck-slide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dm-office .deck-slide-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--of-text-2);
+}
+.dm-office .deck-slide-actions {
+  display: flex;
+  gap: 4px;
+}
+.dm-office .deck-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dm-office .deck-shape-name {
+  font-size: 11px;
+  color: var(--of-muted);
+}
+.dm-office .deck-text textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--of-line);
+  border-radius: 4px;
+  background: var(--of-panel);
+  color: var(--of-text);
+  font: inherit;
+  padding: 8px;
+}
+.dm-office .deck-text textarea:focus-visible {
+  outline: 2px solid var(--of-focus);
+  outline-offset: -1px;
+}
+.dm-office .deck-table {
+  border-top: 1px solid var(--of-line);
+  padding-top: 8px;
+  font-size: 13px;
+  color: var(--of-text-2);
+}
+.dm-office .deck-table-label {
+  font-size: 11px;
+  color: var(--of-muted);
+}
+.dm-office .deck-table-row {
+  margin: 4px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.dm-office .deck-notes {
+  font-size: 13px;
+  color: var(--of-text-2);
+}
+.dm-office .deck-notes summary {
+  cursor: pointer;
+  color: var(--of-muted);
+}
+.dm-office .deck-notes p {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+}
+.dm-office .deck-add {
+  align-self: flex-start;
+  margin-top: 16px;
+  border: 1px solid var(--of-line-strong);
+  border-radius: 8px;
+  background: var(--of-panel);
+  color: var(--of-text);
+  padding: 8px 16px;
+}
+.dm-office .deck-add:hover {
+  background: var(--of-hover);
+}

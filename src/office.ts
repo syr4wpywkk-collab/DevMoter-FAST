@@ -6,11 +6,29 @@ import { createOfficeEditor, type EditorBlockData, type SaveInput } from "./offi
 type Doc = {
   id: string;
   name: string;
+  format?: OfficeFormat;
   revision: string;
   blocks: EditorBlockData[];
+  slides?: DeckSlide[];
   warnings: string[];
   history: { revision: string; createdAt: string; source: string }[];
 };
+type DeckSlide = {
+  index: number;
+  texts: { shapeName?: string; text: string }[];
+  tables: { rows: string[][] }[];
+  notes?: string;
+  images: number;
+  graphics: number;
+  placeholders: string[];
+};
+type DeckOp =
+  | { type: "replaceText"; from: string; to: string }
+  | { type: "addSlide" }
+  | { type: "duplicateSlide"; index: number }
+  | { type: "removeSlide"; index: number }
+  | { type: "moveSlide"; from: number; to: number }
+  | { type: "theme"; layout?: string; background?: string; footerText?: string; slideNumber?: boolean };
 type OfficeFormat = "docx" | "pptx" | "pdf" | "excel";
 type DocMeta = { id: string; name: string; format?: OfficeFormat; updatedAt: string; openedAt?: string };
 type AiRun = {
@@ -19,15 +37,15 @@ type AiRun = {
   documentId?: string;
   revision?: string;
   status: string;
-  edits?: {
-    blockId: string;
+  edits?: ({
+    blockId?: string;
     text?: string;
     type?: "paragraph" | "heading" | "listItem";
     level?: number;
     list?: "bullet" | "ordered";
     ilvl?: number;
     align?: "left" | "center" | "right" | "justify";
-  }[];
+  } | DeckOp)[];
   answer?: string;
   createdDocumentId?: string;
   name?: string;
@@ -63,6 +81,10 @@ const ICONS = {
   rename: svg('<path d="M11.5 3.5l3 3L6 15H3v-3z"/>'),
   remove: svg('<path d="M3.5 5h11M7.5 5V3.5h3V5M5 5l.7 9.5h6.6L13 5"/>'),
   doc: svg('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>', 28, 24),
+  up: svg('<path d="M9 14V4.5M4.5 9 9 4.5 13.5 9"/>'),
+  down: svg('<path d="M9 4v9.5M4.5 9 9 13.5 13.5 9"/>'),
+  copy: svg('<rect x="6" y="6" width="9" height="9" rx="1.5"/><path d="M3 12V4.5A1.5 1.5 0 0 1 4.5 3H12"/>'),
+  plus: svg('<path d="M9 4v10M4 9h10"/>'),
 };
 const TOOLS: [string, keyof typeof ICONS, string][] = [
   ["undo", "undo", "office.tool.undo"],
@@ -138,13 +160,13 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
         <div class="office-doc-bar"><h2 data-name>${esc(t("office.noDocOpen"))}</h2><span class="office-save-state" data-save-state role="status" aria-live="polite"></span><button type="button" class="office-retry" data-retry hidden>${esc(t("common.retry"))}</button><button type="button" class="office-icon-button" data-download aria-label="${esc(t("office.downloadAria"))}" title="${esc(t("office.downloadAria"))}" disabled>${ICONS.download}</button></div>
         <div class="office-toolbar" role="toolbar" aria-label="${esc(t("office.toolbarAria"))}" data-toolbar>${tools}</div>
         <form class="office-link-form" data-link-form hidden><input type="url" inputmode="url" data-link-input placeholder="https://" aria-label="${esc(t("office.linkUrlAria"))}" autocomplete="off"><button type="submit">${esc(t("office.linkApply"))}</button><button type="button" data-link-remove>${esc(t("office.linkRemove"))}</button><button type="button" data-link-cancel>${esc(t("common.cancel"))}</button></form>
-        <div class="office-scroll"><p class="office-note" data-note hidden></p><article class="office-page" data-page aria-label="${esc(t("office.bodyAria"))}" role="textbox" aria-multiline="true" spellcheck="true" hidden></article><div class="office-empty" data-empty data-empty-state="pick"><div class="office-empty-card"><div class="office-empty-icon" data-empty-icon aria-hidden="true" hidden>${ICONS.doc}</div><p class="office-empty-message" data-empty-message>${esc(t("office.emptyDocPrompt"))}</p><div class="office-empty-actions" data-empty-actions hidden><button type="button" class="office-primary" data-empty-new>${esc(t("office.createNew"))}</button><button type="button" data-empty-open>${esc(t("office.openFile"))}</button></div></div></div></div>
+        <div class="office-scroll"><p class="office-note" data-note hidden></p><article class="office-page" data-page aria-label="${esc(t("office.bodyAria"))}" role="textbox" aria-multiline="true" spellcheck="true" hidden></article><div class="office-deck" data-deck hidden></div><div class="office-empty" data-empty data-empty-state="pick"><div class="office-empty-card"><div class="office-empty-icon" data-empty-icon aria-hidden="true" hidden>${ICONS.doc}</div><p class="office-empty-message" data-empty-message>${esc(t("office.emptyDocPrompt"))}</p><div class="office-empty-actions" data-empty-actions hidden><button type="button" class="office-primary" data-empty-new>${esc(t("office.createNew"))}</button><button type="button" data-empty-open>${esc(t("office.openFile"))}</button></div></div></div></div>
       </main>
       <aside class="office-ai" aria-label="${esc(t("office.tab.ai"))}">
         <h2>${esc(t("office.tab.ai"))}</h2>
         <div class="office-ai-empty" data-ai-empty hidden><p>${esc(t("office.aiRequiresDoc"))}</p></div>
         <div class="office-ai-setup" data-ai-unconfigured hidden><p>${esc(t("office.aiUnconfigured"))}</p><button type="button" data-configure>${esc(t("office.aiOpenSettings"))}</button></div>
-        <form data-ai-form hidden><label>${esc(t("office.aiModeLabel"))}<select data-ai-mode><option value="edit">${esc(t("office.aiMode.edit"))}</option><option value="shape">${esc(t("office.aiMode.shape"))}</option><option value="ask">${esc(t("office.aiMode.ask"))}</option><option value="generate">${esc(t("office.aiMode.generate"))}</option></select></label><label>${esc(t("office.aiGoalLabel"))}<textarea data-goal rows="3" placeholder="${esc(t("office.aiGoalPlaceholder"))}"></textarea></label><div class="office-ai-selectors" role="group" aria-label="${esc(t("office.aiSelectorGroupAria"))}"><label>${esc(t("office.aiProviderLabel"))}<select data-provider></select></label><label>${esc(t("office.aiModelLabel"))}<select data-model></select></label></div><details data-project-details hidden><summary>${esc(t("office.aiProjectLabel"))}</summary><label>${esc(t("office.aiProjectLabel"))}<select data-project></select></label></details><p class="office-quiet" data-provider-notice></p><p class="office-quiet office-ai-single-hint" data-ai-single-hint hidden>${esc(t("office.aiSingleOptionHint"))}</p><label class="office-consent"><input type="checkbox" data-share>${esc(t("office.aiConsent"))}</label><div class="office-ai-actions"><button data-ai-send>${esc(t("office.aiGenerate"))}</button><button type="button" data-stop hidden>${esc(t("common.stop"))}</button></div></form>
+        <form data-ai-form hidden><label>${esc(t("office.aiModeLabel"))}<select data-ai-mode><option value="edit">${esc(t("office.aiMode.edit"))}</option><option value="shape">${esc(t("office.aiMode.shape"))}</option><option value="ask">${esc(t("office.aiMode.ask"))}</option><option value="generate">${esc(t("office.aiMode.generate"))}</option></select></label><label>${esc(t("office.aiGoalLabel"))}<textarea data-goal rows="3" placeholder="${esc(t("office.aiGoalPlaceholder"))}"></textarea></label><label data-ai-format-label hidden>${esc(t("office.aiFormatLabel"))}<select data-ai-format><option value="docx">DOCX</option><option value="pptx">PPTX</option></select></label><div class="office-ai-selectors" role="group" aria-label="${esc(t("office.aiSelectorGroupAria"))}"><label>${esc(t("office.aiProviderLabel"))}<select data-provider></select></label><label>${esc(t("office.aiModelLabel"))}<select data-model></select></label></div><details data-project-details hidden><summary>${esc(t("office.aiProjectLabel"))}</summary><label>${esc(t("office.aiProjectLabel"))}<select data-project></select></label></details><p class="office-quiet" data-provider-notice></p><p class="office-quiet office-ai-single-hint" data-ai-single-hint hidden>${esc(t("office.aiSingleOptionHint"))}</p><label class="office-consent"><input type="checkbox" data-share>${esc(t("office.aiConsent"))}</label><div class="office-ai-actions"><button data-ai-send>${esc(t("office.aiGenerate"))}</button><button type="button" data-stop hidden>${esc(t("common.stop"))}</button></div></form>
         <p class="office-quiet" data-ai-status role="status" aria-live="polite"></p><div data-proposal></div>
       </aside>
     </div>`;
@@ -292,6 +314,94 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       saveError = "";
     }
     return true;
+  };
+
+  // ------------------------------------------------- deck (pptx outline) ---
+  // PPTX v1: a text/outline surface, not pixel rendering. Each edit is an op
+  // applied server-side to the stored bytes as a new revision; ops queue in
+  // order so every request addresses the revision it was made against.
+  const deckEl = get("[data-deck]");
+  const isDeck = () => doc?.format === "pptx" && Array.isArray(doc.slides);
+  let opsChain: Promise<void> = Promise.resolve();
+  const applyOps = (ops: DeckOp[]): Promise<void> => {
+    const current = doc;
+    if (!current || !isDeck()) return opsChain;
+    opsChain = opsChain.then(async () => {
+      if (doc?.id !== current.id) return;
+      try {
+        const saved = await api<Doc>(`/api/office/documents/${current.id}`, "PATCH", {
+          revision: doc.revision,
+          ops,
+        });
+        if (doc?.id !== current.id) return;
+        doc = saved;
+        renderDeck();
+        renderHistory();
+        void library().catch(() => {});
+      } catch (e) {
+        error(translateServerMessage((e as Error).message));
+      } finally {
+        controls();
+      }
+    });
+    return opsChain;
+  };
+  const renderDeck = () => {
+    deckEl.replaceChildren();
+    if (!doc?.slides) return;
+    const slideCount = doc.slides.length;
+    const list = node("ol", "", "deck-slides");
+    doc.slides.forEach((slide, i) => {
+      const item = node("li", "", "deck-slide");
+      const head = node("div", "", "deck-slide-head");
+      head.append(node("h3", t("office.deck.slide", { index: i + 1 }), "deck-slide-title"));
+      const actions = node("div", "", "deck-slide-actions");
+      const upBtn = iconButton(ICONS.up, t("office.deck.moveUp"), () => void applyOps([{ type: "moveSlide", from: i, to: i - 1 }]));
+      const downBtn = iconButton(ICONS.down, t("office.deck.moveDown"), () => void applyOps([{ type: "moveSlide", from: i, to: i + 1 }]));
+      upBtn.disabled = i === 0;
+      downBtn.disabled = i === slideCount - 1;
+      actions.append(
+        upBtn,
+        downBtn,
+        iconButton(ICONS.copy, t("office.deck.duplicate"), () => void applyOps([{ type: "duplicateSlide", index: i }])),
+        iconButton(ICONS.remove, t("office.deck.remove"), () => {
+          if (confirm(t("office.deck.removeConfirm", { index: i + 1 })))
+            void applyOps([{ type: "removeSlide", index: i }]);
+        }),
+      );
+      head.append(actions);
+      item.append(head);
+      for (const shape of slide.texts) {
+        const field = node("label", "", "deck-text");
+        if (shape.shapeName) field.append(node("span", shape.shapeName, "deck-shape-name"));
+        const area = document.createElement("textarea");
+        area.value = shape.text;
+        area.rows = Math.min(6, Math.max(2, shape.text.split("\n").length));
+        area.setAttribute("aria-label", shape.shapeName || t("office.deck.slide", { index: i + 1 }));
+        area.addEventListener("change", () => {
+          if (area.value !== shape.text && doc?.slides)
+            void applyOps([{ type: "replaceText", from: shape.text, to: area.value }]);
+        });
+        field.append(area);
+        item.append(field);
+      }
+      for (const table of slide.tables) {
+        const el = node("div", "", "deck-table");
+        el.append(node("span", t("office.deck.table"), "deck-table-label"));
+        for (const row of table.rows) el.append(node("p", row.join(" | "), "deck-table-row"));
+        item.append(el);
+      }
+      if (slide.notes) {
+        const notes = node("details", "", "deck-notes");
+        notes.append(node("summary", t("office.deck.notes")), node("p", slide.notes));
+        item.append(notes);
+      }
+      list.append(item);
+    });
+    deckEl.append(
+      list,
+      button(t("office.deck.add"), () => void applyOps([{ type: "addSlide" }]), "deck-add"),
+    );
   };
 
   const updateToolbar = () => {
@@ -474,6 +584,8 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     saveError = "";
     editor.clear();
     page.hidden = true;
+    deckEl.hidden = true;
+    get("[data-toolbar]").hidden = false;
     get("[data-empty]").hidden = false;
     get("[data-name]").textContent = t("office.noDocOpen");
     get("[data-note]").hidden = true;
@@ -527,23 +639,28 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     get("[data-note]").textContent = note;
     get("[data-note]").hidden = !note;
     get("[data-empty]").hidden = true;
-    page.hidden = false;
+    const deck = isDeck();
+    page.hidden = deck;
+    deckEl.hidden = !deck;
+    get("[data-toolbar]").hidden = deck;
     editor.load(data.blocks);
+    if (deck) renderDeck();
     renderHistory();
-    try {
-      const saved = JSON.parse(sessionStorage.getItem(draftKey(data.id)) || "null");
-      if (saved?.revision === data.revision && Array.isArray(saved.blocks)) {
-        if (editor.loadDraft(saved.blocks as SaveInput[])) {
-          dirty = true;
-          scheduleSave();
+    if (!deck)
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(draftKey(data.id)) || "null");
+        if (saved?.revision === data.revision && Array.isArray(saved.blocks)) {
+          if (editor.loadDraft(saved.blocks as SaveInput[])) {
+            dirty = true;
+            scheduleSave();
+          }
+        } else if (saved?.blocks?.length) {
+          sessionStorage.removeItem(draftKey(data.id));
+          error(t("office.draftSkipped"));
         }
-      } else if (saved?.blocks?.length) {
-        sessionStorage.removeItem(draftKey(data.id));
-        error(t("office.draftSkipped"));
+      } catch {
+        error(t("office.draftError"));
       }
-    } catch {
-      error(t("office.draftError"));
-    }
     controls();
     if (run) renderRun();
   };
@@ -578,6 +695,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     }
     const ready = aiReady();
     const needsDoc = aiMode.value !== "generate";
+    get("[data-ai-format-label]").hidden = needsDoc;
     get("[data-ai-unconfigured]").hidden = ready;
     get("[data-ai-empty]").hidden = !ready || !!doc || !needsDoc;
     get("[data-ai-form]").hidden = !ready || (!doc && needsDoc);
@@ -662,8 +780,45 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       const created = run.createdDocumentId;
       proposal.append(button(t("office.openProposalDoc"), () => void openDocument(created).then(renderRun)));
     }
+    if (run?.status === "proposed" && run.documentId === doc?.id && isDeck()) {
+      // PPTX proposals are deck ops (replaceText pairs or a theme
+      // normalization); applying sends them through the same ops save path.
+      for (const op of (run.edits || []) as DeckOp[]) {
+        const details = document.createElement("details");
+        details.open = true;
+        if (op.type === "replaceText")
+          details.append(
+            node("summary", t("office.deck.proposal.replace")),
+            node("del", op.from),
+            node("ins", op.to),
+          );
+        else if (op.type === "theme") {
+          details.append(
+            node("summary", t("office.deck.proposal.theme")),
+            node("ins", t("office.deck.themeWarning")),
+          );
+        }
+        if (details.childElementCount > 1) proposal.append(details);
+      }
+      proposal.append(
+        button(t("office.applyToDoc"), () => {
+          if (!doc || run?.documentId !== doc.id || run.revision !== doc.revision || dirty || saving) {
+            error(t("office.applyBlocked"));
+            return;
+          }
+          void applyOps((run.edits || []) as DeckOp[]);
+          run = null;
+          localStorage.removeItem("devmoter-office-ai-run");
+          renderRun();
+          setPane("editor");
+        }, "office-primary"),
+      );
+      controls();
+      return;
+    }
     if (run?.status === "proposed" && run.documentId === doc?.id) {
       for (const edit of run.edits || []) {
+        if (!("blockId" in edit) || !edit.blockId) continue;
         const details = document.createElement("details");
         details.open = true;
         if (edit.text !== undefined) {
@@ -693,6 +848,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
             return;
           }
           for (const edit of run.edits || []) {
+            if (!("blockId" in edit) || !edit.blockId) continue;
             const key = editor.blockKeyFor(edit.blockId);
             if (!key) continue;
             if (edit.text !== undefined) editor.replaceText(key, edit.text);
@@ -751,7 +907,10 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       };
       run =
         mode === "generate"
-          ? await api<AiRun>("/api/office/ai/generate", "POST", common)
+          ? await api<AiRun>("/api/office/ai/generate", "POST", {
+              ...common,
+              format: get<HTMLSelectElement>("[data-ai-format]").value === "pptx" ? "pptx" : "docx",
+            })
           : mode === "ask"
             ? await api<AiRun>("/api/office/ai/ask", "POST", { ...common, documentId: doc!.id, revision: doc!.revision })
             : await api<AiRun>("/api/office/ai/runs", "POST", {

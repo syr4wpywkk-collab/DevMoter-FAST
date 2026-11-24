@@ -21,6 +21,13 @@ import {
   projectWorkbook,
   XLSX_WARNINGS,
 } from "./xlsx-model.mjs";
+import {
+  parseDeck,
+  projectDeck,
+  validateDeckOps,
+  applyDeckOps,
+  PPTX_WARNINGS,
+} from "./pptx-model.mjs";
 
 export const OFFICE_LIMITS = Object.freeze({
   uploadBytes: 12 * 1024 * 1024,
@@ -246,12 +253,24 @@ export function createOfficeStore({ rootDir }) {
       return null;
     }
   };
+  // A .pptx-named OOXML package that is not a real presentation (or fails to
+  // outline) is stored read-only like the other uneditable formats.
+  const parsePptx = async (bytes) => {
+    try {
+      const deck = await parseDeck(bytes);
+      return deck.slides.length ? deck : null;
+    } catch {
+      return null;
+    }
+  };
   const parse = (meta, bytes) =>
     meta.format === "docx"
       ? parseDocx(new Uint8Array(bytes), { expandAltChunks: false })
       : meta.format === "excel"
         ? parseExcel(bytes)
-        : null;
+        : meta.format === "pptx"
+          ? parsePptx(bytes)
+          : null;
   const load = async (id) => {
     const meta = await metadata(id);
     const bytes = await read(
@@ -260,6 +279,15 @@ export function createOfficeStore({ rootDir }) {
     return { meta, bytes, parsed: await parse(meta, bytes) };
   };
   const describe = ({ meta, parsed }) => {
+    // PPTX is an outline projection: slide texts/tables/notes, edited via ops.
+    if (meta.format === "pptx" && parsed)
+      return {
+        ...meta,
+        format: "pptx",
+        blocks: [],
+        ...projectDeck(parsed),
+        warnings: [...PPTX_WARNINGS],
+      };
     // XLSX is a read-only projection: sheets + cells, no editable blocks.
     if (meta.format === "excel" && parsed)
       return {
@@ -355,7 +383,9 @@ export function createOfficeStore({ rootDir }) {
           ? await parseDocx(new Uint8Array(bytes), { expandAltChunks: false })
           : format === "excel"
             ? await parseExcel(bytes)
-            : null;
+            : format === "pptx"
+              ? await parsePptx(bytes)
+              : null;
       if (
         format === "docx" &&
         (parsed.blocks.length > OFFICE_LIMITS.blocks ||
@@ -394,6 +424,37 @@ export function createOfficeStore({ rootDir }) {
   // Newest activity first: last opened, else last saved/created.
   const recency = (meta) =>
     Math.max(Date.parse(meta.openedAt || 0) || 0, Date.parse(meta.updatedAt) || 0);
+  /**
+   * Commit edited bytes as a new edit revision. A save shortly after the
+   * previous edit replaces that edit revision (autosave), and when history is
+   * full the oldest edit revisions after the original are pruned.
+   */
+  const commitEdit = async (id, data, bytes, parsed) => {
+    const next = randomUUID();
+    const now = new Date().toISOString();
+    const history = [...data.meta.history];
+    const last = history[history.length - 1];
+    const replaced = [];
+    if (
+      last.source === "edit" &&
+      history.length > 1 &&
+      Date.now() - Date.parse(last.createdAt) < COALESCE_MS
+    )
+      replaced.push(history.pop().revision);
+    history.push({ revision: next, createdAt: replaced.length ? last.createdAt : now, source: "edit" });
+    while (history.length > OFFICE_LIMITS.revisions) {
+      const at = history.findIndex((h, i) => i > 0 && h.source === "edit" && h.revision !== next);
+      if (at === -1) throw fail("履歴が上限に達しました。別文書として保存してください。");
+      replaced.push(history.splice(at, 1)[0].revision);
+    }
+    const meta = { ...data.meta, revision: next, updatedAt: now, history };
+    const ext = FORMAT_EXT[data.meta.format];
+    await atomic(join(dir(id), `${next}.${ext}`), bytes);
+    await writeMeta(id, meta);
+    for (const old of replaced)
+      await rm(join(dir(id), `${old}.${ext}`), { force: true });
+    return describe({ meta, parsed });
+  };
   return {
     create,
     blank: async (name) => create(name, await buildBlankDocx()),
@@ -463,10 +524,23 @@ export function createOfficeStore({ rootDir }) {
         throw fail("文書が更新されています。再読み込みしてください。", 409);
       return validateShapeEdits(data.parsed, shapes);
     },
+    /**
+     * PPTX editing ops (AI proposals and the deck editor share this path):
+     * validated against the outline of the exact revision they address —
+     * nothing is written here.
+     */
+    validateOps: async (id, revision, ops) => {
+      const data = await load(id);
+      if (data.meta.revision !== revision)
+        throw fail("文書が更新されています。再読み込みしてください。", 409);
+      if (data.meta.format !== "pptx" || !data.parsed)
+        throw fail("この文書形式はまだ編集できません。");
+      return validateDeckOps(data.parsed, ops);
+    },
     restore: (id, revision, target) =>
       serial(async () => {
         const meta = await metadata(id);
-        if (meta.format !== "docx" && meta.format !== "excel")
+        if (meta.format !== "docx" && meta.format !== "excel" && meta.format !== "pptx")
           throw fail("この形式はまだ編集できません。");
         if (meta.revision !== revision)
           throw fail("文書が更新されています。再読み込みしてください。", 409);
@@ -525,30 +599,26 @@ export function createOfficeStore({ rootDir }) {
           bytes.length > OFFICE_LIMITS.uploadBytes
         )
           throw fail("編集後の文書が上限を超えます。");
-        const next = randomUUID();
-        const now = new Date().toISOString();
-        const history = [...data.meta.history];
-        const last = history[history.length - 1];
-        const replaced = [];
-        if (
-          last.source === "edit" &&
-          history.length > 1 &&
-          Date.now() - Date.parse(last.createdAt) < COALESCE_MS
-        )
-          replaced.push(history.pop().revision);
-        history.push({ revision: next, createdAt: replaced.length ? last.createdAt : now, source: "edit" });
-        while (history.length > OFFICE_LIMITS.revisions) {
-          const at = history.findIndex((h, i) => i > 0 && h.source === "edit" && h.revision !== next);
-          if (at === -1) throw fail("履歴が上限に達しました。別文書として保存してください。");
-          replaced.push(history.splice(at, 1)[0].revision);
-        }
-        const meta = { ...data.meta, revision: next, updatedAt: now, history };
-        const ext = FORMAT_EXT[data.meta.format];
-        await atomic(join(dir(id), `${next}.${ext}`), bytes);
-        await writeMeta(id, meta);
-        for (const old of replaced)
-          await rm(join(dir(id), `${old}.${ext}`), { force: true });
-        return describe({ meta, parsed });
+        return commitEdit(id, data, bytes, parsed);
+      }),
+    /**
+     * Save pptx editing ops from the deck editor (or an applied AI proposal):
+     * validate against the current revision, apply to the stored bytes and
+     * commit as a new edit revision with the same coalescing rules as save().
+     */
+    saveOps: (id, revision, ops) =>
+      serial(async () => {
+        const data = await load(id);
+        if (data.meta.format !== "pptx" || !data.parsed)
+          throw fail("この文書形式はまだ編集できません。");
+        if (data.meta.revision !== revision)
+          throw fail("文書が更新されています。再読み込みしてください。", 409);
+        const valid = validateDeckOps(data.parsed, ops);
+        const bytes = await applyDeckOps(data.bytes, valid);
+        const parsed = await parseDeck(bytes);
+        if (bytes.length > OFFICE_LIMITS.uploadBytes)
+          throw fail("編集後の文書が上限を超えます。");
+        return commitEdit(id, data, bytes, parsed);
       }),
   };
 }
