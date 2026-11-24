@@ -58,10 +58,12 @@ test("Office non-DOCX documents store originals read-only: list/download/rename 
   assert.equal(file, `${doc.revision}.pdf`);
   const renamed = await store.rename(doc.id, "スキャン");
   assert.equal(renamed.name, "スキャン.pdf");
-  // No parse/edit/AI surface yet.
+  // No block-editor surface for PDF; ops live behind store.pdfOp instead.
   await assert.rejects(store.save(doc.id, doc.revision, [{ id: "x", type: "paragraph", runs: [{ text: "y" }] }]));
   await assert.rejects(store.validate(doc.id, doc.revision, [{ blockId: "x", text: "y" }]));
-  await assert.rejects(store.restore(doc.id, doc.revision, doc.revision));
+  // Restore is allowed now that PDF has ops, and leaves the original intact.
+  const restored = await store.restore(doc.id, doc.revision, doc.revision);
+  assert.equal(restored.format, "pdf");
   const ai = createOfficeAi({ store, authorize: async () => {}, prepareChat: async () => ({ context: {}, secrets: [], chat: async () => "{}" }) });
   await assert.rejects(
     ai.start({ documentId: doc.id, revision: doc.revision, goal: "x", share: true }, { ownerId: "owner:test" }),

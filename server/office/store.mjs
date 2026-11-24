@@ -32,6 +32,15 @@ import {
   PPTX_WARNINGS,
 } from "./pptx-model.mjs";
 import { recalcWorkbook } from "./calc.mjs";
+import {
+  parsePdf,
+  projectPdf,
+  validatePdfOp,
+  validatePdfShapeOps,
+  applyPdfOp,
+  PDF_WARNINGS,
+  PDF_XFA_WARNING,
+} from "./pdf-model.mjs";
 
 export const OFFICE_LIMITS = Object.freeze({
   uploadBytes: 12 * 1024 * 1024,
@@ -267,6 +276,15 @@ export function createOfficeStore({ rootDir }) {
       return null;
     }
   };
+  // A %PDF file that fails to parse (corrupt, over the limits) is likewise
+  // stored read-only; projection and ops require a parsed model.
+  const parsePdfSafe = async (bytes) => {
+    try {
+      return await parsePdf(bytes);
+    } catch {
+      return null;
+    }
+  };
   const parse = (meta, bytes) =>
     meta.format === "docx"
       ? parseDocx(new Uint8Array(bytes), { expandAltChunks: false })
@@ -274,6 +292,8 @@ export function createOfficeStore({ rootDir }) {
         ? parseExcel(bytes)
         : meta.format === "pptx"
           ? parsePptx(bytes)
+        : meta.format === "pdf"
+          ? parsePdfSafe(bytes)
           : null;
   const load = async (id) => {
     const meta = await metadata(id);
@@ -304,6 +324,19 @@ export function createOfficeStore({ rootDir }) {
         warnings: computed ? [...XLSX_WARNINGS] : [XLSX_STALE_WARNING, ...XLSX_WARNINGS.slice(1)],
       };
     }
+    // PDF is a final-form format: the projection carries page info, metadata,
+    // extracted text and form fields; edits happen through validated ops that
+    // write new revisions, never through the block editor.
+    if (meta.format === "pdf" && parsed)
+      return {
+        ...meta,
+        format: "pdf",
+        ...projectPdf(parsed),
+        warnings: [
+          ...PDF_WARNINGS,
+          ...(parsed.formSupported ? [] : [PDF_XFA_WARNING]),
+        ],
+      };
     if (!parsed)
       return {
         ...meta,
@@ -393,6 +426,8 @@ export function createOfficeStore({ rootDir }) {
             ? await parseExcel(bytes)
             : format === "pptx"
               ? await parsePptx(bytes)
+            : format === "pdf"
+              ? await parsePdfSafe(bytes)
               : null;
       if (
         format === "docx" &&
@@ -556,10 +591,23 @@ export function createOfficeStore({ rootDir }) {
         throw fail("この文書形式はまだ編集できません。");
       return validateDeckOps(data.parsed, ops);
     },
+    /**
+     * AI shaping proposals for PDF (metadata edits + stamps only) are
+     * validated against the parsed model — like docx shapes, validation only;
+     * the editor applies each returned op through pdfOp after review.
+     */
+    validatePdfShapes: async (id, revision, ops) => {
+      const data = await load(id);
+      if (data.meta.revision !== revision)
+        throw fail("文書が更新されています。再読み込みしてください。", 409);
+      if (data.meta.format !== "pdf" || !data.parsed)
+        throw fail("この文書形式はまだ編集できません。");
+      return validatePdfShapeOps(data.parsed, ops);
+    },
     restore: (id, revision, target) =>
       serial(async () => {
         const meta = await metadata(id);
-        if (meta.format !== "docx" && meta.format !== "excel" && meta.format !== "pptx")
+        if (!["docx", "excel", "pptx", "pdf"].includes(meta.format))
           throw fail("この形式はまだ編集できません。");
         if (meta.revision !== revision)
           throw fail("文書が更新されています。再読み込みしてください。", 409);
@@ -618,6 +666,26 @@ export function createOfficeStore({ rootDir }) {
           bytes.length > OFFICE_LIMITS.uploadBytes
         )
           throw fail("編集後の文書が上限を超えます。");
+        return describe(await commitEdit(data, bytes, parsed));
+      }),
+    /**
+     * Apply one validated PDF operation (page ops, form fill, stamp,
+     * metadata) as a new edit revision — same history/coalescing rules as
+     * the docx save path. Body text is never touched in place.
+     */
+    pdfOp: (id, revision, op) =>
+      serial(async () => {
+        const data = await load(id);
+        if (data.meta.format !== "pdf" || !data.parsed)
+          throw fail("この文書形式はまだ編集できません。");
+        if (data.meta.revision !== revision)
+          throw fail("文書が更新されています。再読み込みしてください。", 409);
+        const validated = validatePdfOp(data.parsed, op);
+        const bytes = await applyPdfOp(data.bytes, validated);
+        if (bytes.length > OFFICE_LIMITS.uploadBytes)
+          throw fail("編集後の文書が上限を超えます。");
+        const parsed = await parsePdfSafe(bytes);
+        if (!parsed) throw fail("編集後の文書が上限を超えます。");
         return describe(await commitEdit(data, bytes, parsed));
       }),
     /**

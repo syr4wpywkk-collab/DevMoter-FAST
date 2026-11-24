@@ -37,6 +37,18 @@ sources (devmoter-office, `packages/xlsx`) retained under `vendor/xlsx/`.
 Origin, license and runtime dependencies (jszip, fast-xml-parser — both MIT,
 resolved externally) are recorded in `vendor/xlsx/NOTICE.md`.
 
+`server/office/pdf-engine.mjs` is generated from vendored `@devmoter/pdf`
+sources (devmoter-office, `packages/pdf`) retained under `vendor/pdf/`.
+Origin, license and runtime dependencies (pdf-lib + @pdf-lib/fontkit — MIT,
+pdfjs-dist — Apache-2.0, resolved externally) are recorded in
+`vendor/pdf/NOTICE.md`.
+
+The PDF viewer uses the **PDF.js** legacy build (pdfjs-dist 4.2.67,
+Apache-2.0, Copyright Mozilla Foundation) vendored under `vendor/pdfjs/`
+(pdf.mjs + pdf.worker.mjs + license copy); the matching minified builds are
+served statically from `public/pdfjs/` and loaded at runtime so the viewer
+stays out of the JS bundle. See `vendor/pdfjs/NOTICE.md`.
+
 `server/office/pptx-engine.mjs` is generated from vendored `@devmoter/pptx`
 sources (devmoter-office, `packages/pptx`) retained under `vendor/pptx/`.
 Origin, license and runtime dependencies (jszip, fast-xml-parser, pptxgenjs —

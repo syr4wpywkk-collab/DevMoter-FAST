@@ -17,7 +17,7 @@
     "security:audit": "node scripts/security-audit.mjs",
     "deps:graph": "node scripts/module-graph.mjs",
     "size": "node scripts/bundle-size.mjs",
-    "build:office": "node scripts/build-office-engine.mjs && node scripts/build-xlsx-engine.mjs && node scripts/build-calc-engine.mjs && node scripts/build-pptx-engine.mjs",
+    "build:office": "node scripts/build-office-engine.mjs && node scripts/build-xlsx-engine.mjs && node scripts/build-calc-engine.mjs && node scripts/build-pptx-engine.mjs && node scripts/build-pdf-engine.mjs",
     "test:workspace-browser": "node --test e2e/*.test.mjs",
     "test:workspace-browser:setup": "playwright install --with-deps webkit"
   },
@@ -35,6 +35,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@pdf-lib/fontkit": "1.1.1",
     "@simplewebauthn/server": "14.1.0",
     "dompurify": "^3.4.18",
     "fast-xml-parser": "5.12.1",
@@ -42,6 +43,8 @@
     "marked": "^18.2.1",
     "node-pty": "^1.1.0",
     "oauth4webapi": "3.8.8",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "4.2.67",
     "pptxgenjs": "4.0.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
