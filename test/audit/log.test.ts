@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { chmod, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 
 import { commandOperation, createAuditLog, sqlOperation, verifyAuditLog } from '../../src/audit/log.ts';
+
+const VALKEY_COMMANDS_DIR = path.join(import.meta.dirname, '../../engines/valkey/src/commands');
 
 test('an operation is described by its kind only', () => {
   assert.equal(sqlOperation('select * from secrets', 'postgresql'), 'SELECT');
@@ -31,6 +34,10 @@ test('an operation is described by its kind only', () => {
   assert.equal(commandOperation([{ $base64: 'AA==' }]), 'OTHER');
   assert.equal(commandOperation(['SET\r\nFLUSHALL']), 'OTHER');
   assert.equal(commandOperation([]), 'OTHER');
+  // A word that is not a command is not recorded: it may be a secret sent in the wrong place.
+  assert.equal(commandOperation(['hunter2hunter2', 'x']), 'OTHER');
+  assert.equal(commandOperation(['sk_live_abcdef']), 'OTHER');
+  assert.equal(commandOperation(['restore-asking', 'k']), 'RESTORE-ASKING');
 });
 
 test('the kind of a request made of many comments is found at once', () => {
@@ -105,4 +112,15 @@ describe('audit log', () => {
     await assert.rejects(blocked.record({ event: 'api.request' }));
     await assert.rejects(blocked.record({ event: 'api.request' }));
   });
+});
+
+test('every command of the pinned Valkey has a kind', { skip: !existsSync(VALKEY_COMMANDS_DIR) && 'engines/ is not checked out' }, () => {
+  const files = readdirSync(VALKEY_COMMANDS_DIR).filter((file) => file.endsWith('.json'));
+  assert.ok(files.length > 400);
+  for (const file of files) {
+    for (const [name, info] of Object.entries(JSON.parse(readFileSync(path.join(VALKEY_COMMANDS_DIR, file), 'utf8')) as Record<string, { container?: string }>)) {
+      const command = (info.container ?? name).toUpperCase();
+      assert.equal(commandOperation([command.toLowerCase()]), command, file);
+    }
+  }
 });
