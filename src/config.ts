@@ -95,6 +95,14 @@ export function isLoopbackHost(host: string): boolean {
   return host === 'localhost' || host === '::1' || /^127(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(host);
 }
 
+/**
+ * The address to listen on for a loopback `host`. "localhost" is a name, and what a name
+ * resolves to is up to the machine's resolver, so the server binds to the address itself.
+ */
+export function loopbackAddress(host: string): string {
+  return host === 'localhost' ? '127.0.0.1' : host;
+}
+
 export function parseConfig(value: unknown, baseDir: string, configFile?: string): Config {
   if (!isRecord(value)) throw new ConfigError('the configuration must be a JSON object');
   onlyKeys(value, ['server', 'databases', 'auth', 'audit'], 'configuration');

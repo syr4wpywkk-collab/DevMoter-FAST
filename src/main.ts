@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { createApiServer, stopApiServer, type Database } from './api/server.ts';
 import { createAuditLog } from './audit/log.ts';
 import { createKeyStore } from './auth/keys.ts';
-import { ConfigError, loadConfig, type DatabaseConfig } from './config.ts';
+import { ConfigError, isLoopbackHost, loadConfig, loopbackAddress, type DatabaseConfig } from './config.ts';
 import { createDuckdbAdapter } from './engines/duckdb.ts';
 import { defaultEnginesDir, engineBinary } from './engines/paths.ts';
 import { createPostgresqlAdapter } from './engines/postgresql.ts';
@@ -113,8 +113,15 @@ async function main(): Promise<void> {
     logger.fatal('the server could not start', { err: error });
     process.exit(1);
   });
-  server.listen(config.server.port, config.server.host, () => {
-    logger.info('listening', { host: config.server.host, port: config.server.port, databases: databases.map((database) => database.name), enginesDir, apiKeys: auth !== undefined, auditLog: audit !== undefined });
+  server.listen(config.server.port, loopbackAddress(config.server.host), () => {
+    const address = server.address();
+    const bound = address !== null && typeof address === 'object' ? address.address : '';
+    if (!isLoopbackHost(bound)) {
+      // Cannot happen with an address literal; checked because the API has no permissions yet.
+      logger.fatal('the server is not listening on a loopback address', { address: bound });
+      process.exit(1);
+    }
+    logger.info('listening', { host: bound, port: config.server.port, databases: databases.map((database) => database.name), enginesDir, apiKeys: auth !== undefined, auditLog: audit !== undefined });
   });
 }
 

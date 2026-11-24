@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 
-import { ConfigError, isLoopbackHost, loadConfig, parseConfig } from '../src/config.ts';
+import { ConfigError, isLoopbackHost, loadConfig, loopbackAddress, parseConfig } from '../src/config.ts';
 
 test('defaults to a loopback server with no databases', () => {
   assert.deepEqual(parseConfig({}, '/etc/dmb'), { server: { host: '127.0.0.1', port: 8787 }, databases: [] });
@@ -148,4 +148,11 @@ test('API key and audit log files are optional and resolved against the configur
   }
   assert.throws(() => parseConfig({ audit: { file: 'dmb.json' } }, '/etc/dmb', '/etc/dmb/dmb.json'), /audit\.file: \/etc\/dmb\/dmb\.json is also the configuration file/);
   assert.throws(() => parseConfig({ auth: { keysFile: 'dmb.json' } }, '/etc/dmb', '/etc/dmb/dmb.json'), /auth\.keysFile: .* is also the configuration file/);
+});
+
+test('"localhost" is bound as 127.0.0.1, never through the resolver', () => {
+  assert.equal(loopbackAddress('localhost'), '127.0.0.1');
+  assert.equal(loopbackAddress('127.0.0.2'), '127.0.0.2');
+  assert.equal(loopbackAddress('::1'), '::1');
+  for (const host of ['localhost', '127.0.0.1', '::1']) assert.equal(isLoopbackHost(loopbackAddress(host)), true);
 });
