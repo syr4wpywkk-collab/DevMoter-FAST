@@ -21,7 +21,7 @@
 | 5 | 自動依存関係検査 | ● | 実装済み | `scripts/deps/check.ts`、Dependabot、CI の `npm run deps:check` |
 | 6 | ライセンス・著作権表示管理 |  | 未着手 |  |
 | 7 | CIによる自動テスト | ● | 実装済み | `.github/workflows/ci.yml`（x86-64 / ARM64） |
-| 8 | エンジン別ヘルスチェック | ● | 実装済み | `GET /v1/health/engines`、`GET /v1/databases/:name/health`（SQLite・DuckDB。PostgreSQL・Valkey はアダプターと同時に追加） |
+| 8 | エンジン別ヘルスチェック | ● | 実装済み | `GET /v1/health/engines`、`GET /v1/databases/:name/health`（4エンジンすべて） |
 | 9 | 構造化ログ基盤 | ● | 実装済み | `src/logging/`、`test/logging/` |
 | 10 | コード行数・言語別統計の自動生成 | ● | 実装済み | `scripts/stats/code-stats.ts`、[`docs/stats/code-stats.md`](../stats/code-stats.md) |
 
@@ -30,10 +30,10 @@
 | # | 機能 | 初期 | 状態 | 実装・検証 |
 |---|---|---|---|---|
 | 11 | 統合REST API | ● | 実装済み | `src/api/server.ts`、`src/main.ts`、`docs/api/v1.md`（ループバック限定） |
-| 12 | PostgreSQL接続アダプター | ● | 未着手 |  |
+| 12 | PostgreSQL接続アダプター | ● | 実装済み | `src/engines/postgresql.ts`、`test/engines/postgresql.test.ts` |
 | 13 | SQLite接続アダプター | ● | 実装済み | `src/engines/sqlite.ts`、`test/engines/sqlite.test.ts` |
 | 14 | DuckDB接続アダプター | ● | 実装済み | `src/engines/duckdb.ts`、`test/engines/duckdb.test.ts` |
-| 15 | Valkey接続アダプター | ● | 未着手 |  |
+| 15 | Valkey接続アダプター | ● | 実装済み | `src/engines/valkey.ts`、`src/engines/resp.ts`、`test/engines/valkey.test.ts` |
 | 16 | 接続プール管理 |  | 未着手 |  |
 | 17 | データベース一覧・状態取得 |  | 未着手 |  |
 | 18 | クエリ実行API |  | 未着手 |  |

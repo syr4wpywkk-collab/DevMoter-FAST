@@ -66,11 +66,59 @@ test('loadConfig reads a file and reports unreadable or malformed ones', async (
   try {
     const file = path.join(dir, 'config.json');
     await writeFile(file, JSON.stringify({ databases: [{ name: 'app', engine: 'sqlite', file: 'app.sqlite' }] }));
-    assert.equal((await loadConfig(file)).databases[0]?.file, path.join(dir, 'app.sqlite'));
+    assert.deepEqual((await loadConfig(file)).databases, [{ name: 'app', engine: 'sqlite', file: path.join(dir, 'app.sqlite'), readOnly: false }]);
     await writeFile(file, '{ not json');
     await assert.rejects(loadConfig(file), /not valid JSON/);
     await assert.rejects(loadConfig(path.join(dir, 'missing.json')), /cannot read/);
   } finally {
     await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('PostgreSQL and Valkey entries describe a running server on this machine', () => {
+  const config = parseConfig(
+    {
+      databases: [
+        { name: 'main', engine: 'postgresql', host: '/run/postgresql', database: 'app', user: 'app', passwordEnv: 'DMB_PG_PASSWORD' },
+        { name: 'tcp', engine: 'postgresql', host: '127.0.0.1', port: 5433, database: 'app', user: 'app', readOnly: true },
+        { name: 'cache', engine: 'valkey', socketPath: '/run/valkey/valkey.sock' },
+        { name: 'cache-tcp', engine: 'valkey', host: 'localhost', db: 2, username: 'app', passwordEnv: 'DMB_VALKEY_PASSWORD', readOnly: true },
+      ],
+    },
+    '/etc/dmb',
+  );
+  assert.deepEqual(config.databases, [
+    { name: 'main', engine: 'postgresql', host: '/run/postgresql', port: 5432, database: 'app', user: 'app', passwordEnv: 'DMB_PG_PASSWORD', readOnly: false },
+    { name: 'tcp', engine: 'postgresql', host: '127.0.0.1', port: 5433, database: 'app', user: 'app', readOnly: true },
+    { name: 'cache', engine: 'valkey', socketPath: '/run/valkey/valkey.sock', db: 0, readOnly: false },
+    { name: 'cache-tcp', engine: 'valkey', host: 'localhost', port: 6379, db: 2, username: 'app', passwordEnv: 'DMB_VALKEY_PASSWORD', readOnly: true },
+  ]);
+});
+
+test('server engines must be local, and passwords never go in the file', () => {
+  const pg = { name: 'main', engine: 'postgresql', host: '/run/postgresql', database: 'app', user: 'app' };
+  const valkey = { name: 'cache', engine: 'valkey' };
+  const cases: [object, RegExp][] = [
+    [{ ...pg, host: 'db.example.com' }, /host: only a Unix socket or a loopback address/],
+    [{ ...pg, host: '10.0.0.5' }, /host: only a Unix socket or a loopback address/],
+    [{ ...pg, host: 'run/postgresql' }, /host: only a Unix socket or a loopback address/],
+    [{ ...pg, host: undefined }, /host: is missing/],
+    [{ ...pg, database: '' }, /database: is missing/],
+    [{ ...pg, user: 5 }, /user: is missing/],
+    [{ ...pg, port: 0 }, /port/],
+    [{ ...pg, password: 'hunter2' }, /unknown setting "password"/],
+    [{ ...pg, passwordEnv: 'lower case' }, /passwordEnv/],
+    [{ ...pg, file: 'x' }, /unknown setting "file"/],
+    [{ ...valkey }, /set either socketPath or host/],
+    [{ ...valkey, socketPath: '/s', host: 'localhost' }, /set either socketPath or host/],
+    [{ ...valkey, socketPath: 'relative.sock' }, /socketPath: must be an absolute path/],
+    [{ ...valkey, socketPath: '/s', port: 6379 }, /port: cannot be combined/],
+    [{ ...valkey, host: '192.168.0.9' }, /host: only a Unix socket or a loopback address/],
+    [{ ...valkey, socketPath: '/s', db: -1 }, /db/],
+    [{ ...valkey, socketPath: '/s', username: 'app' }, /username: needs passwordEnv/],
+    [{ ...valkey, socketPath: '/s', password: 'hunter2' }, /unknown setting "password"/],
+  ];
+  for (const [entry, message] of cases) {
+    assert.throws(() => parseConfig({ databases: [entry] }, '/'), (error: unknown) => error instanceof ConfigError && message.test(error.message), JSON.stringify(entry));
   }
 });

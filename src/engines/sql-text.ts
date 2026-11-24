@@ -62,7 +62,11 @@ function skipWord(sql: string, start: number, blanks: RegExp | undefined): numbe
   return index;
 }
 
-export function sqlShape(sql: string, dialect: SqlDialect = {}): SqlShape {
+/**
+ * `onToken`, when given, is called for each piece outside comments in order: a word as written,
+ * the opening character of quoted or dollar-quoted text, or any other single character (";" included).
+ */
+export function sqlShape(sql: string, dialect: SqlDialect = {}, onToken?: (token: string) => void): SqlShape {
   const { blanks } = dialect;
   let statements = 0;
   let firstKeyword: string | undefined;
@@ -77,6 +81,7 @@ export function sqlShape(sql: string, dialect: SqlDialect = {}): SqlShape {
     const char = sql[index] as string;
     if (char === ';') {
       open = false;
+      onToken?.(char);
       index += 1;
     } else if (/\s/.test(char) && char <= ' ') {
       index += 1;
@@ -89,9 +94,11 @@ export function sqlShape(sql: string, dialect: SqlDialect = {}): SqlShape {
       index = skipBlockComment(sql, index);
     } else if (char === "'" || char === '"') {
       content();
+      onToken?.(char);
       index = skipQuoted(sql, index, char, false);
     } else if (char === '$' && ((DOLLAR_TAG.lastIndex = index), DOLLAR_TAG.test(sql))) {
       content();
+      onToken?.(char);
       const tag = sql.slice(index, DOLLAR_TAG.lastIndex);
       const end = sql.indexOf(tag, DOLLAR_TAG.lastIndex);
       index = end === -1 ? sql.length : end + tag.length;
@@ -100,11 +107,13 @@ export function sqlShape(sql: string, dialect: SqlDialect = {}): SqlShape {
       const word = sql.slice(index, end);
       if (firstKeyword === undefined) firstKeyword = word.toUpperCase();
       content();
+      onToken?.(word);
       index = end;
       // E'...' is the one string form in which a backslash escapes the quote.
       if ((word === 'e' || word === 'E') && sql[index] === "'") index = skipQuoted(sql, index, "'", true);
     } else {
       content();
+      onToken?.(char);
       index += 1;
     }
   }

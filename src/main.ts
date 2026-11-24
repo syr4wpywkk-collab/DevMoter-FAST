@@ -11,17 +11,49 @@ import { createApiServer, stopApiServer, type Database } from './api/server.ts';
 import { ConfigError, loadConfig, type DatabaseConfig } from './config.ts';
 import { createDuckdbAdapter } from './engines/duckdb.ts';
 import { defaultEnginesDir, engineBinary } from './engines/paths.ts';
+import { createPostgresqlAdapter } from './engines/postgresql.ts';
 import { createSqliteAdapter } from './engines/sqlite.ts';
+import type { Adapter } from './engines/types.ts';
+import { createValkeyAdapter } from './engines/valkey.ts';
 import { createRootLogger } from './logging/logger.ts';
 
 const SHUTDOWN_GRACE_MS = 10_000;
 
-export function openDatabase(config: DatabaseConfig, enginesDir: string): Database {
-  const { name, engine, file, readOnly } = config;
-  const adapter =
-    engine === 'sqlite'
-      ? createSqliteAdapter({ binary: engineBinary(enginesDir, 'sqlite', 'sqlite3'), file, readOnly })
-      : createDuckdbAdapter({ binary: engineBinary(enginesDir, 'duckdb', 'duckdb'), file, readOnly });
+/** Reads the password a database entry points at. Passwords live in the environment, never in the configuration file. */
+function password(config: { name: string; passwordEnv?: string }, env: NodeJS.ProcessEnv): { password?: string } {
+  if (config.passwordEnv === undefined) return {};
+  const value = env[config.passwordEnv];
+  if (value === undefined || value === '') throw new ConfigError(`database "${config.name}": the environment variable ${config.passwordEnv} is not set`);
+  return { password: value };
+}
+
+export function openDatabase(config: DatabaseConfig, enginesDir: string, env: NodeJS.ProcessEnv = process.env): Database {
+  const { name, engine, readOnly } = config;
+  let adapter: Adapter;
+  switch (config.engine) {
+    case 'sqlite':
+      adapter = createSqliteAdapter({ binary: engineBinary(enginesDir, 'sqlite', 'sqlite3'), file: config.file, readOnly });
+      break;
+    case 'duckdb':
+      adapter = createDuckdbAdapter({ binary: engineBinary(enginesDir, 'duckdb', 'duckdb'), file: config.file, readOnly });
+      break;
+    case 'postgresql':
+      adapter = createPostgresqlAdapter({ host: config.host, port: config.port, database: config.database, user: config.user, ...password(config, env), readOnly });
+      break;
+    case 'valkey': {
+      const { socketPath, host, port, db, username } = config;
+      adapter = createValkeyAdapter({
+        ...(socketPath === undefined ? {} : { socketPath }),
+        ...(host === undefined ? {} : { host }),
+        ...(port === undefined ? {} : { port }),
+        db,
+        ...(username === undefined ? {} : { username }),
+        ...password(config, env),
+        readOnly,
+      });
+      break;
+    }
+  }
   return { name, engine, readOnly, adapter };
 }
 
@@ -40,7 +72,15 @@ async function main(): Promise<void> {
   }
 
   const enginesDir = defaultEnginesDir(repoRoot);
-  const databases = config.databases.map((database) => openDatabase(database, enginesDir));
+  let databases: Database[];
+  try {
+    databases = config.databases.map((database) => openDatabase(database, enginesDir));
+  } catch (error) {
+    if (!(error instanceof ConfigError)) throw error;
+    logger.fatal('invalid configuration', { configFile, reason: error.message });
+    process.exitCode = 1;
+    return;
+  }
   const server = createApiServer({ databases, logger });
 
   const shutdown = (signal: string) => {

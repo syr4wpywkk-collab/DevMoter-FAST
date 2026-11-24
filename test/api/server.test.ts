@@ -8,7 +8,7 @@ import { after, before, describe, test } from 'node:test';
 
 import { createApiServer, isLocalHostHeader, stopApiServer, type Database } from '../../src/api/server.ts';
 import { createSqliteAdapter } from '../../src/engines/sqlite.ts';
-import { EngineError, type QueryOptions, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
+import { EngineError, type CommandArg, type KeyValueAdapter, type QueryOptions, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { createLogger } from '../../src/logging/logger.ts';
 import { builtEngine } from '../engines/helpers.ts';
 
@@ -48,6 +48,20 @@ function fakeAdapter(handler: (sql: string, params: readonly QueryParam[], optio
   };
 }
 
+const commands: { args: readonly CommandArg[]; timeoutMs: number | undefined }[] = [];
+const cache: KeyValueAdapter = {
+  engine: 'valkey',
+  kind: 'keyvalue',
+  async command(args, options) {
+    commands.push({ args, timeoutMs: options?.timeoutMs });
+    if (args[0] === 'FLUSHALL') throw new EngineError('command_not_allowed', '"FLUSHALL" is not allowed');
+    if (args[0] === 'NOPE') throw new EngineError('query_failed', 'unknown command "NOPE"');
+    return { result: { value: 'private-result' }, durationMs: 1 };
+  },
+  health: async () => ({ status: 'ok', version: '9.9.9', latencyMs: 1 }),
+  async close() {},
+};
+
 describe('REST API', () => {
   const lines: string[] = [];
   const seen: { sql: string; params: readonly QueryParam[]; timeoutMs: number | undefined }[] = [];
@@ -77,6 +91,7 @@ describe('REST API', () => {
     const databases: Database[] = [
       { name: 'app', engine: 'sqlite', readOnly: false, adapter },
       { name: 'archive', engine: 'sqlite', readOnly: true, adapter },
+      { name: 'cache', engine: 'valkey', readOnly: false, adapter: cache },
     ];
     server = createApiServer({ databases, logger: createLogger({ sink: (line) => lines.push(line) }), maxBodyBytes: 2048, maxConcurrentQueries: 1 });
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -98,6 +113,7 @@ describe('REST API', () => {
       databases: [
         { name: 'app', engine: 'sqlite', kind: 'sql', readOnly: false },
         { name: 'archive', engine: 'sqlite', kind: 'sql', readOnly: true },
+        { name: 'cache', engine: 'valkey', kind: 'keyvalue', readOnly: false },
       ],
     });
     assert.deepEqual((await call(port, 'GET', '/v1/databases/archive')).body, { name: 'archive', engine: 'sqlite', kind: 'sql', readOnly: true });
@@ -111,6 +127,7 @@ describe('REST API', () => {
       databases: [
         { name: 'app', engine: 'sqlite', status: 'ok', version: '1.2.3', latencyMs: 1 },
         { name: 'archive', engine: 'sqlite', status: 'ok', version: '1.2.3', latencyMs: 1 },
+        { name: 'cache', engine: 'valkey', status: 'ok', version: '9.9.9', latencyMs: 1 },
       ],
     });
     assert.deepEqual((await call(port, 'GET', '/v1/databases/app/health')).body, { name: 'app', engine: 'sqlite', status: 'ok', version: '1.2.3', latencyMs: 1 });
@@ -134,6 +151,43 @@ describe('REST API', () => {
     assert.equal(reply.status, 200);
     assert.deepEqual(reply.body, { database: 'app', engine: 'sqlite', results: [{ columns: ['answer'], rows: [{ answer: 42 }], rowCount: 1 }], durationMs: 1 });
     assert.deepEqual(seen.at(-1), { sql: 'SELECT ?1', params: ['x', 2, null], timeoutMs: 1500 });
+  });
+
+  test('runs a command on a key-value database and keeps it out of the log', async () => {
+    lines.length = 0;
+    const reply = await call(port, 'POST', '/v1/databases/cache/command', json({ command: ['SET', 'private-key', { $base64: 'AP8=' }, 'EX', 60], timeoutMs: 500 }));
+    assert.equal(reply.status, 200);
+    assert.deepEqual(reply.body, { database: 'cache', engine: 'valkey', result: { value: 'private-result' }, durationMs: 1 });
+    assert.deepEqual(commands.at(-1), { args: ['SET', 'private-key', { $base64: 'AP8=' }, 'EX', 60], timeoutMs: 500 });
+    const record = lines.map((line) => JSON.parse(line) as Record<string, unknown>).find((entry) => entry.msg === 'request');
+    assert.equal(record?.route, 'databases.command');
+    assert.equal(record?.database, 'cache');
+    assert.ok(!lines.join('\n').includes('private-'));
+  });
+
+  test('query and command are refused on the wrong kind of database, before reaching the engine', async () => {
+    const before = commands.length + seen.length;
+    const cases: [string, unknown, number, string][] = [
+      ['/v1/databases/cache/query', { sql: 'SELECT 1' }, 400, 'unsupported_operation'],
+      ['/v1/databases/app/command', { command: ['GET', 'k'] }, 400, 'unsupported_operation'],
+      ['/v1/databases/cache/command', { command: 'GET k' }, 400, 'invalid_request'],
+      ['/v1/databases/cache/command', { command: ['GET', 'k'], sql: 'x' }, 400, 'invalid_request'],
+      ['/v1/databases/cache/command', { command: ['GET', 'k'], timeoutMs: '5' }, 400, 'invalid_request'],
+      ['/v1/databases/missing/command', { command: ['GET', 'k'] }, 404, 'database_not_found'],
+    ];
+    for (const [urlPath, body, status, code] of cases) {
+      const reply = await call(port, 'POST', urlPath, json(body));
+      assert.equal(reply.status, status, urlPath);
+      assert.equal(reply.body.error.code, code);
+    }
+    assert.match((await call(port, 'POST', '/v1/databases/cache/query', json({ sql: 'SELECT 1' }))).body.error.message, /use \/v1\/databases\/cache\/command/);
+    assert.equal(commands.length + seen.length, before);
+    assert.equal((await call(port, 'GET', '/v1/databases/cache/command')).status, 405);
+
+    const refused = await call(port, 'POST', '/v1/databases/cache/command', json({ command: ['FLUSHALL'] }));
+    assert.equal(refused.status, 403);
+    assert.equal(refused.body.error.code, 'command_not_allowed');
+    assert.equal((await call(port, 'POST', '/v1/databases/cache/command', json({ command: ['NOPE'] }))).status, 422);
   });
 
   test('errors use one shape and the right status', async () => {
