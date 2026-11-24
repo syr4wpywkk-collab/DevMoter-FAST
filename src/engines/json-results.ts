@@ -34,7 +34,9 @@ function survivesAsDouble(source: string, value: number): boolean {
  * "-Infinity" (SQLite prints infinity as 9.0e+999).
  */
 export function exactNumbers(_key: string, value: unknown, context?: { source?: string }): unknown {
-  if (typeof value !== 'number' || Number.isSafeInteger(value) || context?.source === undefined) return value;
+  if (typeof value !== 'number' || context?.source === undefined) return value;
+  // An integer written as one. Written with a fraction or an exponent, it may be what a longer decimal was rounded to.
+  if (Number.isSafeInteger(value) && !/[.eE]/.test(context.source)) return value;
   if (!Number.isFinite(value)) return value > 0 ? 'Infinity' : '-Infinity';
   if (/^-?\d+$/.test(context.source)) return context.source;
   return survivesAsDouble(context.source, value) ? value : context.source;
