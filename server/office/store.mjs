@@ -24,6 +24,13 @@ import {
   XLSX_STALE_WARNING,
   XLSX_WARNINGS,
 } from "./xlsx-model.mjs";
+import {
+  parseDeck,
+  projectDeck,
+  validateDeckOps,
+  applyDeckOps,
+  PPTX_WARNINGS,
+} from "./pptx-model.mjs";
 import { recalcWorkbook } from "./calc.mjs";
 
 export const OFFICE_LIMITS = Object.freeze({
@@ -250,12 +257,24 @@ export function createOfficeStore({ rootDir }) {
       return null;
     }
   };
+  // A .pptx-named OOXML package that is not a real presentation (or fails to
+  // outline) is stored read-only like the other uneditable formats.
+  const parsePptx = async (bytes) => {
+    try {
+      const deck = await parseDeck(bytes);
+      return deck.slides.length ? deck : null;
+    } catch {
+      return null;
+    }
+  };
   const parse = (meta, bytes) =>
     meta.format === "docx"
       ? parseDocx(new Uint8Array(bytes), { expandAltChunks: false })
       : meta.format === "excel"
         ? parseExcel(bytes)
-        : null;
+        : meta.format === "pptx"
+          ? parsePptx(bytes)
+          : null;
   const load = async (id) => {
     const meta = await metadata(id);
     const bytes = await read(
@@ -264,6 +283,15 @@ export function createOfficeStore({ rootDir }) {
     return { meta, bytes, parsed: await parse(meta, bytes) };
   };
   const describe = async ({ meta, parsed }) => {
+    // PPTX is an outline projection: slide texts/tables/notes, edited via ops.
+    if (meta.format === "pptx" && parsed)
+      return {
+        ...meta,
+        format: "pptx",
+        blocks: [],
+        ...projectDeck(parsed),
+        warnings: [...PPTX_WARNINGS],
+      };
     // XLSX projects sheets + cells; the calc engine supplies computed values
     // for formula cells when it can run the workbook.
     if (meta.format === "excel" && parsed) {
@@ -363,7 +391,9 @@ export function createOfficeStore({ rootDir }) {
           ? await parseDocx(new Uint8Array(bytes), { expandAltChunks: false })
           : format === "excel"
             ? await parseExcel(bytes)
-            : null;
+            : format === "pptx"
+              ? await parsePptx(bytes)
+              : null;
       if (
         format === "docx" &&
         (parsed.blocks.length > OFFICE_LIMITS.blocks ||
@@ -513,10 +543,23 @@ export function createOfficeStore({ rootDir }) {
         throw fail("文書が更新されています。再読み込みしてください。", 409);
       return validateShapeEdits(data.parsed, shapes);
     },
+    /**
+     * PPTX editing ops (AI proposals and the deck editor share this path):
+     * validated against the outline of the exact revision they address —
+     * nothing is written here.
+     */
+    validateOps: async (id, revision, ops) => {
+      const data = await load(id);
+      if (data.meta.revision !== revision)
+        throw fail("文書が更新されています。再読み込みしてください。", 409);
+      if (data.meta.format !== "pptx" || !data.parsed)
+        throw fail("この文書形式はまだ編集できません。");
+      return validateDeckOps(data.parsed, ops);
+    },
     restore: (id, revision, target) =>
       serial(async () => {
         const meta = await metadata(id);
-        if (meta.format !== "docx" && meta.format !== "excel")
+        if (meta.format !== "docx" && meta.format !== "excel" && meta.format !== "pptx")
           throw fail("この形式はまだ編集できません。");
         if (meta.revision !== revision)
           throw fail("文書が更新されています。再読み込みしてください。", 409);
@@ -574,6 +617,25 @@ export function createOfficeStore({ rootDir }) {
           parsed.blocks.length > OFFICE_LIMITS.blocks ||
           bytes.length > OFFICE_LIMITS.uploadBytes
         )
+          throw fail("編集後の文書が上限を超えます。");
+        return describe(await commitEdit(data, bytes, parsed));
+      }),
+    /**
+     * Save pptx editing ops from the deck editor (or an applied AI proposal):
+     * validate against the current revision, apply to the stored bytes and
+     * commit as a new edit revision with the same coalescing rules as save().
+     */
+    saveOps: (id, revision, ops) =>
+      serial(async () => {
+        const data = await load(id);
+        if (data.meta.format !== "pptx" || !data.parsed)
+          throw fail("この文書形式はまだ編集できません。");
+        if (data.meta.revision !== revision)
+          throw fail("文書が更新されています。再読み込みしてください。", 409);
+        const valid = validateDeckOps(data.parsed, ops);
+        const bytes = await applyDeckOps(data.bytes, valid);
+        const parsed = await parseDeck(bytes);
+        if (bytes.length > OFFICE_LIMITS.uploadBytes)
           throw fail("編集後の文書が上限を超えます。");
         return describe(await commitEdit(data, bytes, parsed));
       }),
