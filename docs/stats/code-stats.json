@@ -10,9 +10,9 @@
     },
     "tests": {
       "files": 22,
-      "lines": 3323,
+      "lines": 3324,
       "blank": 349,
-      "comment": 49,
+      "comment": 50,
       "code": 2925
     },
     "docs": {
@@ -38,9 +38,9 @@
     },
     "total": {
       "files": 30790,
-      "lines": 9882839,
+      "lines": 9882840,
       "blank": 1124835,
-      "comment": 1087995,
+      "comment": 1087996,
       "code": 7670009
     }
   },
@@ -80,17 +80,17 @@
     "tests": {
       "total": {
         "files": 22,
-        "lines": 3323,
+        "lines": 3324,
         "blank": 349,
-        "comment": 49,
+        "comment": 50,
         "code": 2925
       },
       "languages": {
         "TypeScript": {
           "files": 22,
-          "lines": 3323,
+          "lines": 3324,
           "blank": 349,
-          "comment": 49,
+          "comment": 50,
           "code": 2925
         }
       }

@@ -5,7 +5,7 @@ import { after, before, describe, test } from 'node:test';
 import pg from 'pg';
 
 import { MAX_PARAMS, MAX_SQL_BYTES, copiesThroughClient, createPostgresqlAdapter, encodePostgresqlParam, postgresqlError, postgresqlTypes, validatePostgresqlRequest } from '../../src/engines/postgresql.ts';
-import { EngineError, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
+import { EngineError, MAX_QUERY_TIMEOUT_MS, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine, startPostgresql, type TestServer } from './helpers.ts';
 
 const rejectsWith = (code: string, message?: RegExp) => (error: unknown) =>
@@ -165,7 +165,8 @@ describe('PostgreSQL adapter against the built engine', { skip }, () => {
 
   test('one field too long to be a string is refused before the client reads it', async () => {
     // 600 MB: more than the longest string Node can make. The reply is stopped once the limit has arrived.
-    await assert.rejects(adapter.query("SELECT repeat('x', 600000000) AS big", []), rejectsWith('result_too_large'));
+    // The server builds the whole value first, which takes longer than the default time limit under emulation.
+    await assert.rejects(adapter.query("SELECT repeat('x', 600000000) AS big", [], { timeoutMs: MAX_QUERY_TIMEOUT_MS }), rejectsWith('result_too_large'));
     assert.deepEqual((await adapter.query('SELECT 1 AS one', [])).results[0]?.rows, [{ one: 1 }]);
   });
 
