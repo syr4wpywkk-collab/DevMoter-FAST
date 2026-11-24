@@ -381,7 +381,7 @@ test("Office zero-document empty state shows icon and CTAs, hides history and AI
   const openCta = q("[data-empty-open]");
   assert.equal(newCta.textContent, "新規作成");
   assert.ok(newCta.classList.contains("office-primary"));
-  assert.equal(openCta.textContent, "DOCXを開く");
+  assert.equal(openCta.textContent, "ファイルを開く");
   assert.equal(q("[data-history-section]").hidden, true);
   assert.equal(q("[data-ai-form]").hidden, true);
   assert.equal(q("[data-ai-empty]").hidden, false);

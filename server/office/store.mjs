@@ -30,6 +30,30 @@ export const OFFICE_LIMITS = Object.freeze({
   textBytes: 16000,
   revisions: 50,
 });
+// Document format is classified at ingest from the extension plus a content
+// sniff (the wire equivalent of the declared MIME): OOXML formats are ZIP
+// packages and PDF starts with %PDF. DOCX is the only format with
+// parse/edit support so far; the others are stored with their original bytes.
+export const OFFICE_FORMATS = Object.freeze(["docx", "pptx", "pdf", "excel"]);
+const FORMAT_EXT = Object.freeze({
+  docx: "docx",
+  pptx: "pptx",
+  pdf: "pdf",
+  excel: "xlsx",
+});
+const extOf = (name) =>
+  /\.([^.\\/]+)$/.exec(typeof name === "string" ? name.trim() : "")?.[1]?.toLowerCase();
+export const formatForName = (name) =>
+  ({ docx: "docx", pptx: "pptx", pdf: "pdf", xlsx: "excel" })[extOf(name)] ||
+  null;
+const sniffFormat = (bytes) =>
+  !bytes || bytes.length < 4
+    ? null
+    : bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46
+      ? "pdf"
+      : bytes[0] === 0x50 && bytes[1] === 0x4b
+        ? "ooxml"
+        : null;
 const fail = (message, status = 400) =>
   Object.assign(new Error(message), { status });
 const uuid = (value) =>
@@ -70,11 +94,10 @@ export function validateEdits(parsed, edits) {
 const COALESCE_MS = 10 * 60 * 1000;
 const validName = (name) =>
   typeof name === "string" &&
-  /\.(?:docx|xlsx)$/i.test(name) &&
+  formatForName(name) !== null &&
   name.length <= 160 &&
-  name.trim().length > 5 &&
+  name.trim().length > extOf(name).length + 1 &&
   !/[\/\\\u0000-\u001f]/.test(name);
-const extFor = (meta) => (/\.xlsx$/i.test(meta.name) ? ".xlsx" : ".docx");
 
 export function createOfficeStore({ rootDir }) {
   let queue = Promise.resolve();
@@ -140,6 +163,9 @@ export function createOfficeStore({ rootDir }) {
       !meta.history.some((h) => h.revision === meta.revision)
     )
       throw fail("文書の保存情報が破損しています。", 500);
+    // Documents stored before format classification default to DOCX on read;
+    // the stored metadata file itself is not rewritten.
+    meta.format = OFFICE_FORMATS.includes(meta.format) ? meta.format : "docx";
     return meta;
   };
   const atomic = async (path, bytes) => {
@@ -151,23 +177,45 @@ export function createOfficeStore({ rootDir }) {
       await rm(temp, { force: true });
     }
   };
+  // A .xlsx-named OOXML package that is not a real workbook (or fails to
+  // parse) is stored read-only like the other uneditable formats.
+  const parseExcel = async (bytes) => {
+    try {
+      const workbook = await parseWorkbook(bytes);
+      return workbook.sheets.length ? workbook : null;
+    } catch {
+      return null;
+    }
+  };
   const parse = (meta, bytes) =>
-    extFor(meta) === ".xlsx"
-      ? parseWorkbook(bytes)
-      : parseDocx(new Uint8Array(bytes), { expandAltChunks: false });
+    meta.format === "docx"
+      ? parseDocx(new Uint8Array(bytes), { expandAltChunks: false })
+      : meta.format === "excel"
+        ? parseExcel(bytes)
+        : null;
   const load = async (id) => {
     const meta = await metadata(id);
-    const bytes = await read(join(dir(id), `${meta.revision}${extFor(meta)}`));
+    const bytes = await read(
+      join(dir(id), `${meta.revision}.${FORMAT_EXT[meta.format]}`),
+    );
     return { meta, bytes, parsed: await parse(meta, bytes) };
   };
   const describe = ({ meta, parsed }) => {
     // XLSX is a read-only projection: sheets + cells, no editable blocks.
-    if (extFor(meta) === ".xlsx")
+    if (meta.format === "excel" && parsed)
       return {
         ...meta,
         format: "xlsx",
         ...projectWorkbook(parsed),
         warnings: [...XLSX_WARNINGS],
+      };
+    if (!parsed)
+      return {
+        ...meta,
+        blocks: [],
+        warnings: [
+          "この形式はまだ閲覧・編集できません。原本のダウンロードのみ利用できます。",
+        ],
       };
     const emittedImages = new Set();
     let imageBudget = 2 * 1024 * 1024;
@@ -232,17 +280,25 @@ export function createOfficeStore({ rootDir }) {
   const create = (name, bytes) =>
     serial(async () => {
       await ensure();
-      if (!validName(name)) throw fail("文書ファイル名が不正です。");
+      if (!validName(name)) throw fail("ファイル名が不正です。");
       if (!bytes || bytes.length > OFFICE_LIMITS.uploadBytes)
-        throw fail("文書は12MB以下で選択してください。");
+        throw fail("ファイルは12MB以下で選択してください。");
+      const format = formatForName(name);
+      const sniffed = sniffFormat(bytes);
+      if (format === "pdf" ? sniffed !== "pdf" : sniffed !== "ooxml")
+        throw fail("ファイルの内容が拡張子と一致しません。");
       if (
         (await readdir(rootDir)).filter(uuid).length >= OFFICE_LIMITS.documents
       )
         throw fail("Office文書数の上限です。");
-      const ext = extFor({ name });
-      const parsed = await parse({ name }, bytes);
+      const parsed =
+        format === "docx"
+          ? await parseDocx(new Uint8Array(bytes), { expandAltChunks: false })
+          : format === "excel"
+            ? await parseExcel(bytes)
+            : null;
       if (
-        ext === ".docx" &&
+        format === "docx" &&
         (parsed.blocks.length > OFFICE_LIMITS.blocks ||
           parsed.protection?.enforced ||
           Boolean(parsed.writeProtection?.hash))
@@ -254,6 +310,7 @@ export function createOfficeStore({ rootDir }) {
       const meta = {
         id,
         name,
+        format,
         revision,
         createdAt: now,
         updatedAt: now,
@@ -262,7 +319,10 @@ export function createOfficeStore({ rootDir }) {
       };
       await mkdir(dir(id), { mode: 0o700 });
       try {
-        await atomic(join(dir(id), `${revision}${ext}`), bytes);
+        await atomic(
+          join(dir(id), `${revision}.${FORMAT_EXT[format]}`),
+          bytes,
+        );
         await atomic(join(dir(id), "metadata.json"), JSON.stringify(meta));
       } catch (error) {
         await rm(dir(id), { recursive: true, force: true });
@@ -298,14 +358,15 @@ export function createOfficeStore({ rootDir }) {
       serial(async () => {
         if (typeof name !== "string") throw fail("文書名が不正です。");
         const trimmed = name.trim();
-        const ext = extFor(await metadata(id));
-        if (/\.(?:docx|xlsx)$/i.test(trimmed) && !trimmed.toLowerCase().endsWith(ext))
+        const meta0 = await metadata(id);
+        const renamedFormat = formatForName(trimmed);
+        if (renamedFormat && renamedFormat !== meta0.format)
           throw fail("文書名が不正です。");
-        const full = /\.(?:docx|xlsx)$/i.test(trimmed)
+        const full = renamedFormat
           ? trimmed
-          : `${trimmed}${ext}`;
+          : `${trimmed}.${FORMAT_EXT[meta0.format]}`;
         if (!validName(full)) throw fail("文書名が不正です。");
-        const meta = { ...(await metadata(id)), name: full };
+        const meta = { ...meta0, name: full };
         await writeMeta(id, meta);
         return meta;
       }),
@@ -322,20 +383,26 @@ export function createOfficeStore({ rootDir }) {
         throw fail("履歴が見つかりません。", 404);
       return {
         meta,
-        bytes: await read(join(dir(id), `${ref}${extFor(meta)}`)),
+        bytes: await read(
+          join(dir(id), `${ref}.${FORMAT_EXT[meta.format]}`),
+        ),
       };
     },
     validate: async (id, revision, edits) => {
       const data = await load(id);
+      if (!data.parsed)
+        throw fail("この形式はまだ編集できません。");
       if (data.meta.revision !== revision)
         throw fail("文書が更新されています。再読み込みしてください。", 409);
-      if (extFor(data.meta) !== ".docx")
+      if (data.meta.format !== "docx")
         throw fail("この文書形式はまだ保存できません。");
       return validateEdits(data.parsed, edits);
     },
     restore: (id, revision, target) =>
       serial(async () => {
         const meta = await metadata(id);
+        if (meta.format !== "docx" && meta.format !== "excel")
+          throw fail("この形式はまだ編集できません。");
         if (meta.revision !== revision)
           throw fail("文書が更新されています。再読み込みしてください。", 409);
         if (
@@ -343,8 +410,9 @@ export function createOfficeStore({ rootDir }) {
           meta.history.length >= OFFICE_LIMITS.revisions
         )
           throw fail("履歴を復元できません。");
-        const ext = extFor(meta);
-        const bytes = await read(join(dir(id), `${target}${ext}`));
+        const bytes = await read(
+          join(dir(id), `${target}.${FORMAT_EXT[meta.format]}`),
+        );
         const parsed = await parse(meta, bytes);
         const next = randomUUID();
         const now = new Date().toISOString();
@@ -357,7 +425,10 @@ export function createOfficeStore({ rootDir }) {
             { revision: next, createdAt: now, source: "restore" },
           ],
         };
-        await atomic(join(dir(id), `${next}${ext}`), bytes);
+        await atomic(
+          join(dir(id), `${next}.${FORMAT_EXT[meta.format]}`),
+          bytes,
+        );
         await writeMeta(id, restored);
         return describe({ meta: restored, parsed });
       }),
@@ -370,10 +441,12 @@ export function createOfficeStore({ rootDir }) {
     save: (id, revision, blocks) =>
       serial(async () => {
         const data = await load(id);
+        if (!data.parsed)
+          throw fail("この形式はまだ編集できません。");
         if (data.meta.revision !== revision)
           throw fail("文書が更新されています。再読み込みしてください。", 409);
         // XLSX is read-only in this track; the editor save path stays DOCX-only.
-        if (extFor(data.meta) !== ".docx")
+        if (data.meta.format !== "docx")
           throw fail("この文書形式はまだ保存できません。");
         const { finalBlocks, options } = await planDocumentSave(
           data.parsed,
@@ -405,10 +478,11 @@ export function createOfficeStore({ rootDir }) {
           replaced.push(history.splice(at, 1)[0].revision);
         }
         const meta = { ...data.meta, revision: next, updatedAt: now, history };
-        await atomic(join(dir(id), `${next}.docx`), bytes);
+        const ext = FORMAT_EXT[data.meta.format];
+        await atomic(join(dir(id), `${next}.${ext}`), bytes);
         await writeMeta(id, meta);
         for (const old of replaced)
-          await rm(join(dir(id), `${old}.docx`), { force: true });
+          await rm(join(dir(id), `${old}.${ext}`), { force: true });
         return describe({ meta, parsed });
       }),
   };

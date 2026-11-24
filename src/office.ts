@@ -11,7 +11,8 @@ type Doc = {
   warnings: string[];
   history: { revision: string; createdAt: string; source: string }[];
 };
-type DocMeta = { id: string; name: string; updatedAt: string; openedAt?: string };
+type OfficeFormat = "docx" | "pptx" | "pdf" | "excel";
+type DocMeta = { id: string; name: string; format?: OfficeFormat; updatedAt: string; openedAt?: string };
 type AiRun = {
   id: string;
   documentId?: string;
@@ -117,14 +118,14 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     <p class="office-error" data-error role="alert" hidden></p>
     <div class="office-layout">
       <aside class="office-side" aria-label="${esc(t("office.sideAria"))}">
-        <section class="office-section"><div class="office-section-head"><h2>${esc(t("office.tab.list"))}</h2><button type="button" data-upload-open>${esc(t("office.openDocx"))}</button><input data-upload type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden></div><ul class="office-library" data-library></ul></section>
+        <section class="office-section"><div class="office-section-head"><h2>${esc(t("office.tab.list"))}</h2><button type="button" data-upload-open>${esc(t("office.openFile"))}</button><input data-upload type="file" accept=".docx,.pptx,.xlsx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf" hidden></div><select class="office-format-filter" data-format-filter aria-label="${esc(t("office.formatFilterAria"))}"><option value="">${esc(t("office.format.all"))}</option><option value="docx">${esc(t("office.format.docx"))}</option><option value="pptx">${esc(t("office.format.pptx"))}</option><option value="pdf">${esc(t("office.format.pdf"))}</option><option value="excel">${esc(t("office.format.excel"))}</option></select><ul class="office-library" data-library></ul></section>
         <details class="office-section office-history" data-history-section hidden><summary>${esc(t("office.historySummary"))}</summary><ul data-history></ul></details>
       </aside>
       <main class="office-main" aria-label="${esc(t("office.tab.editor"))}">
         <div class="office-doc-bar"><h2 data-name>${esc(t("office.noDocOpen"))}</h2><span class="office-save-state" data-save-state role="status" aria-live="polite"></span><button type="button" class="office-retry" data-retry hidden>${esc(t("common.retry"))}</button><button type="button" class="office-icon-button" data-download aria-label="${esc(t("office.downloadAria"))}" title="${esc(t("office.downloadAria"))}" disabled>${ICONS.download}</button></div>
         <div class="office-toolbar" role="toolbar" aria-label="${esc(t("office.toolbarAria"))}" data-toolbar>${tools}</div>
         <form class="office-link-form" data-link-form hidden><input type="url" inputmode="url" data-link-input placeholder="https://" aria-label="${esc(t("office.linkUrlAria"))}" autocomplete="off"><button type="submit">${esc(t("office.linkApply"))}</button><button type="button" data-link-remove>${esc(t("office.linkRemove"))}</button><button type="button" data-link-cancel>${esc(t("common.cancel"))}</button></form>
-        <div class="office-scroll"><p class="office-note" data-note hidden></p><article class="office-page" data-page aria-label="${esc(t("office.bodyAria"))}" role="textbox" aria-multiline="true" spellcheck="true" hidden></article><div class="office-empty" data-empty data-empty-state="pick"><div class="office-empty-card"><div class="office-empty-icon" data-empty-icon aria-hidden="true" hidden>${ICONS.doc}</div><p class="office-empty-message" data-empty-message>${esc(t("office.emptyDocPrompt"))}</p><div class="office-empty-actions" data-empty-actions hidden><button type="button" class="office-primary" data-empty-new>${esc(t("office.createNew"))}</button><button type="button" data-empty-open>${esc(t("office.openDocx"))}</button></div></div></div></div>
+        <div class="office-scroll"><p class="office-note" data-note hidden></p><article class="office-page" data-page aria-label="${esc(t("office.bodyAria"))}" role="textbox" aria-multiline="true" spellcheck="true" hidden></article><div class="office-empty" data-empty data-empty-state="pick"><div class="office-empty-card"><div class="office-empty-icon" data-empty-icon aria-hidden="true" hidden>${ICONS.doc}</div><p class="office-empty-message" data-empty-message>${esc(t("office.emptyDocPrompt"))}</p><div class="office-empty-actions" data-empty-actions hidden><button type="button" class="office-primary" data-empty-new>${esc(t("office.createNew"))}</button><button type="button" data-empty-open>${esc(t("office.openFile"))}</button></div></div></div></div>
       </main>
       <aside class="office-ai" aria-label="${esc(t("office.tab.ai"))}">
         <h2>${esc(t("office.tab.ai"))}</h2>
@@ -141,6 +142,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   const model = get<HTMLSelectElement>("[data-model]");
   const project = get<HTMLSelectElement>("[data-project]");
   let doc: Doc | null = null;
+  let formatFilter: OfficeFormat | "" = "";
   let docsCount = 0;
   let libraryLoaded = false;
   let aiLoaded = false;
@@ -389,11 +391,15 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     libraryLoaded = true;
     const list = get("[data-library]");
     list.replaceChildren();
-    for (const item of docs) {
+    const shown = docs.filter((item) => !formatFilter || (item.format || "docx") === formatFilter);
+    for (const item of shown) {
       const row = node("li", "", "office-doc-row");
       if (item.id === doc?.id) row.setAttribute("aria-current", "true");
       const open = button("", () => void openDocument(item.id), "office-doc-open");
-      open.append(node("span", item.name, "office-doc-name"), node("span", when(item.openedAt || item.updatedAt), "office-doc-meta"));
+      open.append(
+        node("span", item.name, "office-doc-name"),
+        node("span", `${t(`office.format.${item.format || "docx"}`)} · ${when(item.openedAt || item.updatedAt)}`, "office-doc-meta"),
+      );
       row.append(
         open,
         iconButton(ICONS.rename, t("office.renameAria", { name: item.name }), () => startRename(row, item)),
@@ -401,7 +407,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       );
       list.append(row);
     }
-    if (!docs.length) list.append(node("li", t("office.emptyLibrary"), "office-quiet"));
+    if (!shown.length) list.append(node("li", t(docs.length ? "office.noFormatMatch" : "office.emptyLibrary"), "office-quiet"));
     renderEmptyState();
   };
   const when = (iso: string) => {
@@ -416,7 +422,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     const form = document.createElement("form");
     form.className = "office-rename";
     const input = document.createElement("input");
-    input.value = item.name.replace(/\.docx$/i, "");
+    input.value = item.name.replace(/\.(docx|pptx|xlsx|pdf)$/i, "");
     input.setAttribute("aria-label", t("office.newNameAria"));
     input.maxLength = 150;
     const submit = document.createElement("button");
@@ -732,6 +738,10 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       editor.focus();
     });
   const openDocxPicker = () => get<HTMLInputElement>("[data-upload]").click();
+  get<HTMLSelectElement>("[data-format-filter]").addEventListener("change", (e) => {
+    formatFilter = (e.target as HTMLSelectElement).value as OfficeFormat | "";
+    void library();
+  });
   for (const tab of root.querySelectorAll<HTMLElement>("[data-pane-tab]"))
     tab.addEventListener("click", () => setPane(tab.dataset.paneTab as Pane));
   get("[data-upload-open]").addEventListener("click", openDocxPicker);
