@@ -340,6 +340,32 @@ async function stampText(data, opts) {
   }
   return doc.save();
 }
+async function createDocument(opts) {
+  if (!opts.pages.length || opts.pages.some((lines) => !lines.length))
+    throw new Error("createDocument requires at least one line per page");
+  const doc = await createPdf();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  if (opts.title !== void 0) doc.setTitle(opts.title);
+  doc.setCreator(opts.creator ?? "DevMoter Office");
+  doc.setProducer("DevMoter Office");
+  for (const lines of opts.pages) {
+    const page = doc.addPage([612, 792]);
+    let y = 792 - 72;
+    for (const line of lines) {
+      const size = line.size ?? 11;
+      y -= size * 1.4;
+      if (y < 72) break;
+      page.drawText(line.text, {
+        x: 72,
+        y,
+        size,
+        font: size >= 14 ? bold : font
+      });
+    }
+  }
+  return savePdf(doc);
+}
 async function getMetadata(data) {
   const doc = await loadPdf(data);
   return {
@@ -360,6 +386,7 @@ async function setMetadata(data, meta) {
   return doc.save();
 }
 export {
+  createDocument,
   deletePages,
   extractPages,
   extractText,

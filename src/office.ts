@@ -197,7 +197,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     <p class="office-error" data-error role="alert" hidden></p>
     <div class="office-layout">
       <aside class="office-side" aria-label="${esc(t("office.sideAria"))}">
-        <section class="office-section"><div class="office-section-head"><h2>${esc(t("office.tab.list"))}</h2><button type="button" data-upload-open>${esc(t("office.openFile"))}</button><input data-upload type="file" accept=".docx,.pptx,.xlsx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf" hidden></div><select class="office-format-filter" data-format-filter aria-label="${esc(t("office.formatFilterAria"))}"><option value="">${esc(t("office.format.all"))}</option><option value="docx">${esc(t("office.format.docx"))}</option><option value="pptx">${esc(t("office.format.pptx"))}</option><option value="pdf">${esc(t("office.format.pdf"))}</option><option value="excel">${esc(t("office.format.excel"))}</option></select><ul class="office-library" data-library></ul></section>
+        <section class="office-section"><div class="office-section-head"><h2>${esc(t("office.tab.list"))}</h2><button type="button" data-create-ai>${esc(t("office.createWithAi"))}</button><button type="button" data-upload-open>${esc(t("office.openFile"))}</button><input data-upload type="file" accept=".docx,.pptx,.xlsx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf" hidden></div><select class="office-format-filter" data-format-filter aria-label="${esc(t("office.formatFilterAria"))}"><option value="">${esc(t("office.format.all"))}</option><option value="docx">${esc(t("office.format.docx"))}</option><option value="pptx">${esc(t("office.format.pptx"))}</option><option value="pdf">${esc(t("office.format.pdf"))}</option><option value="excel">${esc(t("office.format.excel"))}</option></select><ul class="office-library" data-library></ul></section>
         <details class="office-section office-history" data-history-section hidden><summary>${esc(t("office.historySummary"))}</summary><ul data-history></ul></details>
       </aside>
       <main class="office-main" aria-label="${esc(t("office.tab.editor"))}">
@@ -210,7 +210,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
         <h2>${esc(t("office.tab.ai"))}</h2>
         <div class="office-ai-empty" data-ai-empty hidden><p>${esc(t("office.aiRequiresDoc"))}</p></div>
         <div class="office-ai-setup" data-ai-unconfigured hidden><p>${esc(t("office.aiUnconfigured"))}</p><button type="button" data-configure>${esc(t("office.aiOpenSettings"))}</button></div>
-        <form data-ai-form hidden><label>${esc(t("office.aiModeLabel"))}<select data-ai-mode><option value="edit">${esc(t("office.aiMode.edit"))}</option><option value="shape">${esc(t("office.aiMode.shape"))}</option><option value="ask">${esc(t("office.aiMode.ask"))}</option><option value="generate">${esc(t("office.aiMode.generate"))}</option></select></label><label>${esc(t("office.aiGoalLabel"))}<textarea data-goal rows="3" placeholder="${esc(t("office.aiGoalPlaceholder"))}"></textarea></label><label data-ai-format-label hidden>${esc(t("office.aiFormatLabel"))}<select data-ai-format><option value="docx">DOCX</option><option value="pptx">PPTX</option></select></label><div class="office-ai-selectors" role="group" aria-label="${esc(t("office.aiSelectorGroupAria"))}"><label>${esc(t("office.aiProviderLabel"))}<select data-provider></select></label><label>${esc(t("office.aiModelLabel"))}<select data-model></select></label></div><details data-project-details hidden><summary>${esc(t("office.aiProjectLabel"))}</summary><label>${esc(t("office.aiProjectLabel"))}<select data-project></select></label></details><p class="office-quiet" data-provider-notice></p><p class="office-quiet office-ai-single-hint" data-ai-single-hint hidden>${esc(t("office.aiSingleOptionHint"))}</p><label class="office-consent"><input type="checkbox" data-share>${esc(t("office.aiConsent"))}</label><div class="office-ai-actions"><button data-ai-send>${esc(t("office.aiGenerate"))}</button><button type="button" data-stop hidden>${esc(t("common.stop"))}</button></div></form>
+        <form data-ai-form hidden><label>${esc(t("office.aiModeLabel"))}<select data-ai-mode><option value="edit">${esc(t("office.aiMode.edit"))}</option><option value="shape">${esc(t("office.aiMode.shape"))}</option><option value="ask">${esc(t("office.aiMode.ask"))}</option><option value="generate">${esc(t("office.aiMode.generate"))}</option></select></label><label>${esc(t("office.aiGoalLabel"))}<textarea data-goal rows="3" placeholder="${esc(t("office.aiGoalPlaceholder"))}"></textarea></label><label data-ai-format-label hidden>${esc(t("office.aiFormatLabel"))}<select data-ai-format><option value="docx">DOCX</option><option value="pptx">PPTX</option><option value="pdf">PDF</option><option value="excel">XLSX</option></select></label><div class="office-ai-selectors" role="group" aria-label="${esc(t("office.aiSelectorGroupAria"))}"><label>${esc(t("office.aiProviderLabel"))}<select data-provider></select></label><label>${esc(t("office.aiModelLabel"))}<select data-model></select></label></div><details data-project-details hidden><summary>${esc(t("office.aiProjectLabel"))}</summary><label>${esc(t("office.aiProjectLabel"))}<select data-project></select></label></details><p class="office-quiet" data-provider-notice></p><p class="office-quiet office-ai-single-hint" data-ai-single-hint hidden>${esc(t("office.aiSingleOptionHint"))}</p><label class="office-consent"><input type="checkbox" data-share>${esc(t("office.aiConsent"))}</label><div class="office-ai-actions"><button data-ai-send>${esc(t("office.aiGenerate"))}</button><button type="button" data-stop hidden>${esc(t("common.stop"))}</button></div></form>
         <p class="office-quiet" data-ai-status role="status" aria-live="polite"></p><div data-proposal></div>
       </aside>
     </div>`;
@@ -1485,7 +1485,10 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
         mode === "generate"
           ? await api<AiRun>("/api/office/ai/generate", "POST", {
               ...common,
-              format: get<HTMLSelectElement>("[data-ai-format]").value === "pptx" ? "pptx" : "docx",
+              format: (() => {
+                const value = get<HTMLSelectElement>("[data-ai-format]").value;
+                return (["docx", "pptx", "pdf", "excel"] as const).includes(value as OfficeFormat) ? value : "docx";
+              })(),
             })
           : mode === "ask"
             ? await api<AiRun>("/api/office/ai/ask", "POST", { ...common, documentId: doc!.id, revision: doc!.revision })
@@ -1536,6 +1539,15 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     tab.addEventListener("click", () => setPane(tab.dataset.paneTab as Pane));
   get("[data-upload-open]").addEventListener("click", openDocxPicker);
   get("[data-empty-open]").addEventListener("click", openDocxPicker);
+  // "Create with AI" is the library's generation entry: jump to the AI pane
+  // in generate mode — no document needed, consent still required.
+  get("[data-create-ai]").addEventListener("click", () => {
+    aiMode.value = "generate";
+    setPane("ai");
+    renderAiSetup();
+    controls();
+    get<HTMLTextAreaElement>("[data-goal]").focus();
+  });
   get("[data-new]").addEventListener("click", createNewDocument);
   get("[data-empty-new]").addEventListener("click", createNewDocument);
   get<HTMLInputElement>("[data-upload]").addEventListener("change", (e) =>

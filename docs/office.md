@@ -4,10 +4,23 @@ Office is available from Home and the manual Tools section. Documents are
 classified at ingest into `docx`, `pptx`, `pdf` or `excel` (from `.docx`,
 `.pptx`, `.pdf`, `.xlsx`), decided by extension plus a content sniff; mismatches
 are rejected. Every library record carries a `format` field — records stored
-before classification read as `docx` without rewriting stored metadata. DOCX is
-still the only format with parse/edit/AI support; other formats are stored with
-their immutable originals and can be listed, renamed, downloaded and deleted.
-Per-format features are subsequent phases, not placeholder apps.
+before classification read as `docx` without rewriting stored metadata. The
+library can filter by format.
+
+## Feature matrix
+
+| Capability | DOCX | PPTX | PDF | Excel (.xlsx) |
+|---|---|---|---|---|
+| Store / list / rename / download / restore | ✓ | ✓ | ✓ | ✓ |
+| Read projection | blocks (paragraphs, headings, lists, tables, images) | slide outline (texts, tables, notes) | pages, metadata, extracted text, form fields | sheets + cells (calc-computed values) |
+| Manual edit | block editor (text, structure, links) | outline ops: replaceText, add/duplicate/move/remove slide, theme normalize | page ops: rotate/extract/delete/reorder, form fill, stamp, metadata | grid cell edits (typed: text/number/bool/formula) |
+| AI edit proposals | paragraph text edits | replaceText ops | — (body text is final) | cell edits |
+| AI structure proposals | shape (heading/list/align) | theme normalization | metadata + stamps only | — |
+| AI Q&A | ✓ | ✓ | ✓ | ✓ |
+| AI generation ("Create with AI") | spec → .docx | DeckPlan → .pptx | spec → drawn-text .pdf | workbook spec → .xlsx |
+
+Body text of a PDF is never edited in place — PDF is a final-form format;
+all edits are page/form/stamp/metadata ops producing new revisions.
 
 ## Architecture and scope
 
@@ -19,59 +32,94 @@ the current revision, so an old tab cannot silently overwrite a newer save.
 Restore creates a new revision; it never deletes the original or later history.
 This store assumes the existing single-owner, single-server private-host model.
 
-The pinned Apache-2.0 GenOffice DOCX engine parses and preserves OOXML. Its source,
-license, provenance and modifications are in `vendor/genoffice`. The generated
-server bundle is committed so a checkout can run server tests immediately;
-`npm run build:office` regenerates it. XML parser dependencies are pinned to a
-patched release. No Electron, enterprise code or brand assets are included.
+## Vendored components
 
-Manual edits replace paragraph text while retaining original run/paragraph XML
-where possible. Enter adds paragraphs. Headings, inline formatting, lists, basic
-tables and raster images have a preview. Tables, images, fields and other complex
-content are preserved rather than regenerated and are not directly editable in
-this release. This is **not full Word fidelity**: pagination, advanced numbering,
-complex layouts, tracked revisions and printing need a dedicated layout/editor
-phase. Strict OOXML may be normalized by the engine when saving edited documents.
-Do not use the preview as a claim of exact print layout.
+Generated engine bundles in `server/office/` are built from `vendor/` sources
+by `npm run build:office`; they are committed so a checkout runs tests
+immediately and are never edited by hand.
 
-Limits: 12MB compressed document, 2,000 ZIP parts/blocks, 16MB per expanded part,
-64MB total expanded package, 100 documents, 50 revisions per document, 100 edits
-per save and 16KB text per edited paragraph. DTD/entity declarations are rejected.
+| Component | Source | License | Used for |
+|---|---|---|---|
+| `vendor/genoffice` | GenOffice (genspark-ai/genoffice, pinned commit) | Apache-2.0 | DOCX parse/preserve/save (`engine.mjs`) |
+| `vendor/xlsx` | @devmoter/xlsx (devmoter-office) | Proprietary (see LICENSE) | XLSX read/write (`xlsx-engine.mjs`) |
+| `vendor/pptx` | @devmoter/pptx (devmoter-office) | Proprietary | PPTX outline/render (`pptx-engine.mjs`) |
+| `vendor/pdf` | @devmoter/pdf (devmoter-office) | Proprietary | PDF ops + createDocument draw (`pdf-engine.mjs`) |
+| `vendor/calc-wasm` | rust-math-engine calc-wasm | Proprietary | XLSX formula recalculation (`calc-engine.mjs`) |
+| `vendor/pdfjs` | pdf.js browser build | Apache-2.0 | PDF viewer rendering |
 
-## AI editing
+Runtime dependencies resolved from pinned package.json: jszip (MIT),
+fast-xml-parser (MIT), pptxgenjs (MIT), pdf-lib (MIT), @pdf-lib/fontkit (MIT),
+pdfjs-dist (Apache-2.0). See each `vendor/*/NOTICE.md` for provenance and
+modifications (the GenOffice adapter tightens ZIP limits and rejects DTD/entity
+declarations).
+
+## Editing notes
+
+Manual DOCX edits replace paragraph text while retaining original run/paragraph
+XML where possible. Enter adds paragraphs. Tables, images, fields and other
+complex content are preserved rather than regenerated. This is **not full Word
+fidelity**: pagination, advanced numbering, complex layouts, tracked revisions
+and printing need a dedicated layout/editor phase.
+
+PPTX editing is an outline-level surface: text replacement, slide ops and
+theme normalization. Applying a theme rebuilds the deck from its text outline;
+images, charts and the original design are lost (the UI warns before apply).
+
+XLSX edits are typed cell contents serialized back over the original package
+bytes so styles and unrelated parts survive; formulas are recalculated by the
+vendored calc engine when it can run the workbook, otherwise stored cached
+values are shown with a stale-data warning.
+
+Limits: 12MB compressed document, 2,000 ZIP parts/blocks, 16MB per expanded
+part, 64MB total expanded package, 100 documents, 50 revisions per document,
+100 edits per save and 16KB text per edited paragraph. DTD/entity declarations
+are rejected.
+
+## AI boundary
 
 Office uses the existing API Chat provider/model configuration and Vault
-authorization. It does not add write operations to the read-only Tools AI catalog.
-Choose the Vault's project when using a project-bound provider. Explicit sharing
-consent is required. Only editable paragraphs are projected to the selected AI:
-at most 60 complete paragraphs, 8KB per paragraph and 24KB text total. Suspicious
-credential-like contents and known secrets are excluded before truncation.
-The UI shows exclusion/truncation notices. Document text is treated as untrusted
-data; the model may only propose `{ "edits": [{ "blockId": "...", "text": "..." }] }`.
-Every edit is validated against the fixed document revision and supplied IDs.
+authorization. It does not add write operations to the read-only Tools AI
+catalog. Explicit sharing consent is required for every run. Only the
+projected shareable text goes to the selected AI (at most 60 items, 8KB each,
+24KB total; 200 cells for workbooks). Suspicious credential-like contents and
+known secrets are excluded before truncation; the UI shows
+exclusion/truncation notices. Document text is treated as untrusted data.
 
+The model may only return validated proposals: `{edits:[{blockId,text}]}` for
+DOCX, `{ops:[replaceText]}` or theme fields for PPTX, `{edits:[{cell,text}]}`
+for XLSX, and metadata/stamp ops for PDF. Every proposal is validated against
+the fixed document revision and supplied IDs; a changed revision rejects it.
 The model cannot issue commands, URLs, arbitrary tool calls or executable UI.
-A proposal does not save anything. Review the before/after text, apply it to the
-local draft, then explicitly save. A changed revision rejects the proposal.
+A proposal does not save anything — the user reviews before/after and applies
+through the normal save paths.
 
-Stop aborts the provider HTTP request and prevents a late response from becoming
-a proposal. Requesting Stop is distinct from stopped. No remote-provider compute
-termination is promised. Closing Office does not delete its run; reopening can
-reconnect while the server remains alive. After host restart a missing AI run is
-`unknown`, with no automatic resumption. Saved documents/history survive restart.
-Local drafts are retained in sessionStorage for that browser tab and revision;
-they are not a substitute for saving and are not a permanent server backup.
+Generation ("Create with AI" in the library) produces a validated spec
+(document outline for DOCX/PDF, DeckPlan for PPTX, workbook spec for XLSX),
+renders bytes with the vendored engines, and stores a brand-new document
+through the normal ingest path. Existing documents are never touched.
+PDF generation draws text with the standard Latin font — CJK/other
+non-WinAnsi text fails the whole run rather than writing a partial file.
 
-## Verification and next phases
+Stop aborts the provider HTTP request and prevents a late response from
+becoming a proposal. Closing Office does not delete a run; reopening can
+reconnect while the server remains alive. After host restart a missing run is
+`unknown`. Saved documents/history survive restart. Local drafts live in
+sessionStorage for that tab and revision; they are not a substitute for
+saving.
 
-Unit/integration tests cover preserved parts, first edits, new paragraphs, stale
-revision rejection, malformed edits, secret exclusion, ZIP bounds, corrupt metadata,
-symlinks, AI Stop, owner/origin gates, the real HTTP provider adapter, downloads,
-restore, and restart. Browser verification uses an isolated host and synthetic
-DOCX samples; no customer documents or real credentials are used.
+## Verification and limitations
 
-Next: rich selection editing and table editing with lossless validation, advanced
-numbering/page layout, an interoperability fixture corpus, then per-format
-parsing/editing for XLSX/PPTX/PDF (classification is already in place).
-Native Codex execution is not connected; provider preparation and proposal
-validation are separate so future backends can reuse the same review/save boundary.
+Unit/integration tests cover: per-format end-to-end (ingest → project →
+AI-propose with a stubbed model → apply → save → re-project), generation for
+all four formats, malformed-spec rejection, preserved parts, stale revision
+rejection, secret exclusion, ZIP bounds, corrupt metadata, symlinks, AI Stop,
+owner/origin gates, downloads, restore, restart, and the four-format
+classification filter. Browser verification uses synthetic documents only.
+
+Remaining limitations: PPTX is outline-level (no image/chart editing; theme
+apply rebuilds the deck); PDF body text cannot be edited (page/form/stamp/
+metadata ops only) and PDF generation is Latin-script only; XLSX editing is
+cell-level (no styling, charts or sheet add/remove); DOCX is not print
+fidelity. Native Codex execution is not connected; provider preparation and
+proposal validation are separate so future backends can reuse the same
+review/save boundary.

@@ -1020,6 +1020,7 @@ export const ja = {
   "office.tab.ai": "AIに依頼",
   "office.sideAria": "文書",
   "office.openFile": "ファイルを開く",
+  "office.createWithAi": "AIで作成",
   "office.formatFilterAria": "形式で絞り込む",
   "office.format.all": "すべて",
   "office.format.docx": "DOCX",

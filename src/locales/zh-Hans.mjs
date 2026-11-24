@@ -1020,6 +1020,7 @@ export const zhHans = {
   "office.tab.ai": "向 AI 请求",
   "office.sideAria": "文档",
   "office.openFile": "打开文件",
+  "office.createWithAi": "使用 AI 创建",
   "office.formatFilterAria": "按格式筛选",
   "office.format.all": "全部",
   "office.format.docx": "DOCX",
