@@ -23,3 +23,8 @@ harness = false
 [[bench]]
 name = "recalc_bench"
 harness = false
+
+[[example]]
+name = "end_to_end"
+test = true
+harness = false
