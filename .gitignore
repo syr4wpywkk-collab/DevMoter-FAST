@@ -4,3 +4,4 @@
 /data/
 /coverage/
 /*.log
+/devmoter-base.config.json
