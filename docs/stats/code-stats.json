@@ -10,10 +10,10 @@
     },
     "tests": {
       "files": 22,
-      "lines": 3318,
+      "lines": 3320,
       "blank": 348,
-      "comment": 45,
-      "code": 2925
+      "comment": 46,
+      "code": 2926
     },
     "docs": {
       "files": 7,
@@ -38,10 +38,10 @@
     },
     "total": {
       "files": 30790,
-      "lines": 9882837,
+      "lines": 9882839,
       "blank": 1124834,
-      "comment": 1087988,
-      "code": 7670015
+      "comment": 1087989,
+      "code": 7670016
     }
   },
   "categories": {
@@ -80,18 +80,18 @@
     "tests": {
       "total": {
         "files": 22,
-        "lines": 3318,
+        "lines": 3320,
         "blank": 348,
-        "comment": 45,
-        "code": 2925
+        "comment": 46,
+        "code": 2926
       },
       "languages": {
         "TypeScript": {
           "files": 22,
-          "lines": 3318,
+          "lines": 3320,
           "blank": 348,
-          "comment": 45,
-          "code": 2925
+          "comment": 46,
+          "code": 2926
         }
       }
     },

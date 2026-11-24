@@ -53,6 +53,8 @@ test('with parameters only one statement is accepted: a second one would run bef
   const single = rejectsWith('invalid_request', /single statement/);
   assert.throws(() => duckdbInvocation(options, 'SELECT ?; DELETE FROM t', [1]), single);
   assert.throws(() => duckdbInvocation(options, 'SELECT $1; -- c\n INSERT INTO t VALUES (1);', [1]), single);
+  // DuckDB ends a "--" comment at a lone carriage return too.
+  assert.throws(() => duckdbInvocation(options, 'SELECT $1; -- c\rINSERT INTO t VALUES (1);', [1]), single);
   assert.doesNotThrow(() => duckdbInvocation(options, "SELECT ?, 'a;b' /* ; */ ; -- ;\n", [1]));
   assert.doesNotThrow(() => duckdbInvocation(options, 'SELECT 1; SELECT 2', []));
 });
