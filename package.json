@@ -17,7 +17,7 @@
     "security:audit": "node scripts/security-audit.mjs",
     "deps:graph": "node scripts/module-graph.mjs",
     "size": "node scripts/bundle-size.mjs",
-    "build:office": "node scripts/build-office-engine.mjs && node scripts/build-xlsx-engine.mjs",
+    "build:office": "node scripts/build-office-engine.mjs && node scripts/build-xlsx-engine.mjs && node scripts/build-calc-engine.mjs",
     "test:workspace-browser": "node --test e2e/*.test.mjs",
     "test:workspace-browser:setup": "playwright install --with-deps webkit"
   },
