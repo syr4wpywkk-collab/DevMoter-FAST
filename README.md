@@ -71,6 +71,8 @@ npm run build:engines -- sqlite valkey --jobs 4
 
 ビルド後に各エンジンのスモークテスト（起動して読み書きを確認）を実行し、結果とコミット・コンパイラ・バイナリの SHA-256 を `BUILD_INFO.json` に記録します。スモークテストは unix ソケットだけを使い、TCP ポートを開きません。エンジンごとの手順は [`scripts/build/engines/`](scripts/build/engines/)、検証結果は [`docs/build/verification.md`](docs/build/verification.md) にあります。
 
+ビルドの途中結果は再利用しますが、コンパイラ（`CC`・`CXX` の `--version`）かビルドディレクトリの場所が前回と違うときは、そのエンジンを最初からビルドし直します。
+
 | エンジン | ビルド方法 | 構成 |
 |---|---|---|
 | PostgreSQL | `configure` + `make`（ツリー外ビルド） | ICU・readline・TLS なし |
