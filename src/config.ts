@@ -95,7 +95,7 @@ export function isLoopbackHost(host: string): boolean {
   return host === 'localhost' || host === '::1' || /^127(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(host);
 }
 
-export function parseConfig(value: unknown, baseDir: string): Config {
+export function parseConfig(value: unknown, baseDir: string, configFile?: string): Config {
   if (!isRecord(value)) throw new ConfigError('the configuration must be a JSON object');
   onlyKeys(value, ['server', 'databases', 'auth', 'audit'], 'configuration');
 
@@ -185,6 +185,18 @@ export function parseConfig(value: unknown, baseDir: string): Config {
   };
   const keysFile = fileSetting('auth', 'keysFile');
   const auditFile = fileSetting('audit', 'file');
+  // Each of these files has one writer with its own format; two settings naming one file would have one destroy the other.
+  const used = new Map<string, string>();
+  const claim = (file: string | undefined, setting: string) => {
+    if (file === undefined) return;
+    const other = used.get(file);
+    if (other !== undefined) throw new ConfigError(`${setting}: ${file} is also ${other}; each needs its own file`);
+    used.set(file, setting);
+  };
+  claim(configFile === undefined ? undefined : path.resolve(configFile), 'the configuration file');
+  databases.forEach((database, index) => claim('file' in database ? database.file : undefined, `databases[${index}].file`));
+  claim(keysFile, 'auth.keysFile');
+  claim(auditFile, 'audit.file');
   return { server: { host, port }, databases, ...(keysFile === undefined ? {} : { auth: { keysFile } }), ...(auditFile === undefined ? {} : { audit: { file: auditFile } }) };
 }
 
@@ -201,5 +213,5 @@ export async function loadConfig(file: string): Promise<Config> {
   } catch {
     throw new ConfigError(`${file} is not valid JSON`);
   }
-  return parseConfig(value, path.dirname(path.resolve(file)));
+  return parseConfig(value, path.dirname(path.resolve(file)), file);
 }
