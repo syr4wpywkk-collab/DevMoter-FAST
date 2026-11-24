@@ -808,3 +808,104 @@
     padding: 0 16px;
   }
 }
+
+/* ---------------------------------------------------------------- grid --- */
+.office-sheet {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 240px;
+}
+.office-fbar {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--of-line);
+}
+.office-fbar-cell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--of-text-2);
+  text-align: center;
+}
+.office-grid-scroll {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.office-grid {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.office-grid th {
+  position: sticky;
+  background: var(--of-bg);
+  color: var(--of-text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 400;
+  min-width: 40px;
+  padding: 2px 6px;
+  border: 1px solid var(--of-line);
+}
+.office-grid thead th,
+.office-grid tr:first-child th {
+  top: 0;
+  z-index: 1;
+}
+.office-grid-corner {
+  left: 0;
+  z-index: 2;
+}
+.office-grid-row {
+  left: 0;
+}
+.office-cell {
+  min-width: 88px;
+  max-width: 280px;
+  padding: 3px 6px;
+  border: 1px solid var(--of-line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: cell;
+}
+.office-cell-sel {
+  outline: 2px solid var(--of-accent, currentColor);
+  outline-offset: -2px;
+}
+.office-cell-edit {
+  color: var(--of-text-2);
+  font-style: italic;
+}
+.office-cell-error {
+  color: #c02626;
+}
+.office-cell-input {
+  width: 100%;
+  min-width: 88px;
+  margin: -3px -6px;
+  padding: 3px 6px;
+  border: 0;
+  font: inherit;
+}
+.office-sheet-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 0 0;
+  overflow-x: auto;
+}
+.office-sheet-tab {
+  border-color: var(--of-line);
+  font-size: 13px;
+}
+.office-sheet-tab[aria-selected="true"] {
+  border-color: var(--of-accent, currentColor);
+  font-weight: 600;
+}
+.dm-office[data-format="xlsx"] .office-toolbar,
+.dm-office[data-format="xlsx"] .office-link-form {
+  display: none;
+}
