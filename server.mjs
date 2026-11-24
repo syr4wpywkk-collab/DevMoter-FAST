@@ -3288,6 +3288,8 @@ const server = http.createServer(async (req, res) => {
         if (renameMatch && req.method === "POST") { const payload = await readJson(req, 2000); json(res, 200, await officeStore.rename(renameMatch[1], payload.name)); return; }
         const restoreMatch = path.match(/^\/api\/office\/documents\/([a-f0-9-]{36})\/restore$/);
         if (restoreMatch && req.method === "POST") { const payload = await readJson(req, 1000); json(res, 200, await officeStore.restore(restoreMatch[1], payload.revision, payload.target)); return; }
+        const pdfOpMatch = path.match(/^\/api\/office\/documents\/([a-f0-9-]{36})\/pdf-op$/);
+        if (pdfOpMatch && req.method === "POST") { const payload = await readJson(req, 512 * 1024); json(res, 200, await officeStore.pdfOp(pdfOpMatch[1], payload.revision, payload.op)); return; }
         if (path === "/api/office/ai/runs" && req.method === "POST") { json(res, 202, await officeAi.start(await readJson(req, 8000), identity)); return; }
         if (path === "/api/office/ai/ask" && req.method === "POST") { json(res, 202, await officeAi.ask(await readJson(req, 8000), identity)); return; }
         if (path === "/api/office/ai/generate" && req.method === "POST") { json(res, 202, await officeAi.generate(await readJson(req, 8000), identity)); return; }

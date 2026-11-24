@@ -21,6 +21,15 @@ import {
   projectWorkbook,
   XLSX_WARNINGS,
 } from "./xlsx-model.mjs";
+import {
+  parsePdf,
+  projectPdf,
+  validatePdfOp,
+  validatePdfShapeOps,
+  applyPdfOp,
+  PDF_WARNINGS,
+  PDF_XFA_WARNING,
+} from "./pdf-model.mjs";
 
 export const OFFICE_LIMITS = Object.freeze({
   uploadBytes: 12 * 1024 * 1024,
@@ -246,12 +255,23 @@ export function createOfficeStore({ rootDir }) {
       return null;
     }
   };
+  // A %PDF file that fails to parse (corrupt, over the limits) is likewise
+  // stored read-only; projection and ops require a parsed model.
+  const parsePdfSafe = async (bytes) => {
+    try {
+      return await parsePdf(bytes);
+    } catch {
+      return null;
+    }
+  };
   const parse = (meta, bytes) =>
     meta.format === "docx"
       ? parseDocx(new Uint8Array(bytes), { expandAltChunks: false })
       : meta.format === "excel"
         ? parseExcel(bytes)
-        : null;
+        : meta.format === "pdf"
+          ? parsePdfSafe(bytes)
+          : null;
   const load = async (id) => {
     const meta = await metadata(id);
     const bytes = await read(
@@ -267,6 +287,19 @@ export function createOfficeStore({ rootDir }) {
         format: "xlsx",
         ...projectWorkbook(parsed),
         warnings: [...XLSX_WARNINGS],
+      };
+    // PDF is a final-form format: the projection carries page info, metadata,
+    // extracted text and form fields; edits happen through validated ops that
+    // write new revisions, never through the block editor.
+    if (meta.format === "pdf" && parsed)
+      return {
+        ...meta,
+        format: "pdf",
+        ...projectPdf(parsed),
+        warnings: [
+          ...PDF_WARNINGS,
+          ...(parsed.formSupported ? [] : [PDF_XFA_WARNING]),
+        ],
       };
     if (!parsed)
       return {
@@ -355,7 +388,9 @@ export function createOfficeStore({ rootDir }) {
           ? await parseDocx(new Uint8Array(bytes), { expandAltChunks: false })
           : format === "excel"
             ? await parseExcel(bytes)
-            : null;
+            : format === "pdf"
+              ? await parsePdfSafe(bytes)
+              : null;
       if (
         format === "docx" &&
         (parsed.blocks.length > OFFICE_LIMITS.blocks ||
@@ -463,10 +498,23 @@ export function createOfficeStore({ rootDir }) {
         throw fail("文書が更新されています。再読み込みしてください。", 409);
       return validateShapeEdits(data.parsed, shapes);
     },
+    /**
+     * AI shaping proposals for PDF (metadata edits + stamps only) are
+     * validated against the parsed model — like docx shapes, validation only;
+     * the editor applies each returned op through pdfOp after review.
+     */
+    validatePdfShapes: async (id, revision, ops) => {
+      const data = await load(id);
+      if (data.meta.revision !== revision)
+        throw fail("文書が更新されています。再読み込みしてください。", 409);
+      if (data.meta.format !== "pdf" || !data.parsed)
+        throw fail("この文書形式はまだ編集できません。");
+      return validatePdfShapeOps(data.parsed, ops);
+    },
     restore: (id, revision, target) =>
       serial(async () => {
         const meta = await metadata(id);
-        if (meta.format !== "docx" && meta.format !== "excel")
+        if (!["docx", "excel", "pdf"].includes(meta.format))
           throw fail("この形式はまだ編集できません。");
         if (meta.revision !== revision)
           throw fail("文書が更新されています。再読み込みしてください。", 409);
@@ -525,30 +573,61 @@ export function createOfficeStore({ rootDir }) {
           bytes.length > OFFICE_LIMITS.uploadBytes
         )
           throw fail("編集後の文書が上限を超えます。");
-        const next = randomUUID();
-        const now = new Date().toISOString();
-        const history = [...data.meta.history];
-        const last = history[history.length - 1];
-        const replaced = [];
-        if (
-          last.source === "edit" &&
-          history.length > 1 &&
-          Date.now() - Date.parse(last.createdAt) < COALESCE_MS
-        )
-          replaced.push(history.pop().revision);
-        history.push({ revision: next, createdAt: replaced.length ? last.createdAt : now, source: "edit" });
-        while (history.length > OFFICE_LIMITS.revisions) {
-          const at = history.findIndex((h, i) => i > 0 && h.source === "edit" && h.revision !== next);
-          if (at === -1) throw fail("履歴が上限に達しました。別文書として保存してください。");
-          replaced.push(history.splice(at, 1)[0].revision);
-        }
-        const meta = { ...data.meta, revision: next, updatedAt: now, history };
-        const ext = FORMAT_EXT[data.meta.format];
-        await atomic(join(dir(id), `${next}.${ext}`), bytes);
-        await writeMeta(id, meta);
-        for (const old of replaced)
-          await rm(join(dir(id), `${old}.${ext}`), { force: true });
+        const meta = await commitEdit(data, bytes);
+        return describe({ meta, parsed });
+      }),
+    /**
+     * Apply one validated PDF operation (page ops, form fill, stamp,
+     * metadata) as a new edit revision — same history/coalescing rules as
+     * the docx save path. Body text is never touched in place.
+     */
+    pdfOp: (id, revision, op) =>
+      serial(async () => {
+        const data = await load(id);
+        if (data.meta.format !== "pdf" || !data.parsed)
+          throw fail("この文書形式はまだ編集できません。");
+        if (data.meta.revision !== revision)
+          throw fail("文書が更新されています。再読み込みしてください。", 409);
+        const validated = validatePdfOp(data.parsed, op);
+        const bytes = await applyPdfOp(data.bytes, validated);
+        if (bytes.length > OFFICE_LIMITS.uploadBytes)
+          throw fail("編集後の文書が上限を超えます。");
+        const parsed = await parsePdfSafe(bytes);
+        if (!parsed) throw fail("編集後の文書が上限を超えます。");
+        const meta = await commitEdit(data, bytes);
         return describe({ meta, parsed });
       }),
   };
+  /**
+   * Write bytes as a new "edit" revision of `data.meta`'s document: autosave
+   * coalescing and revision pruning mirror the docx save path. Returns the
+   * updated metadata; callers re-parse/describe separately.
+   */
+  async function commitEdit(data, bytes) {
+    const id = data.meta.id;
+    const next = randomUUID();
+    const now = new Date().toISOString();
+    const history = [...data.meta.history];
+    const last = history[history.length - 1];
+    const replaced = [];
+    if (
+      last.source === "edit" &&
+      history.length > 1 &&
+      Date.now() - Date.parse(last.createdAt) < COALESCE_MS
+    )
+      replaced.push(history.pop().revision);
+    history.push({ revision: next, createdAt: replaced.length ? last.createdAt : now, source: "edit" });
+    while (history.length > OFFICE_LIMITS.revisions) {
+      const at = history.findIndex((h, i) => i > 0 && h.source === "edit" && h.revision !== next);
+      if (at === -1) throw fail("履歴が上限に達しました。別文書として保存してください。");
+      replaced.push(history.splice(at, 1)[0].revision);
+    }
+    const meta = { ...data.meta, revision: next, updatedAt: now, history };
+    const ext = FORMAT_EXT[data.meta.format];
+    await atomic(join(dir(id), `${next}.${ext}`), bytes);
+    await writeMeta(id, meta);
+    for (const old of replaced)
+      await rm(join(dir(id), `${old}.${ext}`), { force: true });
+    return meta;
+  }
 }

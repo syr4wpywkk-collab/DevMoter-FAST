@@ -3,13 +3,35 @@ import { apiModelLabel } from "./api-model-label.mjs";
 import { formatDateTime, localeTag, t, translateServerMessage } from "./i18n";
 import { createOfficeEditor, type EditorBlockData, type SaveInput } from "./office-editor";
 
+type PdfField = {
+  name: string;
+  type: "text" | "checkbox" | "dropdown" | "radio" | "optionList" | "button" | "signature";
+  value?: string | boolean | string[];
+  options?: string[];
+  readOnly: boolean;
+  required: boolean;
+};
+type PdfOp =
+  | { kind: "rotate"; pages: "all" | number[]; degrees: 90 | 180 | 270 }
+  | { kind: "extract" | "delete"; pages: number[] }
+  | { kind: "reorder"; order: number[] }
+  | { kind: "fillForm"; values: Record<string, string | boolean | string[]> }
+  | { kind: "stamp"; text: string; pages?: "all" | number[]; position: "header" | "footer" | "diagonal" }
+  | { kind: "metadata"; title?: string; author?: string; subject?: string; keywords?: string[] | string; creator?: string };
 type Doc = {
   id: string;
   name: string;
   revision: string;
+  format?: OfficeFormat;
   blocks: EditorBlockData[];
   warnings: string[];
   history: { revision: string; createdAt: string; source: string }[];
+  pageCount?: number;
+  pageInfo?: { width: number; height: number; rotation: number }[];
+  metadata?: { title?: string; author?: string; subject?: string; keywords?: string[]; creator?: string };
+  pages?: { page: number; text: string }[];
+  fields?: PdfField[];
+  formSupported?: boolean;
 };
 type OfficeFormat = "docx" | "pptx" | "pdf" | "excel";
 type DocMeta = { id: string; name: string; format?: OfficeFormat; updatedAt: string; openedAt?: string };
@@ -20,13 +42,17 @@ type AiRun = {
   revision?: string;
   status: string;
   edits?: {
-    blockId: string;
+    blockId?: string;
     text?: string;
     type?: "paragraph" | "heading" | "listItem";
     level?: number;
     list?: "bullet" | "ordered";
     ilvl?: number;
     align?: "left" | "center" | "right" | "justify";
+    kind?: "metadata" | "stamp";
+    metadata?: Record<string, string | string[]>;
+    pages?: "all" | number[];
+    position?: "header" | "footer" | "diagonal";
   }[];
   answer?: string;
   createdDocumentId?: string;
@@ -138,7 +164,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
         <div class="office-doc-bar"><h2 data-name>${esc(t("office.noDocOpen"))}</h2><span class="office-save-state" data-save-state role="status" aria-live="polite"></span><button type="button" class="office-retry" data-retry hidden>${esc(t("common.retry"))}</button><button type="button" class="office-icon-button" data-download aria-label="${esc(t("office.downloadAria"))}" title="${esc(t("office.downloadAria"))}" disabled>${ICONS.download}</button></div>
         <div class="office-toolbar" role="toolbar" aria-label="${esc(t("office.toolbarAria"))}" data-toolbar>${tools}</div>
         <form class="office-link-form" data-link-form hidden><input type="url" inputmode="url" data-link-input placeholder="https://" aria-label="${esc(t("office.linkUrlAria"))}" autocomplete="off"><button type="submit">${esc(t("office.linkApply"))}</button><button type="button" data-link-remove>${esc(t("office.linkRemove"))}</button><button type="button" data-link-cancel>${esc(t("common.cancel"))}</button></form>
-        <div class="office-scroll"><p class="office-note" data-note hidden></p><article class="office-page" data-page aria-label="${esc(t("office.bodyAria"))}" role="textbox" aria-multiline="true" spellcheck="true" hidden></article><div class="office-empty" data-empty data-empty-state="pick"><div class="office-empty-card"><div class="office-empty-icon" data-empty-icon aria-hidden="true" hidden>${ICONS.doc}</div><p class="office-empty-message" data-empty-message>${esc(t("office.emptyDocPrompt"))}</p><div class="office-empty-actions" data-empty-actions hidden><button type="button" class="office-primary" data-empty-new>${esc(t("office.createNew"))}</button><button type="button" data-empty-open>${esc(t("office.openFile"))}</button></div></div></div></div>
+        <div class="office-scroll"><p class="office-note" data-note hidden></p><article class="office-page" data-page aria-label="${esc(t("office.bodyAria"))}" role="textbox" aria-multiline="true" spellcheck="true" hidden></article><section class="office-pdf" data-pdf aria-label="${esc(t("office.pdf.viewerAria"))}" hidden></section><div class="office-empty" data-empty data-empty-state="pick"><div class="office-empty-card"><div class="office-empty-icon" data-empty-icon aria-hidden="true" hidden>${ICONS.doc}</div><p class="office-empty-message" data-empty-message>${esc(t("office.emptyDocPrompt"))}</p><div class="office-empty-actions" data-empty-actions hidden><button type="button" class="office-primary" data-empty-new>${esc(t("office.createNew"))}</button><button type="button" data-empty-open>${esc(t("office.openFile"))}</button></div></div></div></div>
       </main>
       <aside class="office-ai" aria-label="${esc(t("office.tab.ai"))}">
         <h2>${esc(t("office.tab.ai"))}</h2>
@@ -151,6 +177,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
   document.body.append(root);
   const get = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
   const page = get("[data-page]");
+  const pdfSurface = get("[data-pdf]");
   const provider = get<HTMLSelectElement>("[data-provider]");
   const model = get<HTMLSelectElement>("[data-model]");
   const project = get<HTMLSelectElement>("[data-project]");
@@ -292,6 +319,223 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       saveError = "";
     }
     return true;
+  };
+
+  // ---------------------------------------------------------------- pdf ---
+  let pdfRenderToken = 0;
+  const isPdfDoc = (d: Doc | null) => !!d && d.format === "pdf" && typeof d.pageCount === "number";
+  /** "1-3,5" -> [1,2,3,5] (deduped, ascending, capped at pageCount). */
+  const parsePageSpec = (raw: string, pageCount: number) => {
+    const out = new Set<number>();
+    for (const part of raw.split(",")) {
+      const m = part.trim().match(/^(\d+)(?:-(\d+))?$/);
+      if (!m) return null;
+      const from = Number(m[1]);
+      const to = m[2] === undefined ? from : Number(m[2]);
+      if (from < 1 || to < from || to > pageCount || to - from > 512) return null;
+      for (let p = from; p <= to; p++) out.add(p);
+    }
+    return out.size ? [...out].sort((a, b) => a - b) : null;
+  };
+  const pdfOp = (op: PdfOp) =>
+    task(async () => {
+      if (!doc || !isPdfDoc(doc)) return;
+      const result = await api<Doc>(`/api/office/documents/${doc.id}/pdf-op`, "POST", {
+        revision: doc.revision,
+        op,
+      });
+      if (doc?.id === result.id) showDoc(result);
+      else doc = result;
+    });
+  const fieldRow = (field: PdfField) => {
+    const label = node("label", "", "office-pdf-field");
+    label.append(node("span", field.name + (field.required ? " *" : ""), "office-pdf-field-name"));
+    let input: HTMLInputElement | HTMLSelectElement;
+    if (field.type === "checkbox") {
+      input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = field.value === true;
+    } else if (["dropdown", "radio", "optionList"].includes(field.type)) {
+      input = document.createElement("select");
+      input.multiple = field.type === "optionList";
+      if (field.type !== "optionList") input.append(new Option("", ""));
+      for (const option of field.options || []) input.append(new Option(option, option));
+      if (typeof field.value === "string") input.value = field.value;
+      if (Array.isArray(field.value))
+        for (const option of input.options) option.selected = field.value.includes(option.value);
+    } else {
+      input = document.createElement("input");
+      input.value = typeof field.value === "string" ? field.value : "";
+    }
+    input.dataset.field = field.name;
+    input.dataset.fieldType = field.type;
+    input.disabled = field.readOnly || ["button", "signature"].includes(field.type);
+    label.append(input);
+    return label;
+  };
+  const collectFieldValues = () => {
+    const values: Record<string, string | boolean | string[]> = {};
+    for (const input of pdfSurface.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-field]")) {
+      const name = input.dataset.field!;
+      if (input.dataset.fieldType === "checkbox") values[name] = (input as HTMLInputElement).checked;
+      else if (input instanceof HTMLSelectElement && input.multiple)
+        values[name] = [...input.selectedOptions].map((o) => o.value);
+      else values[name] = input.value;
+    }
+    return values;
+  };
+  const renderPdf = (data: Doc) => {
+    const token = ++pdfRenderToken;
+    pdfSurface.replaceChildren();
+    const count = data.pageCount || 0;
+    const ops = node("div", "", "office-pdf-ops");
+    ops.setAttribute("role", "group");
+    ops.setAttribute("aria-label", t("office.pdf.opsAria"));
+    ops.append(node("span", t("office.pdf.pageCount", { count }), "office-pdf-count"));
+
+    const rotPage = document.createElement("input");
+    rotPage.type = "number";
+    rotPage.min = "1";
+    rotPage.max = String(count);
+    rotPage.placeholder = t("office.pdf.allPages");
+    rotPage.setAttribute("aria-label", t("office.pdf.page"));
+    const rotDeg = document.createElement("select");
+    for (const d of [90, 180, 270]) rotDeg.append(new Option(`+${d}°`, String(d)));
+    rotDeg.setAttribute("aria-label", t("office.pdf.degrees"));
+    const rotate = () => {
+      const n = Number(rotPage.value);
+      void pdfOp({
+        kind: "rotate",
+        pages: rotPage.value && Number.isInteger(n) ? [n] : "all",
+        degrees: Number(rotDeg.value) as 90 | 180 | 270,
+      });
+    };
+    ops.append(rotPage, rotDeg, button(t("office.pdf.rotate"), rotate));
+
+    const delPage = document.createElement("input");
+    delPage.type = "number";
+    delPage.min = "1";
+    delPage.max = String(count);
+    delPage.placeholder = t("office.pdf.page");
+    delPage.setAttribute("aria-label", t("office.pdf.deletePage"));
+    ops.append(delPage, button(t("office.pdf.deletePage"), () => {
+      const n = Number(delPage.value);
+      if (Number.isInteger(n) && n >= 1 && n <= count) void pdfOp({ kind: "delete", pages: [n] });
+    }));
+
+    const extract = document.createElement("input");
+    extract.placeholder = t("office.pdf.rangePlaceholder");
+    extract.setAttribute("aria-label", t("office.pdf.extract"));
+    ops.append(extract, button(t("office.pdf.extract"), () => {
+      const pages = parsePageSpec(extract.value, count);
+      if (pages) void pdfOp({ kind: "extract", pages });
+      else error(t("office.pdf.badPages"));
+    }));
+
+    const reorder = document.createElement("input");
+    reorder.placeholder = t("office.pdf.orderPlaceholder");
+    reorder.setAttribute("aria-label", t("office.pdf.reorder"));
+    ops.append(reorder, button(t("office.pdf.reorder"), () => {
+      const order = reorder.value.split(",").map((v) => Number(v.trim()));
+      if (order.length === count && order.every((v) => Number.isInteger(v) && v >= 1 && v <= count) && new Set(order).size === count)
+        void pdfOp({ kind: "reorder", order });
+      else error(t("office.pdf.badPages"));
+    }));
+
+    const stampText = document.createElement("input");
+    stampText.placeholder = t("office.pdf.stampText");
+    stampText.maxLength = 200;
+    stampText.setAttribute("aria-label", t("office.pdf.stampText"));
+    const stampPos = document.createElement("select");
+    for (const pos of ["header", "footer", "diagonal"] as const)
+      stampPos.append(new Option(t(`office.pdf.position.${pos}`), pos));
+    const stampPages = document.createElement("input");
+    stampPages.placeholder = t("office.pdf.allPages");
+    stampPages.setAttribute("aria-label", t("office.pdf.page"));
+    ops.append(stampText, stampPos, stampPages, button(t("office.pdf.stamp"), () => {
+      const text = stampText.value.trim();
+      if (!text) return;
+      const pages = stampPages.value.trim() ? parsePageSpec(stampPages.value, count) : "all";
+      if (!pages) return error(t("office.pdf.badPages"));
+      void pdfOp({ kind: "stamp", text, pages, position: stampPos.value as "header" | "footer" | "diagonal" });
+    }));
+    pdfSurface.append(ops);
+
+    const forms = node("details", "", "office-pdf-forms");
+    forms.append(node("summary", t("office.pdf.fields")));
+    if (data.fields?.length) {
+      for (const field of data.fields) forms.append(fieldRow(field));
+      forms.append(button(t("office.pdf.fieldsSave"), () => void pdfOp({ kind: "fillForm", values: collectFieldValues() })));
+    } else {
+      forms.append(node("p", t("office.pdf.noFields"), "office-quiet"));
+    }
+    pdfSurface.append(forms);
+
+    const meta = node("details", "", "office-pdf-meta");
+    meta.append(node("summary", t("office.pdf.metadata")));
+    const metaInputs: [keyof NonNullable<Doc["metadata"]>, HTMLInputElement][] = [];
+    for (const key of ["title", "author", "subject", "keywords", "creator"] as const) {
+      const label = node("label", "", "office-pdf-meta-row");
+      label.append(node("span", t(`office.pdf.meta.${key}`), "office-pdf-field-name"));
+      const input = document.createElement("input");
+      const value = data.metadata?.[key];
+      input.value = Array.isArray(value) ? value.join(" ") : value || "";
+      label.append(input);
+      meta.append(label);
+      metaInputs.push([key, input]);
+    }
+    meta.append(button(t("office.pdf.metadataSave"), () => {
+      const op: Extract<PdfOp, { kind: "metadata" }> = { kind: "metadata" };
+      for (const [key, input] of metaInputs) if (input.value.trim()) op[key] = input.value.trim();
+      void pdfOp(op);
+    }));
+    pdfSurface.append(meta);
+
+    const view = node("div", "", "office-pdf-view");
+    view.append(node("p", t("office.pdf.loading"), "office-quiet"));
+    pdfSurface.append(view);
+    void renderPdfPages(data, view, token);
+  };
+  const renderPdfPages = async (data: Doc, view: HTMLElement, token: number) => {
+    try {
+      const headers: Record<string, string> = {};
+      const deviceToken = localStorage.getItem("devmoter-device-token");
+      if (deviceToken) headers["x-devmoter-device-token"] = deviceToken;
+      const response = await fetch(`/api/office/documents/${data.id}/download`, { headers, cache: "no-store" });
+      if (!response.ok) throw new Error(t("office.requestFailed", { status: response.status }));
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (token !== pdfRenderToken || doc?.id !== data.id || doc.revision !== data.revision) return;
+      // The vendored pdfjs-dist legacy build is served statically (public/pdfjs)
+      // — a variable specifier keeps it out of the app bundle.
+      const pdfjsUrl = "/pdfjs/pdf.mjs";
+      const pdfjs = (await import(/* @vite-ignore */ pdfjsUrl)) as typeof import("../vendor/pdfjs/pdf.mjs");
+      if (pdfjs.GlobalWorkerOptions) pdfjs.GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.mjs";
+      const pdf = await pdfjs.getDocument({ data: bytes, isEvalSupported: false }).promise;
+      view.replaceChildren();
+      const ratio = window.devicePixelRatio || 1;
+      for (let p = 1; p <= pdf.numPages; p++) {
+        if (token !== pdfRenderToken || doc?.id !== data.id) {
+          void pdf.destroy();
+          return;
+        }
+        const pdfPage = await pdf.getPage(p);
+        const base = pdfPage.getViewport({ scale: 1 });
+        const fit = Math.min(1.6, 720 / base.width);
+        const viewport = pdfPage.getViewport({ scale: fit * ratio });
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.style.width = `${Math.round(base.width * fit)}px`;
+        const figure = node("figure", "", "office-pdf-page");
+        figure.append(canvas, node("figcaption", t("office.pdf.pageN", { page: p }), "office-pdf-page-num"));
+        view.append(figure);
+        await pdfPage.render({ canvasContext: canvas.getContext("2d")!, viewport }).promise;
+      }
+      await pdf.destroy();
+    } catch (e) {
+      if (token === pdfRenderToken && doc?.id === data.id)
+        view.replaceChildren(node("p", translateServerMessage((e as Error).message), "office-note"));
+    }
   };
 
   const updateToolbar = () => {
@@ -474,6 +718,9 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     saveError = "";
     editor.clear();
     page.hidden = true;
+    pdfSurface.hidden = true;
+    pdfRenderToken++;
+    get("[data-toolbar]").hidden = false;
     get("[data-empty]").hidden = false;
     get("[data-name]").textContent = t("office.noDocOpen");
     get("[data-note]").hidden = true;
@@ -527,8 +774,14 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     get("[data-note]").textContent = note;
     get("[data-note]").hidden = !note;
     get("[data-empty]").hidden = true;
-    page.hidden = false;
-    editor.load(data.blocks);
+    const pdf = isPdfDoc(data);
+    pdfSurface.hidden = !pdf;
+    page.hidden = pdf;
+    get("[data-toolbar]").hidden = pdf;
+    linkForm.hidden = true;
+    if (pdf) renderPdf(data);
+    else pdfRenderToken++;
+    editor.load(data.blocks || []);
     renderHistory();
     try {
       const saved = JSON.parse(sessionStorage.getItem(draftKey(data.id)) || "null");
@@ -577,6 +830,10 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       return;
     }
     const ready = aiReady();
+    // PDF documents support ask + shaping (metadata/stamps), not text edits.
+    const editOption = aiMode.querySelector<HTMLOptionElement>('option[value="edit"]');
+    if (editOption) editOption.hidden = isPdfDoc(doc);
+    if (isPdfDoc(doc) && aiMode.value === "edit") aiMode.value = "ask";
     const needsDoc = aiMode.value !== "generate";
     get("[data-ai-unconfigured]").hidden = ready;
     get("[data-ai-empty]").hidden = !ready || !!doc || !needsDoc;
@@ -666,6 +923,21 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
       for (const edit of run.edits || []) {
         const details = document.createElement("details");
         details.open = true;
+        if (edit.kind === "metadata" || edit.kind === "stamp") {
+          const summary =
+            edit.kind === "metadata"
+              ? `${t("office.pdf.metadata")}: ${
+                  Object.entries(edit.metadata || {})
+                    .map(([key, value]) => `${key} = ${Array.isArray(value) ? value.join(" ") : value}`)
+                    .join(", ") || "—"
+                }`
+              : `${t("office.pdf.stamp")}: ${edit.text} · ${t(`office.pdf.position.${edit.position || "header"}`)} · ${
+                  edit.pages === "all" || edit.pages === undefined ? t("office.pdf.allPages") : edit.pages.join(",")
+                }`;
+          details.append(node("summary", t("office.shapeProposal")), node("ins", summary));
+          proposal.append(details);
+          continue;
+        }
         if (edit.text !== undefined) {
           details.append(
             node("summary", t("office.paragraphProposal")),
@@ -692,8 +964,30 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
             error(t("office.applyBlocked"));
             return;
           }
+          if (doc.format === "pdf") {
+            const edits = run.edits || [];
+            run = null;
+            localStorage.removeItem("devmoter-office-ai-run");
+            renderRun();
+            setPane("editor");
+            void task(async () => {
+              let current = doc!;
+              for (const edit of edits) {
+                const op: PdfOp =
+                  edit.kind === "metadata"
+                    ? ({ kind: "metadata", ...(edit.metadata || {}) } as PdfOp)
+                    : { kind: "stamp", text: edit.text || "", pages: edit.pages, position: edit.position || "header" };
+                current = await api<Doc>(`/api/office/documents/${current.id}/pdf-op`, "POST", {
+                  revision: current.revision,
+                  op,
+                });
+              }
+              if (doc?.id === current.id) showDoc(current);
+            });
+            return;
+          }
           for (const edit of run.edits || []) {
-            const key = editor.blockKeyFor(edit.blockId);
+            const key = edit.blockId ? editor.blockKeyFor(edit.blockId) : null;
             if (!key) continue;
             if (edit.text !== undefined) editor.replaceText(key, edit.text);
             else editor.applyShape(key, edit);

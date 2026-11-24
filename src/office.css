@@ -808,3 +808,117 @@
     padding: 0 16px;
   }
 }
+
+/* -------------------------------------------------------------- pdf --- */
+.office-pdf {
+  max-width: 860px;
+  margin: 0 auto;
+  display: grid;
+  gap: 12px;
+}
+.office-pdf-ops {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--of-line);
+  border-radius: 10px;
+  background: var(--of-panel);
+}
+.office-pdf-count {
+  color: var(--of-text-2);
+  font-size: 12px;
+  margin-right: auto;
+}
+.dm-office .office-pdf-ops input {
+  width: 120px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--of-line);
+  border-radius: 8px;
+  background: var(--of-bg);
+}
+.dm-office .office-pdf-ops input[type="number"] {
+  width: 72px;
+}
+.dm-office .office-pdf-ops select,
+.dm-office .office-pdf-ops button {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--of-line);
+  border-radius: 8px;
+  background: transparent;
+}
+.dm-office .office-pdf-ops input:focus-visible,
+.dm-office .office-pdf-ops select:focus-visible,
+.dm-office .office-pdf-ops button:focus-visible {
+  outline: 1px solid var(--of-focus);
+  outline-offset: 1px;
+}
+.office-pdf-forms,
+.office-pdf-meta {
+  border: 1px solid var(--of-line);
+  border-radius: 10px;
+  background: var(--of-panel);
+  padding: 8px 12px;
+}
+.office-pdf-forms summary,
+.office-pdf-meta summary {
+  cursor: pointer;
+  color: var(--of-text-2);
+  font-size: 13px;
+  padding: 4px 0;
+}
+.office-pdf-field,
+.office-pdf-meta-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+.office-pdf-field-name {
+  color: var(--of-text-2);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.dm-office .office-pdf-field input:not([type="checkbox"]),
+.dm-office .office-pdf-field select,
+.dm-office .office-pdf-meta-row input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--of-line);
+  border-radius: 8px;
+  background: var(--of-bg);
+}
+.dm-office .office-pdf-field input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  justify-self: start;
+}
+.office-pdf-view {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  padding: 8px 0 24px;
+}
+.office-pdf-page {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+.office-pdf-page canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--of-line);
+  border-radius: 4px;
+  background: #fff;
+}
+.office-pdf-page-num {
+  color: var(--of-muted);
+  font-size: 11px;
+}
