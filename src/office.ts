@@ -3,13 +3,31 @@ import { apiModelLabel } from "./api-model-label.mjs";
 import { formatDateTime, localeTag, t, translateServerMessage } from "./i18n";
 import { createOfficeEditor, type EditorBlockData, type SaveInput } from "./office-editor";
 
+type SheetCell = {
+  ref: string;
+  row: number;
+  col: number;
+  value?: number | string | boolean;
+  formula?: string;
+  error?: boolean;
+};
+type SheetData = {
+  name: string;
+  ref?: string;
+  rows: number;
+  cols: number;
+  merges: string[];
+  editable: boolean;
+  cells: SheetCell[];
+};
 type Doc = {
   id: string;
   name: string;
-  format?: OfficeFormat;
   revision: string;
+  format?: string;
   blocks: EditorBlockData[];
   slides?: DeckSlide[];
+  sheets?: SheetData[];
   warnings: string[];
   history: { revision: string; createdAt: string; source: string }[];
 };
@@ -39,6 +57,7 @@ type AiRun = {
   status: string;
   edits?: ({
     blockId?: string;
+    cell?: string;
     text?: string;
     type?: "paragraph" | "heading" | "listItem";
     level?: number;
@@ -160,7 +179,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
         <div class="office-doc-bar"><h2 data-name>${esc(t("office.noDocOpen"))}</h2><span class="office-save-state" data-save-state role="status" aria-live="polite"></span><button type="button" class="office-retry" data-retry hidden>${esc(t("common.retry"))}</button><button type="button" class="office-icon-button" data-download aria-label="${esc(t("office.downloadAria"))}" title="${esc(t("office.downloadAria"))}" disabled>${ICONS.download}</button></div>
         <div class="office-toolbar" role="toolbar" aria-label="${esc(t("office.toolbarAria"))}" data-toolbar>${tools}</div>
         <form class="office-link-form" data-link-form hidden><input type="url" inputmode="url" data-link-input placeholder="https://" aria-label="${esc(t("office.linkUrlAria"))}" autocomplete="off"><button type="submit">${esc(t("office.linkApply"))}</button><button type="button" data-link-remove>${esc(t("office.linkRemove"))}</button><button type="button" data-link-cancel>${esc(t("common.cancel"))}</button></form>
-        <div class="office-scroll"><p class="office-note" data-note hidden></p><article class="office-page" data-page aria-label="${esc(t("office.bodyAria"))}" role="textbox" aria-multiline="true" spellcheck="true" hidden></article><div class="office-deck" data-deck hidden></div><div class="office-empty" data-empty data-empty-state="pick"><div class="office-empty-card"><div class="office-empty-icon" data-empty-icon aria-hidden="true" hidden>${ICONS.doc}</div><p class="office-empty-message" data-empty-message>${esc(t("office.emptyDocPrompt"))}</p><div class="office-empty-actions" data-empty-actions hidden><button type="button" class="office-primary" data-empty-new>${esc(t("office.createNew"))}</button><button type="button" data-empty-open>${esc(t("office.openFile"))}</button></div></div></div></div>
+        <div class="office-scroll"><p class="office-note" data-note hidden></p><article class="office-page" data-page aria-label="${esc(t("office.bodyAria"))}" role="textbox" aria-multiline="true" spellcheck="true" hidden></article><div class="office-deck" data-deck hidden></div><div class="office-sheet" data-sheet hidden><div class="office-fbar"><span class="office-fbar-cell" data-fcell></span><input class="office-fbar-input" data-finput type="text" spellcheck="false" autocomplete="off" aria-label="${esc(t("office.formulaBarAria"))}"><button type="button" data-grid-save disabled>${esc(t("common.save"))}</button></div><div class="office-grid-scroll"><table class="office-grid" data-grid role="grid" aria-label="${esc(t("office.gridAria"))}"></table></div><div class="office-sheet-tabs" data-sheet-tabs role="tablist" aria-label="${esc(t("office.sheetTabsAria"))}"></div></div><div class="office-empty" data-empty data-empty-state="pick"><div class="office-empty-card"><div class="office-empty-icon" data-empty-icon aria-hidden="true" hidden>${ICONS.doc}</div><p class="office-empty-message" data-empty-message>${esc(t("office.emptyDocPrompt"))}</p><div class="office-empty-actions" data-empty-actions hidden><button type="button" class="office-primary" data-empty-new>${esc(t("office.createNew"))}</button><button type="button" data-empty-open>${esc(t("office.openFile"))}</button></div></div></div></div>
       </main>
       <aside class="office-ai" aria-label="${esc(t("office.tab.ai"))}">
         <h2>${esc(t("office.tab.ai"))}</h2>
@@ -267,6 +286,219 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     onLockedDelete: (label) => confirm(t("office.confirmLockedDelete", { label })),
     translate: t,
   });
+  // -------------------------------------------------------------- grid ---
+  // Deliberately simple grid for excel documents: sheet tabs, a table of
+  // computed values, a formula bar, and typed cell edits that go to the
+  // store as a new revision. No styling tools, no charts.
+  const sheetEl = get("[data-sheet]");
+  const gridEl = get<HTMLTableElement>("[data-grid]");
+  const tabsEl = get("[data-sheet-tabs]");
+  const fcellEl = get("[data-fcell]");
+  const fInput = get<HTMLInputElement>("[data-finput]");
+  const GRID_MAX_ROWS = 500;
+  const GRID_MAX_COLS = 64;
+  const grid = { sheet: 0, row: 1, col: 1, pending: new Map<string, string>() };
+  let cellMap = new Map<string, SheetCell>();
+  const isSheet = (d: Doc | null): d is Doc & { sheets: SheetData[] } =>
+    !!d && d.format === "xlsx" && Array.isArray(d.sheets);
+  const colName = (i: number) => {
+    let s = "";
+    while (i > 0) {
+      i--;
+      s = String.fromCharCode(65 + (i % 26)) + s;
+      i = Math.floor(i / 26);
+    }
+    return s;
+  };
+  const cellRefOf = (row: number, col: number) => `${colName(col)}${row}`;
+  const quoteSheet = (name: string) =>
+    /^[A-Za-z_][A-Za-z0-9_.]*$/.test(name) ? `${name}!` : `'${name.replace(/'/g, "''")}'!`;
+  const pendingKey = (sheetIndex: number, ref: string) => `${sheetIndex}:${ref}`;
+  const parseAddress = (address: string) => {
+    const bang = address.lastIndexOf("!");
+    const rawSheet = bang === -1 ? "" : address.slice(0, bang);
+    const ref = bang === -1 ? address : address.slice(bang + 1);
+    const name = rawSheet.startsWith("'") && rawSheet.endsWith("'")
+      ? rawSheet.slice(1, -1).replace(/''/g, "'")
+      : rawSheet;
+    const sheets = doc?.sheets || [];
+    const index = sheets.findIndex((s) => s.name === (bang === -1 ? activeSheet()?.name : name));
+    return index === -1 || !/^[A-Za-z]+[0-9]+$/.test(ref) ? null : { index, ref };
+  };
+  const activeSheet = () => doc?.sheets?.[grid.sheet];
+  /** The stored text of a cell: formula text with "=", else its value. */
+  const storedText = (cell?: SheetCell) =>
+    cell === undefined
+      ? ""
+      : cell.formula !== undefined
+        ? `=${cell.formula}`
+        : cell.value === undefined
+          ? ""
+          : String(cell.value);
+  const displayText = (cell?: SheetCell) =>
+    cell?.value === undefined ? "" : String(cell.value);
+  const selectCell = (row: number, col: number) => {
+    for (const el of gridEl.querySelectorAll(".office-cell-sel")) el.classList.remove("office-cell-sel");
+    grid.row = row;
+    grid.col = col;
+    const ref = cellRefOf(row, col);
+    const td = gridEl.querySelector<HTMLElement>(`[data-ref="${ref}"]`);
+    td?.classList.add("office-cell-sel");
+    if (root.contains(document.activeElement) && sheetEl.contains(document.activeElement))
+      td?.focus({ preventScroll: true });
+    td?.scrollIntoView({ block: "nearest" });
+    fcellEl.textContent = ref;
+    const key = pendingKey(grid.sheet, ref);
+    fInput.value = grid.pending.has(key) ? grid.pending.get(key)! : storedText(cellMap.get(ref));
+    fInput.dataset.ref = ref;
+  };
+  const commitCell = (ref: string, text: string) => {
+    if (!doc) return;
+    const key = pendingKey(grid.sheet, ref);
+    if (text === storedText(cellMap.get(ref))) grid.pending.delete(key);
+    else grid.pending.set(key, text);
+    dirty = true;
+    controls();
+    const td = gridEl.querySelector<HTMLElement>(`[data-ref="${ref}"]`);
+    if (td) {
+      td.textContent = text;
+      td.classList.toggle("office-cell-edit", grid.pending.has(key));
+    }
+  };
+  const startEdit = (td: HTMLElement, initial?: string) => {
+    const ref = td.dataset.ref!;
+    selectCell(Number(td.dataset.row), Number(td.dataset.col));
+    const input = document.createElement("input");
+    input.className = "office-cell-input";
+    input.value = initial ?? fInput.value;
+    td.textContent = "";
+    td.append(input);
+    input.focus();
+    if (initial !== undefined) input.setSelectionRange(1, 1);
+    else input.select();
+    const done = (commit: boolean) => {
+      const text = input.value;
+      input.replaceWith(text);
+      if (commit) commitCell(ref, text);
+      else selectCell(grid.row, grid.col);
+    };
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); done(true); }
+      else if (e.key === "Escape") { e.preventDefault(); done(false); }
+      else e.stopPropagation();
+    });
+    input.addEventListener("blur", () => {
+      if (input.isConnected) done(true);
+    });
+  };
+  const renderGrid = () => {
+    gridEl.replaceChildren();
+    tabsEl.replaceChildren();
+    const sheet = activeSheet();
+    if (!sheet || !doc) return;
+    cellMap = new Map(sheet.cells.map((c) => [c.ref, c]));
+    const rows = Math.min(Math.max(sheet.rows, 30), GRID_MAX_ROWS);
+    const cols = Math.min(Math.max(sheet.cols, 12), GRID_MAX_COLS);
+    grid.row = Math.min(Math.max(grid.row, 1), rows);
+    grid.col = Math.min(Math.max(grid.col, 1), cols);
+    const head = document.createElement("tr");
+    head.append(node("th", "", "office-grid-corner"));
+    for (let c = 1; c <= cols; c++) head.append(node("th", colName(c), "office-grid-col"));
+    gridEl.append(head);
+    for (let r = 1; r <= rows; r++) {
+      const tr = document.createElement("tr");
+      tr.append(node("th", String(r), "office-grid-row"));
+      for (let c = 1; c <= cols; c++) {
+        const ref = cellRefOf(r, c);
+        const cell = cellMap.get(ref);
+        const key = pendingKey(grid.sheet, ref);
+        const td = document.createElement("td");
+        td.dataset.ref = ref;
+        td.dataset.row = String(r);
+        td.dataset.col = String(c);
+        td.className = "office-cell";
+        td.tabIndex = -1;
+        if (grid.pending.has(key)) {
+          td.textContent = grid.pending.get(key)!;
+          td.classList.add("office-cell-edit");
+        } else {
+          td.textContent = displayText(cell);
+          if (cell?.error) td.classList.add("office-cell-error");
+          if (cell?.formula) td.title = `=${cell.formula}`;
+        }
+        tr.append(td);
+      }
+      gridEl.append(tr);
+    }
+    (doc.sheets || []).forEach((item, index) => {
+      const tab = button(item.name, () => {
+        grid.sheet = index;
+        renderGrid();
+        selectCell(grid.row, grid.col);
+      }, "office-sheet-tab");
+      tab.setAttribute("role", "tab");
+      tab.setAttribute("aria-selected", String(index === grid.sheet));
+      tabsEl.append(tab);
+    });
+    selectCell(grid.row, grid.col);
+    get<HTMLButtonElement>("[data-grid-save]").disabled = !dirty || busy;
+  };
+  gridEl.addEventListener("click", (e) => {
+    const td = (e.target as Element).closest<HTMLElement>("td[data-ref]");
+    if (td) selectCell(Number(td.dataset.row), Number(td.dataset.col));
+  });
+  gridEl.addEventListener("dblclick", (e) => {
+    const td = (e.target as Element).closest<HTMLElement>("td[data-ref]");
+    if (td) startEdit(td);
+  });
+  sheetEl.addEventListener("keydown", (e) => {
+    if (e.target !== sheetEl && (e.target as Element).closest("input")) return;
+    const move = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
+    if (move) {
+      e.preventDefault();
+      const sheet = activeSheet();
+      const rows = Math.min(Math.max(sheet?.rows ?? 1, 30), GRID_MAX_ROWS);
+      const cols = Math.min(Math.max(sheet?.cols ?? 1, 12), GRID_MAX_COLS);
+      selectCell(
+        Math.min(Math.max(grid.row + move[0], 1), rows),
+        Math.min(Math.max(grid.col + move[1], 1), cols),
+      );
+    } else if (e.key === "Enter") {
+      const td = gridEl.querySelector<HTMLElement>(`[data-ref="${cellRefOf(grid.row, grid.col)}"]`);
+      if (td) { e.preventDefault(); startEdit(td); }
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      const td = gridEl.querySelector<HTMLElement>(`[data-ref="${cellRefOf(grid.row, grid.col)}"]`);
+      if (td) startEdit(td, e.key);
+    }
+  });
+  fInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (fInput.dataset.ref) commitCell(fInput.dataset.ref, fInput.value);
+      fInput.blur();
+    } else if (e.key === "Escape") {
+      selectCell(grid.row, grid.col);
+      fInput.blur();
+    }
+    e.stopPropagation();
+  });
+  fInput.addEventListener("blur", () => {
+    if (fInput.dataset.ref && fInput.value !== (grid.pending.get(pendingKey(grid.sheet, fInput.dataset.ref)) ?? storedText(cellMap.get(fInput.dataset.ref))))
+      commitCell(fInput.dataset.ref, fInput.value);
+  });
+  get("[data-grid-save]").addEventListener("click", () => void save());
+  const applyCellEdits = (edits: { cell: string; text: string }[]) => {
+    if (!doc) return;
+    for (const edit of edits) {
+      const at = parseAddress(edit.cell);
+      if (!at) continue;
+      grid.pending.set(pendingKey(at.index, at.ref), edit.text ?? "");
+    }
+    dirty = true;
+    renderGrid();
+    controls();
+  };
+
   const scheduleSave = () => {
     if (saveTimer) window.clearTimeout(saveTimer);
     saveTimer = window.setTimeout(() => void save(), AUTOSAVE_MS);
@@ -282,17 +514,34 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     }
     if (!doc || !dirty) return;
     const current = doc;
-    const { blocks, keys } = editor.payload();
+    // Cell edits are saved explicitly (grid save button / pre-AI flush), not
+    // autosaved like docx typing.
+    const cells = isSheet(current)
+      ? [...grid.pending].map(([key, text]) => {
+          const [index, ref] = key.split(":");
+          return { cell: `${quoteSheet(current.sheets[Number(index)].name)}${ref}`, text };
+        })
+      : null;
+    const docxPayload = cells ? null : editor.payload();
     dirty = false;
     saveError = "";
     saving = (async () => {
       controls();
       try {
-        const saved = await api<Doc>(`/api/office/documents/${current.id}`, "PATCH", { revision: current.revision, blocks });
+        const saved = await api<Doc>(
+          `/api/office/documents/${current.id}`,
+          "PATCH",
+          cells ? { revision: current.revision, cells } : { revision: current.revision, blocks: docxPayload!.blocks },
+        );
         if (doc?.id !== current.id) return;
         doc = saved;
-        if (!editor.remap(keys, saved.blocks) && !dirty) editor.load(saved.blocks);
-        if (!dirty) sessionStorage.removeItem(draftKey(saved.id));
+        if (cells) {
+          grid.pending.clear();
+          renderGrid();
+        } else {
+          if (!editor.remap(docxPayload!.keys, saved.blocks) && !dirty) editor.load(saved.blocks);
+          if (!dirty) sessionStorage.removeItem(draftKey(saved.id));
+        }
         renderHistory();
         void library().catch(() => {});
       } catch (e) {
@@ -303,7 +552,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     await saving;
     saving = null;
     controls();
-    if (dirty && !saveError) scheduleSave();
+    if (dirty && !saveError && !isSheet(doc)) scheduleSave();
   };
   const settle = async () => {
     await save();
@@ -406,7 +655,7 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
 
   const updateToolbar = () => {
     const state = editor.state();
-    const enabled = !!doc && !busy;
+    const enabled = !!doc && !busy && !isSheet(doc);
     for (const tool of root.querySelectorAll<HTMLButtonElement>("[data-tool]")) {
       const id = tool.dataset.tool!;
       tool.disabled = !enabled || (id === "undo" && !state.canUndo) || (id === "redo" && !state.canRedo);
@@ -451,6 +700,9 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     state.dataset.state = !doc ? "" : saveError ? "error" : saving ? "saving" : dirty ? "dirty" : "saved";
     state.title = saveError;
     get("[data-retry]").hidden = !saveError;
+    get<HTMLButtonElement>("[data-grid-save]").disabled = busy || !dirty || !isSheet(doc);
+    const shapeOption = [...aiMode.options].find((o) => o.value === "shape");
+    if (shapeOption) shapeOption.hidden = isSheet(doc);
     renderEmptyState();
     renderAiSetup();
     updateToolbar();
@@ -582,9 +834,12 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     doc = null;
     dirty = false;
     saveError = "";
+    root.dataset.format = "";
+    grid.pending.clear();
     editor.clear();
     page.hidden = true;
     deckEl.hidden = true;
+    sheetEl.hidden = true;
     get("[data-toolbar]").hidden = false;
     get("[data-empty]").hidden = false;
     get("[data-name]").textContent = t("office.noDocOpen");
@@ -640,13 +895,24 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
     get("[data-note]").hidden = !note;
     get("[data-empty]").hidden = true;
     const deck = isDeck();
-    page.hidden = deck;
+    const sheet = isSheet(data);
+    root.dataset.format = sheet ? "xlsx" : data.format || "docx";
+    page.hidden = deck || sheet;
     deckEl.hidden = !deck;
-    get("[data-toolbar]").hidden = deck;
-    editor.load(data.blocks);
+    sheetEl.hidden = !sheet;
+    get("[data-toolbar]").hidden = deck || sheet;
     if (deck) renderDeck();
+    else if (sheet) {
+      if (aiMode.value === "shape") aiMode.value = "edit";
+      grid.sheet = Math.min(grid.sheet, data.sheets.length - 1);
+      grid.pending.clear();
+      renderGrid();
+    } else {
+      grid.pending.clear();
+      editor.load(data.blocks);
+    }
     renderHistory();
-    if (!deck)
+    if (!deck && !sheet)
       try {
         const saved = JSON.parse(sessionStorage.getItem(draftKey(data.id)) || "null");
         if (saved?.revision === data.revision && Array.isArray(saved.blocks)) {
@@ -821,7 +1087,21 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
         if (!("blockId" in edit) || !edit.blockId) continue;
         const details = document.createElement("details");
         details.open = true;
-        if (edit.text !== undefined) {
+        if (edit.cell !== undefined) {
+          const at = parseAddress(edit.cell);
+          const before = at
+            ? (() => {
+                const sheet = doc?.sheets?.[at.index];
+                const cell = sheet?.cells.find((c) => c.ref === at.ref);
+                return storedText(cell);
+              })()
+            : "";
+          details.append(
+            node("summary", `${t("office.cellProposal")}: ${edit.cell}`),
+            node("del", before || " "),
+            node("ins", edit.text === "" ? t("office.cellClear") : edit.text || ""),
+          );
+        } else if (edit.text !== undefined) {
           details.append(
             node("summary", t("office.paragraphProposal")),
             node("del", doc?.blocks.find((b) => b.id === edit.blockId)?.text || ""),
@@ -848,12 +1128,15 @@ export function openOffice(options: { configureAi?: () => void } = {}) {
             return;
           }
           for (const edit of run.edits || []) {
+            if ("cell" in edit && edit.cell !== undefined) continue;
             if (!("blockId" in edit) || !edit.blockId) continue;
             const key = editor.blockKeyFor(edit.blockId);
             if (!key) continue;
             if (edit.text !== undefined) editor.replaceText(key, edit.text);
             else editor.applyShape(key, edit);
           }
+          const cellEdits = (run.edits || []).filter((e) => "cell" in e && e.cell !== undefined) as { cell: string; text: string }[];
+          if (cellEdits.length) applyCellEdits(cellEdits);
           run = null;
           localStorage.removeItem("devmoter-office-ai-run");
           renderRun();

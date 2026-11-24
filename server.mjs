@@ -3282,7 +3282,7 @@ const server = http.createServer(async (req, res) => {
           } else json(res, 200, await officeStore.open(docMatch[1]));
           return;
         }
-        if (docMatch && !docMatch[2] && req.method === "PATCH") { const payload = await readJson(req, 4 * 1024 * 1024); json(res, 200, payload.ops !== undefined ? await officeStore.saveOps(docMatch[1], payload.revision, payload.ops) : await officeStore.save(docMatch[1], payload.revision, payload.blocks)); return; }
+        if (docMatch && !docMatch[2] && req.method === "PATCH") { const payload = await readJson(req, 4 * 1024 * 1024); json(res, 200, payload.ops !== undefined ? await officeStore.saveOps(docMatch[1], payload.revision, payload.ops) : Array.isArray(payload.cells) ? await officeStore.saveCells(docMatch[1], payload.revision, payload.cells) : await officeStore.save(docMatch[1], payload.revision, payload.blocks)); return; }
         if (docMatch && !docMatch[2] && req.method === "DELETE") { json(res, 200, await officeStore.remove(docMatch[1])); return; }
         const renameMatch = path.match(/^\/api\/office\/documents\/([a-f0-9-]{36})\/rename$/);
         if (renameMatch && req.method === "POST") { const payload = await readJson(req, 2000); json(res, 200, await officeStore.rename(renameMatch[1], payload.name)); return; }

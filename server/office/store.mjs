@@ -16,9 +16,12 @@ import {
   modelOf,
   planDocumentSave,
 } from "./docx-model.mjs";
+import { writeWorkbook } from "./xlsx-engine.mjs";
 import {
+  applyCellEdits,
   parseWorkbook,
   projectWorkbook,
+  XLSX_STALE_WARNING,
   XLSX_WARNINGS,
 } from "./xlsx-model.mjs";
 import {
@@ -28,6 +31,7 @@ import {
   applyDeckOps,
   PPTX_WARNINGS,
 } from "./pptx-model.mjs";
+import { recalcWorkbook } from "./calc.mjs";
 
 export const OFFICE_LIMITS = Object.freeze({
   uploadBytes: 12 * 1024 * 1024,
@@ -278,7 +282,7 @@ export function createOfficeStore({ rootDir }) {
     );
     return { meta, bytes, parsed: await parse(meta, bytes) };
   };
-  const describe = ({ meta, parsed }) => {
+  const describe = async ({ meta, parsed }) => {
     // PPTX is an outline projection: slide texts/tables/notes, edited via ops.
     if (meta.format === "pptx" && parsed)
       return {
@@ -288,14 +292,18 @@ export function createOfficeStore({ rootDir }) {
         ...projectDeck(parsed),
         warnings: [...PPTX_WARNINGS],
       };
-    // XLSX is a read-only projection: sheets + cells, no editable blocks.
-    if (meta.format === "excel" && parsed)
+    // XLSX projects sheets + cells; the calc engine supplies computed values
+    // for formula cells when it can run the workbook.
+    if (meta.format === "excel" && parsed) {
+      const computed = await recalcWorkbook(parsed);
       return {
         ...meta,
         format: "xlsx",
-        ...projectWorkbook(parsed),
-        warnings: [...XLSX_WARNINGS],
+        ...projectWorkbook(parsed, computed),
+        calculated: computed !== null,
+        warnings: computed ? [...XLSX_WARNINGS] : [XLSX_STALE_WARNING, ...XLSX_WARNINGS.slice(1)],
       };
+    }
     if (!parsed)
       return {
         ...meta,
@@ -424,12 +432,10 @@ export function createOfficeStore({ rootDir }) {
   // Newest activity first: last opened, else last saved/created.
   const recency = (meta) =>
     Math.max(Date.parse(meta.openedAt || 0) || 0, Date.parse(meta.updatedAt) || 0);
-  /**
-   * Commit edited bytes as a new edit revision. A save shortly after the
-   * previous edit replaces that edit revision (autosave), and when history is
-   * full the oldest edit revisions after the original are pruned.
-   */
-  const commitEdit = async (id, data, bytes, parsed) => {
+  // Shared tail of both save paths: coalesce with a recent edit revision,
+  // prune history, write the new revision + metadata, drop pruned files.
+  const commitEdit = async (data, bytes, parsed) => {
+    const id = data.meta.id;
     const next = randomUUID();
     const now = new Date().toISOString();
     const history = [...data.meta.history];
@@ -453,7 +459,7 @@ export function createOfficeStore({ rootDir }) {
     await writeMeta(id, meta);
     for (const old of replaced)
       await rm(join(dir(id), `${old}.${ext}`), { force: true });
-    return describe({ meta, parsed });
+    return { meta, parsed };
   };
   return {
     create,
@@ -517,6 +523,19 @@ export function createOfficeStore({ rootDir }) {
       if (data.meta.format !== "docx")
         throw fail("この文書形式はまだ保存できません。");
       return validateEdits(data.parsed, edits);
+    },
+    /**
+     * XLSX counterpart of validate(): check cell edits ({cell, text}) against
+     * the current revision without writing anything. Returns the normalized
+     * addresses the apply step shows to the user.
+     */
+    validateCells: async (id, revision, edits) => {
+      const data = await load(id);
+      if (!data.parsed || data.meta.format !== "excel")
+        throw fail("この文書形式はまだ保存できません。");
+      if (data.meta.revision !== revision)
+        throw fail("文書が更新されています。再読み込みしてください。", 409);
+      return applyCellEdits(data.parsed, edits).applied;
     },
     validateShapes: async (id, revision, shapes) => {
       const data = await load(id);
@@ -599,7 +618,7 @@ export function createOfficeStore({ rootDir }) {
           bytes.length > OFFICE_LIMITS.uploadBytes
         )
           throw fail("編集後の文書が上限を超えます。");
-        return commitEdit(id, data, bytes, parsed);
+        return describe(await commitEdit(data, bytes, parsed));
       }),
     /**
      * Save pptx editing ops from the deck editor (or an applied AI proposal):
@@ -618,7 +637,27 @@ export function createOfficeStore({ rootDir }) {
         const parsed = await parseDeck(bytes);
         if (bytes.length > OFFICE_LIMITS.uploadBytes)
           throw fail("編集後の文書が上限を超えます。");
-        return commitEdit(id, data, bytes, parsed);
+        return describe(await commitEdit(data, bytes, parsed));
+      }),
+    /**
+     * Save grid cell edits ({cell, text}) as a new revision. The edits are
+     * applied to the parsed model, which is serialized back over the
+     * original bytes so styles and unrelated parts keep their bytes; the
+     * result is re-parsed and recalculated before being described.
+     */
+    saveCells: (id, revision, edits) =>
+      serial(async () => {
+        const data = await load(id);
+        if (!data.parsed || data.meta.format !== "excel")
+          throw fail("この文書形式はまだ保存できません。");
+        if (data.meta.revision !== revision)
+          throw fail("文書が更新されています。再読み込みしてください。", 409);
+        const { model } = applyCellEdits(data.parsed, edits);
+        const bytes = await writeWorkbook(model, new Uint8Array(data.bytes));
+        const parsed = await parseWorkbook(bytes);
+        if (bytes.length > OFFICE_LIMITS.uploadBytes)
+          throw fail("編集後の文書が上限を超えます。");
+        return describe(await commitEdit(data, bytes, parsed));
       }),
   };
 }

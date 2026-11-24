@@ -1,6 +1,7 @@
 // XLSX store + projection: a workbook is stored, parsed by the vendored
-// @devmoter/xlsx engine and exposed as a read-only sheet/cell projection.
-// Editing and calc wiring are a later track; save() stays DOCX-only.
+// @devmoter/xlsx engine and exposed as a sheet/cell projection with
+// engine-computed values. The block-based save() path stays DOCX-only;
+// cell edits go through saveCells() (see office-xlsx-calc.test.mjs).
 import test from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm, readdir } from "node:fs/promises";
@@ -73,7 +74,7 @@ async function fixture() {
   return zip.generateAsync({ type: "uint8array" });
 }
 
-test("Office stores an xlsx and projects sheets and cells read-only", async (t) => {
+test("Office stores an xlsx and projects sheets and cells", async (t) => {
   const { store } = await setup(t);
   const doc = await store.create("Report.xlsx", await fixture());
   assert.equal(doc.format, "xlsx");
@@ -81,8 +82,8 @@ test("Office stores an xlsx and projects sheets and cells read-only", async (t) 
   assert.deepEqual(
     doc.sheets.map((s) => [s.name, s.ref, s.editable]),
     [
-      ["Summary", "A1:B3", false],
-      ["Raw", "A1", false],
+      ["Summary", "A1:B3", true],
+      ["Raw", "A1", true],
     ],
   );
   const cells = new Map(doc.sheets[0].cells.map((c) => [c.ref, c]));
@@ -129,7 +130,7 @@ test("Office xlsx restore copies a revision without touching the original", asyn
   assert.equal((await store.get(doc.id)).sheets.length, 2);
 });
 
-test("Office xlsx is read-only: save and validate are rejected", async (t) => {
+test("Office xlsx block save/validate are rejected (cells use saveCells)", async (t) => {
   const { store } = await setup(t);
   const doc = await store.create("Book.xlsx", await fixture());
   await assert.rejects(store.save(doc.id, doc.revision, []));
