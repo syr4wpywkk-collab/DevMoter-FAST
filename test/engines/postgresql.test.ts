@@ -163,6 +163,12 @@ describe('PostgreSQL adapter against the built engine', { skip }, () => {
     await assert.rejects(adapter.query("SELECT repeat('x', 1000) FROM generate_series(1, 40000)", []), rejectsWith('result_too_large'));
   });
 
+  test('one field too long to be a string is refused before the client reads it', async () => {
+    // 600 MB: more than the longest string Node can make. The reply is stopped once the limit has arrived.
+    await assert.rejects(adapter.query("SELECT repeat('x', 600000000) AS big", []), rejectsWith('result_too_large'));
+    assert.deepEqual((await adapter.query('SELECT 1 AS one', [])).results[0]?.rows, [{ one: 1 }]);
+  });
+
   test('a result larger than the limit asks the server to cancel once, not once per row', async () => {
     const original = pg.Client;
     let clients = 0;
