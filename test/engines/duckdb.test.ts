@@ -69,6 +69,7 @@ test('oversized or malformed requests are rejected before the engine starts', ()
   const invalid = rejectsWith('invalid_request');
   assert.throws(() => duckdbInvocation(options, ' ', []), invalid);
   assert.throws(() => duckdbInvocation(options, 'SELECT 1\0', []), invalid);
+  assert.throws(() => duckdbInvocation(options, "SELECT '\udc00'", []), invalid);
   assert.throws(() => duckdbInvocation(options, `SELECT '${'x'.repeat(MAX_SQL_BYTES)}'`, []), invalid);
   assert.throws(() => duckdbInvocation(options, 'SELECT 1', 'x' as unknown as QueryParam[]), invalid);
   assert.throws(() => duckdbInvocation(options, 'SELECT 1', new Array<QueryParam>(MAX_PARAMS + 1).fill(1)), invalid);

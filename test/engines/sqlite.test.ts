@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 
-import { MAX_PARAMS, MAX_SQL_BYTES, createSqliteAdapter, encodeSqliteLiteral, sqliteErrorMessage, sqliteInvocation } from '../../src/engines/sqlite.ts';
+import { MAX_PARAMS, MAX_SQL_BYTES, createSqliteAdapter, encodeSqliteLiteral, sqliteErrorMessage, sqliteInvocation, sqliteTextEncoding } from '../../src/engines/sqlite.ts';
 import { EngineError, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine } from './helpers.ts';
 
@@ -70,6 +70,7 @@ test('oversized or malformed requests are rejected before the engine starts', ()
   assert.throws(() => sqliteInvocation(options, '', []), invalid);
   assert.throws(() => sqliteInvocation(options, '  \n', []), invalid);
   assert.throws(() => sqliteInvocation(options, 'SELECT 1\0', []), invalid);
+  assert.throws(() => sqliteInvocation(options, "SELECT '\ud800'", []), rejectsWith('invalid_request', /not valid Unicode/));
   assert.throws(() => sqliteInvocation(options, 123 as unknown as string, []), invalid);
   assert.throws(() => sqliteInvocation(options, `SELECT '${'x'.repeat(MAX_SQL_BYTES)}'`, []), invalid);
   assert.throws(() => sqliteInvocation(options, 'SELECT 1', {} as unknown as QueryParam[]), invalid);
@@ -86,6 +87,33 @@ test('error output is reduced to the engine message', () => {
 });
 
 const sqlite = builtEngine('sqlite', 'sqlite3');
+
+test('a string parameter is written in the text encoding of the database', async () => {
+  assert.equal(encodeSqliteLiteral('hé🙂', 1), "CAST(x'68c3a9f09f9982' AS TEXT)");
+  assert.equal(encodeSqliteLiteral('hé🙂', 1, 'utf16le'), "CAST(x'6800e9003dd842de' AS TEXT)");
+  assert.equal(encodeSqliteLiteral('hé🙂', 1, 'utf16be'), "CAST(x'006800e9d83dde42' AS TEXT)");
+  assert.equal(encodeSqliteLiteral('', 1, 'utf16le'), "''");
+
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'dmb-sqlite-encoding-'));
+  try {
+    const header = (code: number) => {
+      const bytes = Buffer.alloc(100);
+      bytes.write('SQLite format 3\0');
+      bytes.writeUInt32BE(code, 56);
+      return bytes;
+    };
+    for (const [code, encoding] of [[1, 'utf8'], [2, 'utf16le'], [3, 'utf16be'], [0, 'utf8']] as const) {
+      const file = path.join(dir, `db-${code}`);
+      await writeFile(file, header(code));
+      assert.equal(await sqliteTextEncoding(file), encoding);
+    }
+    await writeFile(path.join(dir, 'empty'), '');
+    assert.equal(await sqliteTextEncoding(path.join(dir, 'empty')), 'utf8');
+    assert.equal(await sqliteTextEncoding(path.join(dir, 'missing')), 'utf8');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 
 describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () => {
   let dir: string;
@@ -128,6 +156,21 @@ describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () =>
   test('a CRLF inside a string literal is stored as sent', async () => {
     const { results } = await adapter.query("SELECT hex('a\r\nb') AS crlf, hex('a\rb') AS cr, hex('a\nb') AS lf,\r\n hex(?1) AS param", ['x\r\ny']);
     assert.deepEqual(results[0]?.rows, [{ crlf: '610D0A62', cr: '610D62', lf: '610A62', param: '780D0A79' }]);
+  });
+
+  test('string parameters keep their text in a UTF-16 database', async () => {
+    for (const encoding of ['UTF-16le', 'UTF-16be']) {
+      const wide = createSqliteAdapter({ binary: sqlite.binary, file: path.join(dir, `${encoding}.sqlite`) });
+      try {
+        await wide.query(`PRAGMA encoding = '${encoding}'; CREATE TABLE w(s TEXT)`, []);
+        const { results } = await wide.query('INSERT INTO w VALUES (?1), (?2); SELECT s, length(s) AS n FROM w ORDER BY rowid', ['hé🙂', 'abc']);
+        assert.deepEqual(results[0]?.rows, [{ s: 'hé🙂', n: 3 }, { s: 'abc', n: 3 }], encoding);
+        const { results: found } = await wide.query('SELECT count(*) AS c FROM w WHERE s = ?1', ['hé🙂']);
+        assert.deepEqual(found[0]?.rows, [{ c: 1 }], encoding);
+      } finally {
+        await wide.close();
+      }
+    }
   });
 
   test('a statement without rows yields no result set', async () => {

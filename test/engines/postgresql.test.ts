@@ -28,6 +28,7 @@ test('oversized or malformed requests are rejected before connecting', () => {
   const invalid = rejectsWith('invalid_request');
   assert.throws(() => validatePostgresqlRequest(' ', []), invalid);
   assert.throws(() => validatePostgresqlRequest('SELECT 1\0', []), invalid);
+  assert.throws(() => validatePostgresqlRequest("SELECT '\ud800'", []), invalid);
   assert.throws(() => validatePostgresqlRequest(`SELECT '${'x'.repeat(MAX_SQL_BYTES)}'`, []), invalid);
   assert.throws(() => validatePostgresqlRequest('SELECT 1', 'x' as unknown as QueryParam[]), invalid);
   assert.throws(() => validatePostgresqlRequest('SELECT 1', new Array<QueryParam>(MAX_PARAMS + 1).fill(1)), invalid);

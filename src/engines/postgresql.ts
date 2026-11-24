@@ -88,6 +88,8 @@ export function copiesThroughClient(sql: string): boolean {
 export function validatePostgresqlRequest(sql: string, params: readonly QueryParam[]): (string | Buffer | null)[] {
   if (typeof sql !== 'string' || sql.trim() === '') throw new EngineError('invalid_request', 'sql must be a non-empty string');
   if (sql.includes('\0')) throw new EngineError('invalid_request', 'sql must not contain a NUL character');
+  // A lone surrogate has no UTF-8 form; it would reach the engine as U+FFFD, other text than was sent.
+  if (!sql.isWellFormed()) throw new EngineError('invalid_request', 'sql is not valid Unicode');
   if (Buffer.byteLength(sql, 'utf8') > MAX_SQL_BYTES) throw new EngineError('invalid_request', `sql is longer than ${MAX_SQL_BYTES} bytes`);
   if (copiesThroughClient(sql)) {
     throw new EngineError('invalid_request', 'COPY ... TO STDOUT and COPY ... FROM STDIN are not available through the API; use SELECT to read rows and INSERT to add them');
