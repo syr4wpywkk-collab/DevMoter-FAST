@@ -6,7 +6,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { enginePaths, parseArgs, resetMovedBuildTree, scriptEnv } from '../../scripts/build/build.ts';
+import { enginePaths, parseArgs, resetStaleBuildTree, scriptEnv, toolchainId } from '../../scripts/build/build.ts';
 import { parseManifest, type EnginePin } from '../../scripts/upstream/verify.ts';
 
 const KNOWN = ['postgresql', 'sqlite', 'duckdb', 'valkey'];
@@ -93,18 +93,68 @@ test('a build tree made at another path (host vs container) is rebuilt from scra
     };
     const remains = () => [paths.work, paths.src, paths.prefix, path.join(paths.root, 'SOURCE_TREE')].map((file) => existsSync(file));
 
+    const gcc = toolchainId('cc (Debian 12.2.0-14) 12.2.0', 'c++ (Debian 12.2.0-14) 12.2.0');
+    const clang = toolchainId('Debian clang version 16.0.6', 'Debian clang version 16.0.6');
+    assert.notEqual(gcc, clang);
+    assert.notEqual(toolchainId(undefined, undefined), gcc);
+
     seed(); // made before the path was recorded: its origin is unknown
-    assert.equal(await resetMovedBuildTree(paths), true);
+    assert.match((await resetStaleBuildTree(paths, gcc)) ?? '', /another path/);
     assert.deepEqual(remains(), [false, false, false, false]);
 
     seed();
-    assert.equal(await resetMovedBuildTree(paths), false);
+    assert.equal(await resetStaleBuildTree(paths, gcc), undefined);
     assert.deepEqual(remains(), [true, true, true, true]);
 
     writeFileSync(path.join(paths.root, 'BUILD_PATH'), '/out/x86_64/duckdb');
-    assert.equal(await resetMovedBuildTree(paths), true);
+    assert.match((await resetStaleBuildTree(paths, gcc)) ?? '', /another path/);
     assert.deepEqual(remains(), [false, false, false, false]);
     assert.equal(readFileSync(path.join(paths.root, 'BUILD_PATH'), 'utf8'), paths.root);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a build tree made with another compiler is rebuilt from scratch, not continued with the old one', async () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'dmb-build-test-'));
+  try {
+    const paths = enginePaths(dir, 'x86_64', 'duckdb');
+    const seed = () => {
+      mkdirSync(paths.work, { recursive: true });
+      writeFileSync(path.join(paths.work, 'CMakeCache.txt'), 'CMAKE_C_COMPILER:FILEPATH=/usr/bin/cc');
+      mkdirSync(paths.prefix, { recursive: true });
+    };
+    const remains = () => [paths.work, paths.prefix].map((file) => existsSync(file));
+    const gcc = toolchainId('cc (Debian 12.2.0-14) 12.2.0', 'c++ (Debian 12.2.0-14) 12.2.0');
+    const clang = toolchainId('Debian clang version 16.0.6', 'Debian clang version 16.0.6');
+
+    // Nothing built yet: nothing to remove, whatever the compiler.
+    mkdirSync(paths.root, { recursive: true });
+    assert.equal(await resetStaleBuildTree(paths, gcc), undefined);
+    assert.equal(readFileSync(path.join(paths.root, 'TOOLCHAIN'), 'utf8'), gcc);
+    seed();
+    assert.equal(await resetStaleBuildTree(paths, gcc), undefined);
+    assert.deepEqual(remains(), [true, true]);
+
+    assert.match((await resetStaleBuildTree(paths, clang)) ?? '', /another compiler/);
+    assert.deepEqual(remains(), [false, false]);
+    assert.equal(readFileSync(path.join(paths.root, 'TOOLCHAIN'), 'utf8'), clang);
+
+    // A tree from before the compiler was stamped: BUILD_INFO.json of its last finished build says which it was.
+    seed();
+    rmSync(path.join(paths.root, 'TOOLCHAIN'));
+    writeFileSync(paths.info, JSON.stringify({ cc: 'Debian clang version 16.0.6', cxx: 'Debian clang version 16.0.6' }));
+    assert.equal(await resetStaleBuildTree(paths, clang), undefined);
+    assert.deepEqual(remains(), [true, true]);
+    rmSync(path.join(paths.root, 'TOOLCHAIN'));
+    assert.match((await resetStaleBuildTree(paths, gcc)) ?? '', /another compiler/);
+
+    // Neither record: the compiler is unknown, so the tree is not trusted.
+    seed();
+    rmSync(path.join(paths.root, 'TOOLCHAIN'));
+    rmSync(paths.info);
+    assert.match((await resetStaleBuildTree(paths, gcc)) ?? '', /another compiler/);
+    assert.deepEqual(remains(), [false, false]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

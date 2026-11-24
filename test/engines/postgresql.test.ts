@@ -5,7 +5,7 @@ import { after, before, describe, test } from 'node:test';
 import pg from 'pg';
 
 import { MAX_PARAMS, MAX_SQL_BYTES, copiesThroughClient, createPostgresqlAdapter, encodePostgresqlParam, postgresqlError, postgresqlTypes, validatePostgresqlRequest } from '../../src/engines/postgresql.ts';
-import { EngineError, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
+import { EngineError, MAX_QUERY_TIMEOUT_MS, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine, startPostgresql, type TestServer } from './helpers.ts';
 
 const rejectsWith = (code: string, message?: RegExp) => (error: unknown) =>
@@ -28,6 +28,7 @@ test('oversized or malformed requests are rejected before connecting', () => {
   const invalid = rejectsWith('invalid_request');
   assert.throws(() => validatePostgresqlRequest(' ', []), invalid);
   assert.throws(() => validatePostgresqlRequest('SELECT 1\0', []), invalid);
+  assert.throws(() => validatePostgresqlRequest("SELECT '\ud800'", []), invalid);
   assert.throws(() => validatePostgresqlRequest(`SELECT '${'x'.repeat(MAX_SQL_BYTES)}'`, []), invalid);
   assert.throws(() => validatePostgresqlRequest('SELECT 1', 'x' as unknown as QueryParam[]), invalid);
   assert.throws(() => validatePostgresqlRequest('SELECT 1', new Array<QueryParam>(MAX_PARAMS + 1).fill(1)), invalid);
@@ -41,6 +42,7 @@ test('COPY through the connection is recognised from the text, so it is refused 
     'COPY t FROM STDIN',
     'SELECT 1; /* c */ COPY t TO -- c\n STDOUT',
     "COPY (SELECT ')') TO STDOUT",
+    'SELECT 1; -- c\rCOPY t TO STDOUT',
   ]) {
     assert.equal(copiesThroughClient(sql), true, sql);
     assert.throws(() => validatePostgresqlRequest(sql, []), (error: unknown) => error instanceof EngineError && error.code === 'invalid_request' && /COPY/.test(error.message), sql);
@@ -159,6 +161,13 @@ describe('PostgreSQL adapter against the built engine', { skip }, () => {
 
   test('a result larger than the limit is refused', async () => {
     await assert.rejects(adapter.query("SELECT repeat('x', 1000) FROM generate_series(1, 40000)", []), rejectsWith('result_too_large'));
+  });
+
+  test('one field too long to be a string is refused before the client reads it', async () => {
+    // 600 MB: more than the longest string Node can make. The reply is stopped once the limit has arrived.
+    // The server builds the whole value first, which takes longer than the default time limit under emulation.
+    await assert.rejects(adapter.query("SELECT repeat('x', 600000000) AS big", [], { timeoutMs: MAX_QUERY_TIMEOUT_MS }), rejectsWith('result_too_large'));
+    assert.deepEqual((await adapter.query('SELECT 1 AS one', [])).results[0]?.rows, [{ one: 1 }]);
   });
 
   test('a result larger than the limit asks the server to cancel once, not once per row', async () => {

@@ -3,12 +3,43 @@
 
 import type { ResultSet } from './types.ts';
 
-/** Integers that a JavaScript number cannot hold exactly are returned as strings, not rounded. */
+/** Significant digits (no leading or trailing zeros) and the power of ten of the last one; undefined when `text` is not a decimal number. */
+function decimalParts(text: string): { digits: string; exponent: number } | undefined {
+  const match = /^-?(\d+)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/.exec(text);
+  if (!match) return undefined;
+  const fraction = match[2] ?? '';
+  const all = (match[1] as string) + fraction;
+  const digits = all.replace(/^0+/, '').replace(/0+$/, '');
+  if (digits === '') return { digits: '', exponent: 0 };
+  return { digits, exponent: Number(match[3] ?? 0) - fraction.length + (all.length - all.replace(/0+$/, '').length) };
+}
+
+/** True when the double nearest to the decimal `source`, written with as many digits as `source` has, is `source` again. */
+function survivesAsDouble(source: string, value: number): boolean {
+  // Up to 15 significant digits always survive (and no exponent means no overflow).
+  if (source.length <= 16 && !/[eE]/.test(source)) return true;
+  const written = decimalParts(source);
+  if (!written) return true;
+  const precision = (/^-?0*\.?0*(\d*)\.?(\d*)/.exec(source) as RegExpExecArray).slice(1, 3).join('').length;
+  if (precision === 0) return true; // zero
+  if (precision > 100) return false;
+  const read = decimalParts(value.toPrecision(precision));
+  return read !== undefined && read.digits === written.digits && read.exponent === written.exponent;
+}
+
+/**
+ * Numbers a JavaScript number cannot hold are returned as strings, not rounded: integers beyond
+ * ±2^53, decimals with more digits than a double keeps (DuckDB prints a DECIMAL inside a list or
+ * struct as a bare number), and values too large for a double, which become "Infinity" or
+ * "-Infinity" (SQLite prints infinity as 9.0e+999).
+ */
 export function exactNumbers(_key: string, value: unknown, context?: { source?: string }): unknown {
-  if (typeof value === 'number' && !Number.isSafeInteger(value) && context?.source !== undefined && /^-?\d+$/.test(context.source)) {
-    return context.source;
-  }
-  return value;
+  if (typeof value !== 'number' || context?.source === undefined) return value;
+  // An integer written as one. Written with a fraction or an exponent, it may be what a longer decimal was rounded to.
+  if (Number.isSafeInteger(value) && !/[.eE]/.test(context.source)) return value;
+  if (!Number.isFinite(value)) return value > 0 ? 'Infinity' : '-Infinity';
+  if (/^-?\d+$/.test(context.source)) return context.source;
+  return survivesAsDouble(context.source, value) ? value : context.source;
 }
 
 /** Splits `text` into its top-level JSON values. */

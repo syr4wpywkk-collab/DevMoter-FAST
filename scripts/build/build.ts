@@ -13,6 +13,7 @@
 //   build/<arch>/<engine>/build.log full build output
 //   build/<arch>/<engine>/BUILD_INFO.json  what was built, from which commit, with which compiler
 //   build/<arch>/<engine>/BUILD_PATH  where the build tree was made (a tree made elsewhere is rebuilt)
+//   build/<arch>/<engine>/TOOLCHAIN   the compilers the build tree was made with (a tree made with others is rebuilt)
 //
 // DEVMOTER_BASE_BUILD_DIR overrides the build/ location.
 
@@ -133,22 +134,41 @@ async function exists(file: string): Promise<boolean> {
   );
 }
 
+/** What identifies the compilers a build uses: the first line of each one's --version. */
+export function toolchainId(cc: string | undefined, cxx: string | undefined): string {
+  return `cc: ${cc ?? 'unknown'}\ncxx: ${cxx ?? 'unknown'}\n`;
+}
+
 /**
+ * Removes a build tree that cannot be continued, and says why (undefined when it can).
+ *
  * Build trees record absolute paths (CMake cache, configure output), and the same build
- * directory has another path on the host than in the container (`/out`). A tree made at
- * another path cannot be reused, so it is removed and the engine builds from scratch.
+ * directory has another path on the host than in the container (`/out`): a tree made at
+ * another path cannot be reused. They also record the compiler they were configured with,
+ * and keep using it: continuing with another one would build with the old compiler while
+ * BUILD_INFO.json names the new one.
  */
-export async function resetMovedBuildTree(paths: EnginePaths): Promise<boolean> {
-  const stamp = path.join(paths.root, 'BUILD_PATH');
-  const previous = await readFile(stamp, 'utf8').catch(() => undefined);
-  const moved = previous === undefined ? await exists(paths.work) : previous !== paths.root;
-  if (moved) {
+export async function resetStaleBuildTree(paths: EnginePaths, toolchain: string): Promise<string | undefined> {
+  const pathStamp = path.join(paths.root, 'BUILD_PATH');
+  const toolchainStamp = path.join(paths.root, 'TOOLCHAIN');
+  const started = await exists(paths.work);
+  const previousPath = await readFile(pathStamp, 'utf8').catch(() => undefined);
+  const previousToolchain = await readFile(toolchainStamp, 'utf8').catch(async () => {
+    // A tree from before the stamp existed: what its last finished build recorded.
+    const info = await readFile(paths.info, 'utf8').then((text) => JSON.parse(text) as { cc?: string; cxx?: string }, () => undefined);
+    return info === undefined ? undefined : toolchainId(info.cc, info.cxx);
+  });
+  let reason: string | undefined;
+  if (previousPath === undefined ? started : previousPath !== paths.root) reason = 'the build tree was made at another path (host or container)';
+  else if (started && previousToolchain !== toolchain) reason = 'the build tree was made with another compiler';
+  if (reason !== undefined) {
     // Valkey builds inside the exported source, so that goes too. So does what was installed:
     // another system's files (macOS libraries beside Linux ones) must not stay in the result.
     for (const stale of [paths.work, paths.src, paths.prefix, path.join(paths.root, 'SOURCE_TREE')]) await rm(stale, { recursive: true, force: true });
   }
-  await writeFile(stamp, paths.root);
-  return moved;
+  await writeFile(pathStamp, paths.root);
+  await writeFile(toolchainStamp, toolchain);
+  return reason;
 }
 
 /** Extracts the pinned tree into `paths.src`; skipped when that tree is already there. */
@@ -190,9 +210,12 @@ async function buildEngine(repo: string, buildRoot: string, pin: EnginePin, opti
   await mkdir(paths.root, { recursive: true });
   const tmp = await mkdtemp(path.join(os.tmpdir(), `dmb-${pin.name}-`));
   const env = scriptEnv(process.env, pin, paths, options.jobs, tmp);
+  const cc = await firstLine(env.CC ?? 'cc', ['--version']);
+  const cxx = await firstLine(env.CXX ?? 'c++', ['--version']);
   try {
     if (options.build) {
-      if (await resetMovedBuildTree(paths)) say('the build tree was made at another path (host or container); rebuilding from scratch');
+      const stale = await resetStaleBuildTree(paths, toolchainId(cc, cxx));
+      if (stale !== undefined) say(`${stale}; rebuilding from scratch`);
       say(`exporting ${pin.repository} @ ${pin.commit.slice(0, 12)}`);
       await exportSource(repo, pin, paths);
       await mkdir(paths.work, { recursive: true });
@@ -233,8 +256,8 @@ async function buildEngine(repo: string, buildRoot: string, pin: EnginePin, opti
         tree: pin.tree,
         arch,
         os: `${os.type()} ${os.release()}`,
-        cc: await firstLine(env.CC ?? 'cc', ['--version']),
-        cxx: await firstLine(env.CXX ?? 'c++', ['--version']),
+        cc,
+        cxx,
         jobs: options.jobs,
         builtAt: new Date().toISOString(),
         durationSeconds: Math.round((Date.now() - started) / 1000),

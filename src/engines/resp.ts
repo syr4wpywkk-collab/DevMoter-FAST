@@ -62,8 +62,10 @@ function build(frame: Frame): RespValue {
   if (frame.kind === 'array') return frame.items;
   const pairs: [RespValue, RespValue][] = [];
   for (let index = 0; index < frame.items.length; index += 2) pairs.push([frame.items[index] as RespValue, frame.items[index + 1] as RespValue]);
-  // A map becomes an object when every key is text, otherwise a list of [key, value] pairs.
-  if (pairs.every(([key]) => typeof key === 'string')) return Object.fromEntries(pairs as [string, RespValue][]);
+  // A map becomes an object when every key is text and none repeats, otherwise a list of [key, value] pairs.
+  if (pairs.every(([key]) => typeof key === 'string') && new Set(pairs.map(([key]) => key)).size === pairs.length) {
+    return Object.fromEntries(pairs as [string, RespValue][]);
+  }
   return pairs;
 }
 

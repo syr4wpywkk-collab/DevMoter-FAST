@@ -10,18 +10,23 @@ export interface SqlShape {
 
 export interface SqlDialect {
   /**
-   * The engine reads these characters beyond ASCII as blank space (DuckDB does for the
-   * no-break space and its like); elsewhere they are part of a word.
+   * The engine reads these characters beyond ASCII as blank space where a token can start
+   * (DuckDB does for the no-break space and its like, SQLite for the byte order mark);
+   * elsewhere they are part of a word.
    */
   blanks?: RegExp;
+  /** The blanks also end a word (DuckDB replaces them with spaces before reading the text). */
+  blanksEndWords?: boolean;
+  /** A "--" comment also ends at a carriage return (PostgreSQL's lexer, which DuckDB shares); elsewhere only at a line feed. */
+  returnEndsComment?: boolean;
   /** A block comment ends at the first "*\/" (SQLite); elsewhere a "/*" inside it opens another that must end first. */
   flatComments?: boolean;
 }
 
 /** What DuckDB's parser turns into a plain space before it reads the text. */
-export const DUCKDB_SQL: SqlDialect = { blanks: /[\u00a0\u2000-\u200b\u202f\u205f\u3000\ufeff]/ };
-export const SQLITE_SQL: SqlDialect = { flatComments: true };
-export const POSTGRESQL_SQL: SqlDialect = {};
+export const DUCKDB_SQL: SqlDialect = { blanks: /[\u00a0\u2000-\u200b\u202f\u205f\u3000\ufeff]/, blanksEndWords: true, returnEndsComment: true };
+export const SQLITE_SQL: SqlDialect = { blanks: /\ufeff/, flatComments: true };
+export const POSTGRESQL_SQL: SqlDialect = { returnEndsComment: true };
 
 const WORD_START = /[A-Za-z_\u0080-\uffff]/;
 const DOLLAR_TAG = /\$(?:[A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$/y;
@@ -96,8 +101,8 @@ export function sqlShape(sql: string, dialect: SqlDialect = {}, onToken?: (token
     } else if (blanks?.test(char)) {
       index += 1;
     } else if (sql.startsWith('--', index)) {
-      const end = sql.indexOf('\n', index);
-      index = end === -1 ? sql.length : end + 1;
+      index += 2;
+      while (index < sql.length && sql[index] !== '\n' && !(dialect.returnEndsComment && sql[index] === '\r')) index += 1;
     } else if (sql.startsWith('/*', index)) {
       index = skipBlockComment(sql, index, dialect.flatComments === true);
     } else if (char === "'" || char === '"') {
@@ -111,7 +116,7 @@ export function sqlShape(sql: string, dialect: SqlDialect = {}, onToken?: (token
       const end = sql.indexOf(tag, DOLLAR_TAG.lastIndex);
       index = end === -1 ? sql.length : end + tag.length;
     } else if (WORD_START.test(char)) {
-      const end = skipWord(sql, index, blanks);
+      const end = skipWord(sql, index, dialect.blanksEndWords ? blanks : undefined);
       const word = sql.slice(index, end);
       if (firstKeyword === undefined) firstKeyword = word.toUpperCase();
       content();

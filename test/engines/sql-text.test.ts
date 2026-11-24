@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { DUCKDB_SQL, SQLITE_SQL, sqlShape } from '../../src/engines/sql-text.ts';
+import { DUCKDB_SQL, POSTGRESQL_SQL, SQLITE_SQL, sqlShape } from '../../src/engines/sql-text.ts';
 
 test('counts statements and finds the first word', () => {
   const cases: [string, number, string][] = [
@@ -61,4 +61,20 @@ test('a long hostile text is read in linear time', () => {
   assert.equal(sqlShape(`${'/*'.repeat(30_000)}${'-- x\n'.repeat(10_000)}${"'".repeat(20_001)}`).statements, 0);
   assert.equal(sqlShape(`SELECT ${'$a'.repeat(30_000)}`).statements, 1);
   assert.ok(performance.now() - started < 1_000);
+});
+
+test('a "--" comment ends at a carriage return for PostgreSQL and DuckDB, at a line feed only for SQLite', () => {
+  const sql = 'SELECT 1; -- note\rINSERT INTO t VALUES (1)';
+  assert.equal(sqlShape(sql, DUCKDB_SQL).statements, 2);
+  assert.equal(sqlShape(sql, POSTGRESQL_SQL).statements, 2);
+  assert.equal(sqlShape(sql, SQLITE_SQL).statements, 1);
+  assert.equal(sqlShape('-- note\rDELETE FROM t', POSTGRESQL_SQL).firstKeyword, 'DELETE');
+  assert.equal(sqlShape('-- note\r\nDELETE FROM t', SQLITE_SQL).firstKeyword, 'DELETE');
+  assert.deepEqual(sqlShape('-- a ; b', DUCKDB_SQL), { statements: 0, firstKeyword: '' });
+});
+
+test('SQLite reads a byte order mark as blank space where a token starts, and as part of a word inside one', () => {
+  assert.equal(sqlShape('\ufeffSELECT 1', SQLITE_SQL).firstKeyword, 'SELECT');
+  assert.equal(sqlShape('SELECT\ufeff 1', SQLITE_SQL).firstKeyword, 'SELECT\ufeff');
+  assert.equal(sqlShape('\ufeffSELECT 1', POSTGRESQL_SQL).firstKeyword, '\ufeffSELECT');
 });

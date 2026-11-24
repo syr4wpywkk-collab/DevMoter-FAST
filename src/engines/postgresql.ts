@@ -10,12 +10,14 @@
 
 import pg from 'pg';
 
-import { sqlShape } from './sql-text.ts';
+import { POSTGRESQL_SQL, sqlShape } from './sql-text.ts';
 import { EngineError, resolveTimeout, sqlHealth, type QueryOptions, type QueryParam, type QueryResult, type ResultSet, type SqlAdapter } from './types.ts';
 
 export const MAX_SQL_BYTES = 1024 * 1024;
 export const MAX_PARAMS = 32_767;
 export const MAX_RESULT_BYTES = 32 * 1024 * 1024;
+/** Room for what the server sends besides rows (column descriptions, command tags) before a reply counts as too large. */
+const PROTOCOL_ALLOWANCE_BYTES = 1024 * 1024;
 const CONNECT_TIMEOUT_MS = 10_000;
 
 export interface PostgresqlAdapterOptions {
@@ -66,7 +68,7 @@ export function copiesThroughClient(sql: string): boolean {
   let copy = false;
   let depth = 0;
   let previous = '';
-  sqlShape(sql, {}, (token) => {
+  sqlShape(sql, POSTGRESQL_SQL, (token) => {
     if (token === ';') {
       first = true;
       copy = false;
@@ -88,6 +90,8 @@ export function copiesThroughClient(sql: string): boolean {
 export function validatePostgresqlRequest(sql: string, params: readonly QueryParam[]): (string | Buffer | null)[] {
   if (typeof sql !== 'string' || sql.trim() === '') throw new EngineError('invalid_request', 'sql must be a non-empty string');
   if (sql.includes('\0')) throw new EngineError('invalid_request', 'sql must not contain a NUL character');
+  // A lone surrogate has no UTF-8 form; it would reach the engine as U+FFFD, other text than was sent.
+  if (!sql.isWellFormed()) throw new EngineError('invalid_request', 'sql is not valid Unicode');
   if (Buffer.byteLength(sql, 'utf8') > MAX_SQL_BYTES) throw new EngineError('invalid_request', `sql is longer than ${MAX_SQL_BYTES} bytes`);
   if (copiesThroughClient(sql)) {
     throw new EngineError('invalid_request', 'COPY ... TO STDOUT and COPY ... FROM STDIN are not available through the API; use SELECT to read rows and INSERT to add them');
@@ -265,10 +269,19 @@ export function createPostgresqlAdapter(options: PostgresqlAdapterOptions): SqlA
 
       try {
         await Promise.race([client.connect(), stopped]);
+        const tooLarge = () => stop(new EngineError('result_too_large', `the result is larger than ${MAX_RESULT_BYTES} bytes`));
         let bytes = 0;
         (client as unknown as { connection: { on(event: 'dataRow', listener: (message: { length: number }) => void): void } }).connection.on('dataRow', (message) => {
           bytes += message.length;
-          if (bytes > MAX_RESULT_BYTES) stop(new EngineError('result_too_large', `the result is larger than ${MAX_RESULT_BYTES} bytes`));
+          if (bytes > MAX_RESULT_BYTES) tooLarge();
+        });
+        // The client collects a whole row before it reports it, and turns each field into a string:
+        // one huge field would be held in memory, and past the longest string Node can make it would
+        // throw outside any request. So the bytes are also counted as they arrive, rows or not.
+        let received = 0;
+        (client as unknown as { connection: { stream: { on(event: 'data', listener: (chunk: Buffer) => void): void } } }).connection.stream.on('data', (chunk) => {
+          received += chunk.length;
+          if (received > MAX_RESULT_BYTES + PROTOCOL_ALLOWANCE_BYTES) tooLarge();
         });
         // The client drops COPY data, so a COPY ... TO STDOUT that got past the check on the text
         // would look like a statement that returned nothing. The server may have finished it by now.

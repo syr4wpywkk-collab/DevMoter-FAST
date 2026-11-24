@@ -26,6 +26,8 @@ test('every reply type maps to JSON', () => {
   assert.deepEqual(decode('*0\r\n~2\r\n+a\r\n+b\r\n>1\r\n+p\r\n'), [[], ['a', 'b'], ['p']]);
   assert.deepEqual(decode('%2\r\n+a\r\n:1\r\n+b\r\n%0\r\n'), [{ a: 1, b: {} }]);
   assert.deepEqual(decode('%1\r\n:1\r\n+one\r\n'), [[[1, 'one']]]);
+  // A repeated key would lose a value as an object.
+  assert.deepEqual(decode('%2\r\n+a\r\n:1\r\n+a\r\n:2\r\n'), [[['a', 1], ['a', 2]]]);
   assert.deepEqual(decode('|1\r\n+ttl\r\n:10\r\n+value\r\n'), ['value']);
 });
 

@@ -21,7 +21,8 @@ import { EngineError, resolveTimeout, sqlHealth, type QueryOptions, type QueryPa
 
 export const MAX_SQL_BYTES = 64 * 1024;
 export const MAX_PARAMS = 999;
-export const MAX_PARAMS_BYTES = 96 * 1024;
+// A string takes up to twice the room it took as hex, so this is more than twice the 96 KiB of before.
+export const MAX_PARAMS_BYTES = 256 * 1024;
 export const MAX_RESULT_BYTES = 32 * 1024 * 1024;
 const BUSY_TIMEOUT_MS = 5_000;
 
@@ -33,9 +34,22 @@ export interface SqliteAdapterOptions {
   readOnly?: boolean;
 }
 
+/** How many code points one char() call carries: under the limit on function arguments of any SQLite. */
+const CHAR_ARGUMENTS = 100;
+/** How many char() calls are joined in one group, so that the longest parameter stays far from the limit on expression depth. */
+const CHAR_CALLS_PER_GROUP = 32;
+
+function chunks<T>(items: readonly T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let index = 0; index < items.length; index += size) out.push(items.slice(index, index + size));
+  return out;
+}
+
 /**
- * Encodes a parameter as an SQL literal. Strings are written as hex, so no
- * character of a parameter value is ever interpreted as SQL.
+ * Encodes a parameter as an SQL literal. A string is written as the code points of its
+ * characters, so no character of a value is ever interpreted as SQL, and the text is the
+ * same whatever encoding the database stores text in (the bytes of a hex literal would be
+ * read in that encoding).
  */
 export function encodeSqliteLiteral(param: QueryParam, position: number): string {
   if (param === null) return 'NULL';
@@ -46,7 +60,12 @@ export function encodeSqliteLiteral(param: QueryParam, position: number): string
   }
   if (typeof param === 'string') {
     if (!param.isWellFormed()) throw new EngineError('invalid_request', `parameter ${position} is not valid Unicode`);
-    return param === '' ? "''" : `CAST(x'${Buffer.from(param, 'utf8').toString('hex')}' AS TEXT)`;
+    if (param === '') return "''";
+    const points = Array.from(param, (character) => character.codePointAt(0));
+    const calls = chunks(points, CHAR_ARGUMENTS).map((part) => `char(${part.join(',')})`);
+    return chunks(calls, CHAR_CALLS_PER_GROUP)
+      .map((group) => (group.length > 1 ? `(${group.join('||')})` : group[0]))
+      .join('||');
   }
   if (typeof param === 'object' && !Array.isArray(param) && Object.keys(param).length === 1 && typeof param.$base64 === 'string') {
     if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(param.$base64)) {
@@ -68,6 +87,8 @@ export interface SqliteInvocation {
 export function sqliteInvocation(options: SqliteAdapterOptions, sql: string, params: readonly QueryParam[]): SqliteInvocation {
   if (typeof sql !== 'string' || sql.trim() === '') throw new EngineError('invalid_request', 'sql must be a non-empty string');
   if (sql.includes('\0')) throw new EngineError('invalid_request', 'sql must not contain a NUL character');
+  // A lone surrogate has no UTF-8 form; it would reach the engine as U+FFFD, other text than was sent.
+  if (!sql.isWellFormed()) throw new EngineError('invalid_request', 'sql is not valid Unicode');
   if (Buffer.byteLength(sql, 'utf8') > MAX_SQL_BYTES) throw new EngineError('invalid_request', `sql is longer than ${MAX_SQL_BYTES} bytes`);
   // The shell reads a line that starts with "." as one of its dot-commands when no statement is open.
   // Whether one is open cannot be told without parsing the SQL, so such a line is refused wherever it is.

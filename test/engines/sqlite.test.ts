@@ -21,11 +21,11 @@ test('parameters are encoded so that no character of a value is read as SQL', ()
   assert.equal(encodeSqliteLiteral(-0, 1), '0');
   assert.equal(encodeSqliteLiteral(1e21, 1), '1e+21');
   assert.equal(encodeSqliteLiteral('', 1), "''");
-  assert.equal(encodeSqliteLiteral("a'b", 1), "CAST(x'612762' AS TEXT)");
+  assert.equal(encodeSqliteLiteral("a'b", 1), 'char(97,39,98)');
   assert.equal(encodeSqliteLiteral({ $base64: 'AP8=' }, 1), "x'00ff'");
   assert.equal(encodeSqliteLiteral({ $base64: '' }, 1), "x''");
   for (const text of ["'); DROP TABLE t;--", 'line\n.shell id', '\u0000', 'あ🙂']) {
-    assert.match(encodeSqliteLiteral(text, 1), /^CAST\(x'[0-9a-f]+' AS TEXT\)$/);
+    assert.match(encodeSqliteLiteral(text, 1), /^char\(\d+(?:,\d+)*\)$/);
   }
 });
 
@@ -47,7 +47,7 @@ test('the shell runs in safe mode and nothing of the request is a program argume
   assert.deepEqual(secret.args, ['-safe', '-batch', '-noinit', '-bail', '-json', '/data/app.sqlite']);
   assert.equal(
     secret.input,
-    ".timeout 5000\n.explain off\n.parameter init\nINSERT INTO temp.sqlite_parameters(key,value) VALUES('?1',CAST(x'61' AS TEXT)),('?2',2);\nSELECT 'sql-secret', ?1, ?2\n",
+    ".timeout 5000\n.explain off\n.parameter init\nINSERT INTO temp.sqlite_parameters(key,value) VALUES('?1',char(97)),('?2',2);\nSELECT 'sql-secret', ?1, ?2\n",
   );
   assert.equal(sqliteInvocation({ binary: '/x/sqlite3', file: 'relative.sqlite' }, 'SELECT 1', []).args.at(-1), path.resolve('relative.sqlite'));
 });
@@ -70,11 +70,12 @@ test('oversized or malformed requests are rejected before the engine starts', ()
   assert.throws(() => sqliteInvocation(options, '', []), invalid);
   assert.throws(() => sqliteInvocation(options, '  \n', []), invalid);
   assert.throws(() => sqliteInvocation(options, 'SELECT 1\0', []), invalid);
+  assert.throws(() => sqliteInvocation(options, "SELECT '\ud800'", []), rejectsWith('invalid_request', /not valid Unicode/));
   assert.throws(() => sqliteInvocation(options, 123 as unknown as string, []), invalid);
   assert.throws(() => sqliteInvocation(options, `SELECT '${'x'.repeat(MAX_SQL_BYTES)}'`, []), invalid);
   assert.throws(() => sqliteInvocation(options, 'SELECT 1', {} as unknown as QueryParam[]), invalid);
   assert.throws(() => sqliteInvocation(options, 'SELECT 1', new Array<QueryParam>(MAX_PARAMS + 1).fill(1)), invalid);
-  assert.throws(() => sqliteInvocation(options, 'SELECT ?1', ['x'.repeat(60_000)]), rejectsWith('invalid_request', /parameters are larger/));
+  assert.throws(() => sqliteInvocation(options, 'SELECT ?1', ['x'.repeat(70_000)]), rejectsWith('invalid_request', /parameters are larger/));
 });
 
 test('error output is reduced to the engine message', () => {
@@ -86,6 +87,17 @@ test('error output is reduced to the engine message', () => {
 });
 
 const sqlite = builtEngine('sqlite', 'sqlite3');
+
+test('a string parameter is written as code points, the same for every text encoding of a database', () => {
+  assert.equal(encodeSqliteLiteral('hé🙂', 1), 'char(104,233,128578)');
+  assert.equal(encodeSqliteLiteral('', 1), "''");
+  // Long text is split over several calls, each within SQLite's limit on function arguments, joined in groups.
+  const long = encodeSqliteLiteral('ab'.repeat(125), 1);
+  assert.match(long, /^\(char\((?:\d+,){99}\d+\)\|\|char\((?:\d+,){99}\d+\)\|\|char\((?:\d+,){49}\d+\)\)$/);
+  const longer = encodeSqliteLiteral('a'.repeat(3300), 1);
+  assert.equal(longer.split('||').length, 33);
+  assert.match(longer, /^\((?:char\([\d,]+\)(?:\|\|)?){32}\)\|\|char\([\d,]+\)$/);
+});
 
 describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () => {
   let dir: string;
@@ -128,6 +140,36 @@ describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () =>
   test('a CRLF inside a string literal is stored as sent', async () => {
     const { results } = await adapter.query("SELECT hex('a\r\nb') AS crlf, hex('a\rb') AS cr, hex('a\nb') AS lf,\r\n hex(?1) AS param", ['x\r\ny']);
     assert.deepEqual(results[0]?.rows, [{ crlf: '610D0A62', cr: '610D62', lf: '610A62', param: '780D0A79' }]);
+  });
+
+  test('the longest string parameter that fits is within the expression depth SQLite allows', async () => {
+    // Tabs encode shortest ("9,"), so they make the most char() calls for the size limit.
+    const text = '\t'.repeat(125_000) + '\u0000\n.shell id\n' + "'";
+    const { results } = await adapter.query('SELECT ?1 = ?2 AS same, length(CAST(?1 AS BLOB)) AS n', [text, 'x']);
+    assert.deepEqual(results[0]?.rows, [{ same: 0, n: text.length }]);
+    await assert.rejects(adapter.query('SELECT ?1', ['\t'.repeat(132_000)]), rejectsWith('invalid_request', /parameters are larger/));
+  });
+
+  test('ASCII text that fitted the limit as hex still fits as code points', async () => {
+    const text = 'z'.repeat(49_000);
+    const { results } = await adapter.query('SELECT length(?1) AS n, substr(?1, 48999) AS tail', [text]);
+    assert.deepEqual(results[0]?.rows, [{ n: 49_000, tail: 'zz' }]);
+  });
+
+  test('string parameters keep their text in a UTF-16 database, also one in WAL mode', async () => {
+    for (const [encoding, journal] of [['UTF-16le', 'DELETE'], ['UTF-16be', 'DELETE'], ['UTF-16le', 'WAL']]) {
+      const wide = createSqliteAdapter({ binary: sqlite.binary, file: path.join(dir, `${encoding}-${journal}.sqlite`) });
+      try {
+        await wide.query(`PRAGMA encoding = '${encoding}'; PRAGMA journal_mode = ${journal}; CREATE TABLE w(s TEXT)`, []);
+        const text = 'hé🙂'.repeat(120);
+        const { results } = await wide.query('INSERT INTO w VALUES (?1), (?2); SELECT s, length(s) AS n FROM w ORDER BY rowid', [text, 'abc']);
+        assert.deepEqual(results[0]?.rows, [{ s: text, n: 360 }, { s: 'abc', n: 3 }], `${encoding} ${journal}`);
+        const { results: found } = await wide.query('SELECT count(*) AS c FROM w WHERE s = ?1', [text]);
+        assert.deepEqual(found[0]?.rows, [{ c: 1 }], `${encoding} ${journal}`);
+      } finally {
+        await wide.close();
+      }
+    }
   });
 
   test('a statement without rows yields no result set', async () => {

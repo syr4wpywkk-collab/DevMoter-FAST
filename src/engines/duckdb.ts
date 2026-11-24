@@ -68,6 +68,8 @@ export interface DuckdbInvocation {
 export function duckdbInvocation(options: DuckdbAdapterOptions, sql: string, params: readonly QueryParam[]): DuckdbInvocation {
   if (typeof sql !== 'string' || sql.trim() === '') throw new EngineError('invalid_request', 'sql must be a non-empty string');
   if (sql.includes('\0')) throw new EngineError('invalid_request', 'sql must not contain a NUL character');
+  // A lone surrogate has no UTF-8 form; it would reach the engine as U+FFFD, other text than was sent.
+  if (!sql.isWellFormed()) throw new EngineError('invalid_request', 'sql is not valid Unicode');
   if (Buffer.byteLength(sql, 'utf8') > MAX_SQL_BYTES) throw new EngineError('invalid_request', `sql is longer than ${MAX_SQL_BYTES} bytes`);
   // The shell reads a line that starts with "." as one of its dot-commands when no statement is open.
   // Whether one is open cannot be told without parsing the SQL, so such a line is refused wherever it is.

@@ -17,6 +17,14 @@ fi
 
 out="${DEVMOTER_BASE_BUILD_DIR:-$root/build}"
 mkdir -p "$out"
+# Docker reads a relative path as the name of a volume, not as a directory.
+out=$(cd "$out" && pwd)
+
+# In a linked worktree .git is a file that points into the main checkout, where the objects are.
+# The build reads the pinned trees from git, so that directory is mounted too, at the path the file names.
+mounts=()
+common=$(git -C "$root" rev-parse --path-format=absolute --git-common-dir)
+[ "$common" = "$root/.git" ] || mounts+=(-v "$common":"$common":ro)
 tag="devmoter-base-build:${platform##*/}"
 [ -n "$platform" ] || tag="devmoter-base-build:native"
 
@@ -28,4 +36,5 @@ exec docker run --rm ${platform:+--platform "$platform"} \
   -e DEVMOTER_BASE_BUILD_DIR=/out \
   -v "$root":/repo:ro \
   -v "$out":/out \
+  ${mounts[@]+"${mounts[@]}"} \
   "$tag" "$@"

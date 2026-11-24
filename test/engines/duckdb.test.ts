@@ -53,6 +53,8 @@ test('with parameters only one statement is accepted: a second one would run bef
   const single = rejectsWith('invalid_request', /single statement/);
   assert.throws(() => duckdbInvocation(options, 'SELECT ?; DELETE FROM t', [1]), single);
   assert.throws(() => duckdbInvocation(options, 'SELECT $1; -- c\n INSERT INTO t VALUES (1);', [1]), single);
+  // DuckDB ends a "--" comment at a lone carriage return too.
+  assert.throws(() => duckdbInvocation(options, 'SELECT $1; -- c\rINSERT INTO t VALUES (1);', [1]), single);
   assert.doesNotThrow(() => duckdbInvocation(options, "SELECT ?, 'a;b' /* ; */ ; -- ;\n", [1]));
   assert.doesNotThrow(() => duckdbInvocation(options, 'SELECT 1; SELECT 2', []));
 });
@@ -69,6 +71,7 @@ test('oversized or malformed requests are rejected before the engine starts', ()
   const invalid = rejectsWith('invalid_request');
   assert.throws(() => duckdbInvocation(options, ' ', []), invalid);
   assert.throws(() => duckdbInvocation(options, 'SELECT 1\0', []), invalid);
+  assert.throws(() => duckdbInvocation(options, "SELECT '\udc00'", []), invalid);
   assert.throws(() => duckdbInvocation(options, `SELECT '${'x'.repeat(MAX_SQL_BYTES)}'`, []), invalid);
   assert.throws(() => duckdbInvocation(options, 'SELECT 1', 'x' as unknown as QueryParam[]), invalid);
   assert.throws(() => duckdbInvocation(options, 'SELECT 1', new Array<QueryParam>(MAX_PARAMS + 1).fill(1)), invalid);
