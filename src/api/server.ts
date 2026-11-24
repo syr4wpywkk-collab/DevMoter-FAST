@@ -1,6 +1,8 @@
 // The unified REST API (v1).
 //
 //   GET  /v1/health                    liveness of the API process
+//   GET  /v1/health/engines            health of every configured database's engine (503 if any is unavailable)
+//   GET  /v1/databases/:name/health    health of one database's engine (503 if unavailable)
 //   GET  /v1/databases                 configured databases
 //   GET  /v1/databases/:name           one database
 //   POST /v1/databases/:name/query     { "sql": "...", "params": [...], "timeoutMs": 30000 }
@@ -120,7 +122,9 @@ export function createApiServer(options: ApiOptions): http.Server {
     return database;
   };
 
-  async function route(request: http.IncomingMessage, response: http.ServerResponse, log: Record<string, unknown>): Promise<unknown> {
+  const health = async (database: Database) => ({ name: database.name, engine: database.engine, ...(await database.adapter.health()) });
+
+  async function route(request: http.IncomingMessage, response: http.ServerResponse, log: Record<string, unknown>, reply: { status: number }): Promise<unknown> {
     if (!isLocalHostHeader(request.headers.host)) throw new HttpError(403, 'forbidden_host', 'the Host header must name this machine (localhost, 127.0.0.1 or [::1])');
     const site = request.headers['sec-fetch-site'];
     if (request.headers.origin !== undefined || (site !== undefined && site !== 'none')) {
@@ -140,6 +144,14 @@ export function createApiServer(options: ApiOptions): http.Server {
       allow('GET');
       return { status: 'ok' };
     }
+    if (pathname === '/v1/health/engines') {
+      log.route = 'health.engines';
+      allow('GET');
+      const checks = await Promise.all([...databases.values()].map(health));
+      const ok = checks.every((check) => check.status === 'ok');
+      if (!ok) reply.status = 503;
+      return { status: ok ? 'ok' : 'degraded', databases: checks };
+    }
     if (pathname === '/v1/databases') {
       log.route = 'databases.list';
       allow('GET');
@@ -149,6 +161,13 @@ export function createApiServer(options: ApiOptions): http.Server {
       log.route = 'databases.get';
       allow('GET');
       return describe(findDatabase(segments[2]));
+    }
+    if (segments[0] === 'v1' && segments[1] === 'databases' && segments[2] !== undefined && segments[3] === 'health' && segments.length === 4) {
+      log.route = 'databases.health';
+      allow('GET');
+      const check = await health(findDatabase(segments[2]));
+      if (check.status !== 'ok') reply.status = 503;
+      return check;
     }
     if (segments[0] === 'v1' && segments[1] === 'databases' && segments[2] !== undefined && segments[3] === 'query' && segments.length === 4) {
       log.route = 'databases.query';
@@ -199,8 +218,9 @@ export function createApiServer(options: ApiOptions): http.Server {
       response.end(payload);
     };
 
-    route(request, response, log)
-      .then((body) => send(200, body))
+    const reply = { status: 200 };
+    route(request, response, log, reply)
+      .then((body) => send(reply.status, body))
       .catch((error: unknown) => {
         const fail = (status: number, code: string, message: string, headers?: Record<string, string>) => {
           log.error = code;

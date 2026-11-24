@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 import { createApiServer, stopApiServer, type Database } from './api/server.ts';
 import { ConfigError, loadConfig, type DatabaseConfig } from './config.ts';
+import { createDuckdbAdapter } from './engines/duckdb.ts';
 import { defaultEnginesDir, engineBinary } from './engines/paths.ts';
 import { createSqliteAdapter } from './engines/sqlite.ts';
 import { createRootLogger } from './logging/logger.ts';
@@ -16,12 +17,12 @@ import { createRootLogger } from './logging/logger.ts';
 const SHUTDOWN_GRACE_MS = 10_000;
 
 export function openDatabase(config: DatabaseConfig, enginesDir: string): Database {
-  return {
-    name: config.name,
-    engine: config.engine,
-    readOnly: config.readOnly,
-    adapter: createSqliteAdapter({ binary: engineBinary(enginesDir, 'sqlite', 'sqlite3'), file: config.file, readOnly: config.readOnly }),
-  };
+  const { name, engine, file, readOnly } = config;
+  const adapter =
+    engine === 'sqlite'
+      ? createSqliteAdapter({ binary: engineBinary(enginesDir, 'sqlite', 'sqlite3'), file, readOnly })
+      : createDuckdbAdapter({ binary: engineBinary(enginesDir, 'duckdb', 'duckdb'), file, readOnly });
+  return { name, engine, readOnly, adapter };
 }
 
 async function main(): Promise<void> {

@@ -4,7 +4,7 @@
 //   "server": { "host": "127.0.0.1", "port": 8787 },
 //   "databases": [
 //     { "name": "app", "engine": "sqlite", "file": "data/app.sqlite" },
-//     { "name": "archive", "engine": "sqlite", "file": "data/archive.sqlite", "readOnly": true }
+//     { "name": "analytics", "engine": "duckdb", "file": "data/analytics.duckdb", "readOnly": true }
 //   ]
 // }
 //
@@ -17,16 +17,17 @@ export const DEFAULT_HOST = '127.0.0.1';
 export const DEFAULT_PORT = 8787;
 const DATABASE_NAME = /^[a-z][a-z0-9_-]{0,62}$/;
 /** Engines that have an adapter. */
-export const CONFIGURABLE_ENGINES = ['sqlite'] as const;
+export const CONFIGURABLE_ENGINES = ['sqlite', 'duckdb'] as const;
 
-export interface SqliteDatabaseConfig {
+/** SQLite and DuckDB databases are single files. */
+export interface FileDatabaseConfig {
   name: string;
-  engine: 'sqlite';
+  engine: (typeof CONFIGURABLE_ENGINES)[number];
   file: string;
   readOnly: boolean;
 }
 
-export type DatabaseConfig = SqliteDatabaseConfig;
+export type DatabaseConfig = FileDatabaseConfig;
 
 export interface Config {
   server: { host: string; port: number };
@@ -79,7 +80,7 @@ export function parseConfig(value: unknown, baseDir: string): Config {
       throw new ConfigError(`${where}.name: must start with a lowercase letter and contain only lowercase letters, digits, "_" and "-" (at most 63 characters)`);
     }
     if (databases.some((database) => database.name === name)) throw new ConfigError(`${where}.name: "${name}" is used twice`);
-    if (engine !== 'sqlite') {
+    if (engine !== 'sqlite' && engine !== 'duckdb') {
       throw new ConfigError(`${where}.engine: must be one of ${CONFIGURABLE_ENGINES.join(', ')}`);
     }
     onlyKeys(entry, ['name', 'engine', 'file', 'readOnly'], where);

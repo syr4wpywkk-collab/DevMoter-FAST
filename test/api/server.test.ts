@@ -32,6 +32,8 @@ function call(port: number, method: string, urlPath: string, options: { headers?
 
 const json = (body: unknown) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
+let healthy = true;
+
 /** An adapter that records what it was asked and answers from a script. */
 function fakeAdapter(handler: (sql: string, params: readonly QueryParam[], options?: QueryOptions) => Promise<Record<string, unknown>[]>): SqlAdapter {
   return {
@@ -41,6 +43,7 @@ function fakeAdapter(handler: (sql: string, params: readonly QueryParam[], optio
       const rows = await handler(sql, params, options);
       return { results: [{ columns: Object.keys(rows[0] ?? {}), rows, rowCount: rows.length }], durationMs: 1 };
     },
+    health: async () => (healthy ? { status: 'ok', version: '1.2.3', latencyMs: 1 } : { status: 'unavailable', latencyMs: 1, message: 'the sqlite engine is not built' }),
     async close() {},
   };
 }
@@ -98,6 +101,32 @@ describe('REST API', () => {
       ],
     });
     assert.deepEqual((await call(port, 'GET', '/v1/databases/archive')).body, { name: 'archive', engine: 'sqlite', kind: 'sql', readOnly: true });
+  });
+
+  test('engine health is 200 when every engine answers and 503 otherwise', async () => {
+    const ok = await call(port, 'GET', '/v1/health/engines');
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.body, {
+      status: 'ok',
+      databases: [
+        { name: 'app', engine: 'sqlite', status: 'ok', version: '1.2.3', latencyMs: 1 },
+        { name: 'archive', engine: 'sqlite', status: 'ok', version: '1.2.3', latencyMs: 1 },
+      ],
+    });
+    assert.deepEqual((await call(port, 'GET', '/v1/databases/app/health')).body, { name: 'app', engine: 'sqlite', status: 'ok', version: '1.2.3', latencyMs: 1 });
+    healthy = false;
+    try {
+      const degraded = await call(port, 'GET', '/v1/health/engines');
+      assert.equal(degraded.status, 503);
+      assert.equal(degraded.body.status, 'degraded');
+      assert.equal(degraded.body.databases[0].message, 'the sqlite engine is not built');
+      assert.equal((await call(port, 'GET', '/v1/databases/app/health')).status, 503);
+      assert.equal((await call(port, 'GET', '/v1/health')).status, 200, 'the API process itself is still alive');
+    } finally {
+      healthy = true;
+    }
+    assert.equal((await call(port, 'GET', '/v1/databases/missing/health')).status, 404);
+    assert.equal((await call(port, 'POST', '/v1/health/engines')).status, 405);
   });
 
   test('runs a query and passes sql, params and timeout to the adapter', async () => {

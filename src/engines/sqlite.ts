@@ -17,7 +17,7 @@ import path from 'node:path';
 
 import { parseResultSets } from './json-results.ts';
 import { runEngineProcess } from './process.ts';
-import { EngineError, resolveTimeout, type QueryOptions, type QueryParam, type QueryResult, type SqlAdapter } from './types.ts';
+import { EngineError, resolveTimeout, sqlHealth, type QueryOptions, type QueryParam, type QueryResult, type SqlAdapter } from './types.ts';
 
 export const MAX_SQL_BYTES = 64 * 1024;
 export const MAX_PARAMS = 999;
@@ -141,6 +141,10 @@ export function createSqliteAdapter(options: SqliteAdapterOptions): SqlAdapter {
       } catch (error) {
         throw new EngineError('query_failed', 'the engine returned output that could not be read', { cause: error });
       }
+    },
+
+    health() {
+      return sqlHealth(this, 'SELECT sqlite_version() AS version');
     },
 
     async close(): Promise<void> {

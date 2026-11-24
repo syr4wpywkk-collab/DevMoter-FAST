@@ -70,8 +70,33 @@ export function firstRowKeys(source: string): string[] {
   return [...keys];
 }
 
-export function parseResultSets(text: string): ResultSet[] {
-  return splitJsonValues(text).map((source) => {
+/**
+ * DuckDB prints non-finite doubles as bare `Infinity`, `-Infinity` and `NaN`, which JSON does not have.
+ * They are returned as the strings "Infinity", "-Infinity" and "NaN".
+ */
+export function quoteNonFinite(source: string): string {
+  // Results can be tens of megabytes: the text is copied in a few large slices, never character by character.
+  const token = /"|-?Infinity|NaN/g;
+  const parts: string[] = [];
+  let copied = 0;
+  for (let match = token.exec(source); match !== null; match = token.exec(source)) {
+    if (match[0] === '"') {
+      let end = match.index + 1;
+      while (end < source.length && source[end] !== '"') end += source[end] === '\\' ? 2 : 1;
+      token.lastIndex = end + 1;
+    } else {
+      parts.push(source.slice(copied, match.index), `"${match[0]}"`);
+      copied = token.lastIndex;
+    }
+  }
+  if (copied === 0) return source;
+  parts.push(source.slice(copied));
+  return parts.join('');
+}
+
+export function parseResultSets(text: string, options: { nonFinite?: boolean } = {}): ResultSet[] {
+  return splitJsonValues(text).map((value) => {
+    const source = options.nonFinite ? quoteNonFinite(value) : value;
     const rows: unknown = (JSON.parse as (text: string, reviver: typeof exactNumbers) => unknown)(source, exactNumbers);
     if (!Array.isArray(rows) || rows.some((row) => row === null || typeof row !== 'object' || Array.isArray(row))) {
       throw new SyntaxError('expected an array of row objects');

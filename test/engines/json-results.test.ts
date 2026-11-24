@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { parseResultSets, splitJsonValues } from '../../src/engines/json-results.ts';
+import { parseResultSets, quoteNonFinite, splitJsonValues } from '../../src/engines/json-results.ts';
 
 test('splits back-to-back JSON arrays, ignoring brackets inside strings', () => {
   assert.deepEqual(splitJsonValues('[{"a":1}]\n[{"b":"]\\"[{"}]\n'), ['[{"a":1}]', '[{"b":"]\\"[{"}]']);
@@ -38,4 +38,21 @@ test('columns keep the order the engine wrote them, also when a name looks like 
   assert.deepEqual(set?.columns, ['2024', '2023', 'b', 'a"\\', '10']);
   assert.equal(set?.rows[0]?.['2023'], 2);
   assert.deepEqual(parseResultSets('[]')[0]?.columns, []);
+});
+
+test('non-finite numbers are quoted only outside strings', () => {
+  assert.equal(quoteNonFinite('[{"a":Infinity,"b":-Infinity,"c":NaN,"d":"NaN, Infinity \\"NaN\\"","NaN":1}]'), '[{"a":"Infinity","b":"-Infinity","c":"NaN","d":"NaN, Infinity \\"NaN\\"","NaN":1}]');
+  assert.deepEqual(parseResultSets('[{"a":Infinity,"b":"x"}]', { nonFinite: true })[0]?.rows, [{ a: 'Infinity', b: 'x' }]);
+  assert.throws(() => parseResultSets('[{"a":Infinity}]'), SyntaxError);
+});
+
+test('a large result with non-finite numbers is converted without copying it character by character', () => {
+  const row = '{"id":123456,"name":"some \\"text\\" NaN","v":1.5,"w":NaN},';
+  const source = `[${row.repeat(100_000)}{"z":-Infinity}]`;
+  const started = performance.now();
+  const out = quoteNonFinite(source);
+  assert.ok(performance.now() - started < 2_000);
+  assert.equal(out.length, source.length + 2 * 100_001);
+  assert.equal(out.endsWith('"w":"NaN"},{"z":"-Infinity"}]'), true);
+  assert.equal(quoteNonFinite('[{"a":"NaN"}]'), '[{"a":"NaN"}]');
 });
