@@ -49,6 +49,11 @@ Apache-2.0, Copyright Mozilla Foundation) vendored under `vendor/pdfjs/`
 served statically from `public/pdfjs/` and loaded at runtime so the viewer
 stays out of the JS bundle. See `vendor/pdfjs/NOTICE.md`.
 
+`server/office/pptx-engine.mjs` is generated from vendored `@devmoter/pptx`
+sources (devmoter-office, `packages/pptx`) retained under `vendor/pptx/`.
+Origin, license and runtime dependencies (jszip, fast-xml-parser, pptxgenjs —
+all MIT, resolved externally) are recorded in `vendor/pptx/NOTICE.md`.
+
 ## Bundled visual assets
 
 The current source tree does not bundle upstream provider logos, third-party photographs, illustrations, or font files. Provider names are presented textually for interoperability. See `RELEASE_LEGAL_AUDIT.md` for the review rule that applies before adding third-party visual assets.

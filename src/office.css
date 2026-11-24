@@ -922,3 +922,204 @@
   color: var(--of-muted);
   font-size: 11px;
 }
+/* ------------------------------------------------------------- deck ------- */
+/* PPTX outline surface: slide list, per-shape text editing, slide ops. */
+.dm-office .office-deck {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px 48px;
+}
+.dm-office .deck-slides {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dm-office .deck-slide {
+  border: 1px solid var(--of-line);
+  border-radius: 8px;
+  background: var(--of-card);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dm-office .deck-slide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.dm-office .deck-slide-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--of-text-2);
+}
+.dm-office .deck-slide-actions {
+  display: flex;
+  gap: 4px;
+}
+.dm-office .deck-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dm-office .deck-shape-name {
+  font-size: 11px;
+  color: var(--of-muted);
+}
+.dm-office .deck-text textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--of-line);
+  border-radius: 4px;
+  background: var(--of-panel);
+  color: var(--of-text);
+  font: inherit;
+  padding: 8px;
+}
+.dm-office .deck-text textarea:focus-visible {
+  outline: 2px solid var(--of-focus);
+  outline-offset: -1px;
+}
+.dm-office .deck-table {
+  border-top: 1px solid var(--of-line);
+  padding-top: 8px;
+  font-size: 13px;
+  color: var(--of-text-2);
+}
+.dm-office .deck-table-label {
+  font-size: 11px;
+  color: var(--of-muted);
+}
+.dm-office .deck-table-row {
+  margin: 4px 0 0;
+  font-variant-numeric: tabular-nums;
+}
+.dm-office .deck-notes {
+  font-size: 13px;
+  color: var(--of-text-2);
+}
+.dm-office .deck-notes summary {
+  cursor: pointer;
+  color: var(--of-muted);
+}
+.dm-office .deck-notes p {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+}
+.dm-office .deck-add {
+  align-self: flex-start;
+  margin-top: 16px;
+  border: 1px solid var(--of-line-strong);
+  border-radius: 8px;
+  background: var(--of-panel);
+  color: var(--of-text);
+  padding: 8px 16px;
+}
+.dm-office .deck-add:hover {
+  background: var(--of-hover);
+}
+/* ---------------------------------------------------------------- grid --- */
+.office-sheet {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 240px;
+}
+.office-fbar {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--of-line);
+}
+.office-fbar-cell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--of-text-2);
+  text-align: center;
+}
+.office-grid-scroll {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.office-grid {
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.office-grid th {
+  position: sticky;
+  background: var(--of-bg);
+  color: var(--of-text-2);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 400;
+  min-width: 40px;
+  padding: 2px 6px;
+  border: 1px solid var(--of-line);
+}
+.office-grid thead th,
+.office-grid tr:first-child th {
+  top: 0;
+  z-index: 1;
+}
+.office-grid-corner {
+  left: 0;
+  z-index: 2;
+}
+.office-grid-row {
+  left: 0;
+}
+.office-cell {
+  min-width: 88px;
+  max-width: 280px;
+  padding: 3px 6px;
+  border: 1px solid var(--of-line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: cell;
+}
+.office-cell-sel {
+  outline: 2px solid var(--of-accent, currentColor);
+  outline-offset: -2px;
+}
+.office-cell-edit {
+  color: var(--of-text-2);
+  font-style: italic;
+}
+.office-cell-error {
+  color: #c02626;
+}
+.office-cell-input {
+  width: 100%;
+  min-width: 88px;
+  margin: -3px -6px;
+  padding: 3px 6px;
+  border: 0;
+  font: inherit;
+}
+.office-sheet-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 0 0;
+  overflow-x: auto;
+}
+.office-sheet-tab {
+  border-color: var(--of-line);
+  font-size: 13px;
+}
+.office-sheet-tab[aria-selected="true"] {
+  border-color: var(--of-accent, currentColor);
+  font-weight: 600;
+}
+.dm-office[data-format="xlsx"] .office-toolbar,
+.dm-office[data-format="xlsx"] .office-link-form {
+  display: none;
+}
