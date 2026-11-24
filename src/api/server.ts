@@ -265,7 +265,8 @@ export function createApiServer(options: ApiOptions): http.Server {
     return { event: authFailure === undefined ? 'api.request' : 'auth.failed', ...fields, ...(authFailure === undefined ? {} : { reason: authFailure as string }) };
   }
 
-  return http.createServer((request, response) => {
+  const unfinished = new Set<Promise<void>>();
+  const server = http.createServer((request, response) => {
     const requestId = randomUUID();
     const started = performance.now();
     const log: Record<string, unknown> = { requestId, method: request.method };
@@ -291,7 +292,7 @@ export function createApiServer(options: ApiOptions): http.Server {
     };
 
     const reply = { status: 200 };
-    route(request, response, log, reply)
+    const finished = route(request, response, log, reply)
       .then((body) => send(reply.status, body))
       .catch((error: unknown) => {
         const fail = (status: number, code: string, message: string, headers?: Record<string, string>) => {
@@ -308,17 +309,24 @@ export function createApiServer(options: ApiOptions): http.Server {
       .finally(() => {
         // Never log SQL text, parameters, commands or results: they are user data.
         options.logger.info('request', log);
+        unfinished.delete(finished);
       });
+    unfinished.add(finished);
   });
+  UNFINISHED.set(server, unfinished);
+  return server;
 }
+
+/** The requests of each server that are not done yet; a request whose caller has gone may still be writing its audit record. */
+const UNFINISHED = new WeakMap<http.Server, Set<Promise<void>>>();
 
 /**
  * Stops `server`: no new connections at once, and requests still running after `graceMs`
  * lose their connection, which cancels their queries (an engine process must not outlive the server).
- * Resolves once every connection is gone.
+ * Resolves once every connection is gone and every request has written its audit record.
  */
-export function stopApiServer(server: http.Server, graceMs: number): Promise<void> {
-  return new Promise((resolve) => {
+export async function stopApiServer(server: http.Server, graceMs: number): Promise<void> {
+  await new Promise<void>((resolve) => {
     const timer = setTimeout(() => server.closeAllConnections(), graceMs);
     server.close(() => {
       clearTimeout(timer);
@@ -326,4 +334,6 @@ export function stopApiServer(server: http.Server, graceMs: number): Promise<voi
     });
     server.closeIdleConnections();
   });
+  // A connection that closed early leaves its request running until the audit record is written.
+  await Promise.allSettled([...(UNFINISHED.get(server) ?? [])]);
 }

@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 
-import { createApiServer, type Database } from '../../src/api/server.ts';
+import { createApiServer, stopApiServer, type Database } from '../../src/api/server.ts';
 import { createAuditLog, verifyAuditLog } from '../../src/audit/log.ts';
 import { createKeyStore, type KeyStore } from '../../src/auth/keys.ts';
 import { EngineError, type KeyValueAdapter, type SqlAdapter } from '../../src/engines/types.ts';
@@ -182,4 +182,26 @@ describe('REST API with API keys and the audit log', () => {
     assert.ok(lines.some((line) => line.includes('the audit record could not be written')));
     await new Promise<void>((resolve) => broken.close(() => resolve()));
   });
+});
+
+test('stopping the server waits for the audit record of a request whose caller has gone', async () => {
+  let recording: (() => void) | undefined;
+  const begun = new Promise<void>((resolve) => (recording = resolve));
+  let written = false;
+  const audit = {
+    record: async () => {
+      recording?.();
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      written = true;
+    },
+  };
+  const server = createApiServer({ databases: [], logger: createLogger({ level: 'silent' }), audit });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const request = http.request({ host: '127.0.0.1', port: (server.address() as AddressInfo).port, method: 'GET', path: '/v1/databases' });
+  request.on('error', () => {});
+  request.end();
+  await begun;
+  request.destroy();
+  await stopApiServer(server, 50);
+  assert.equal(written, true);
 });
