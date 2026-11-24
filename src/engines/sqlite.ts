@@ -21,7 +21,8 @@ import { EngineError, resolveTimeout, sqlHealth, type QueryOptions, type QueryPa
 
 export const MAX_SQL_BYTES = 64 * 1024;
 export const MAX_PARAMS = 999;
-export const MAX_PARAMS_BYTES = 96 * 1024;
+// A string takes up to twice the room it took as hex, so this is more than twice the 96 KiB of before.
+export const MAX_PARAMS_BYTES = 256 * 1024;
 export const MAX_RESULT_BYTES = 32 * 1024 * 1024;
 const BUSY_TIMEOUT_MS = 5_000;
 
@@ -33,8 +34,16 @@ export interface SqliteAdapterOptions {
   readOnly?: boolean;
 }
 
-/** How many code points one char() call carries: well under SQLite's limit on function arguments. */
+/** How many code points one char() call carries: under the limit on function arguments of any SQLite. */
 const CHAR_ARGUMENTS = 100;
+/** How many char() calls are joined in one group, so that the longest parameter stays far from the limit on expression depth. */
+const CHAR_CALLS_PER_GROUP = 32;
+
+function chunks<T>(items: readonly T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let index = 0; index < items.length; index += size) out.push(items.slice(index, index + size));
+  return out;
+}
 
 /**
  * Encodes a parameter as an SQL literal. A string is written as the code points of its
@@ -53,9 +62,10 @@ export function encodeSqliteLiteral(param: QueryParam, position: number): string
     if (!param.isWellFormed()) throw new EngineError('invalid_request', `parameter ${position} is not valid Unicode`);
     if (param === '') return "''";
     const points = Array.from(param, (character) => character.codePointAt(0));
-    const calls: string[] = [];
-    for (let index = 0; index < points.length; index += CHAR_ARGUMENTS) calls.push(`char(${points.slice(index, index + CHAR_ARGUMENTS).join(',')})`);
-    return calls.join('||');
+    const calls = chunks(points, CHAR_ARGUMENTS).map((part) => `char(${part.join(',')})`);
+    return chunks(calls, CHAR_CALLS_PER_GROUP)
+      .map((group) => (group.length > 1 ? `(${group.join('||')})` : group[0]))
+      .join('||');
   }
   if (typeof param === 'object' && !Array.isArray(param) && Object.keys(param).length === 1 && typeof param.$base64 === 'string') {
     if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(param.$base64)) {

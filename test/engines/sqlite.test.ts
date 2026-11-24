@@ -75,7 +75,7 @@ test('oversized or malformed requests are rejected before the engine starts', ()
   assert.throws(() => sqliteInvocation(options, `SELECT '${'x'.repeat(MAX_SQL_BYTES)}'`, []), invalid);
   assert.throws(() => sqliteInvocation(options, 'SELECT 1', {} as unknown as QueryParam[]), invalid);
   assert.throws(() => sqliteInvocation(options, 'SELECT 1', new Array<QueryParam>(MAX_PARAMS + 1).fill(1)), invalid);
-  assert.throws(() => sqliteInvocation(options, 'SELECT ?1', ['x'.repeat(60_000)]), rejectsWith('invalid_request', /parameters are larger/));
+  assert.throws(() => sqliteInvocation(options, 'SELECT ?1', ['x'.repeat(70_000)]), rejectsWith('invalid_request', /parameters are larger/));
 });
 
 test('error output is reduced to the engine message', () => {
@@ -91,10 +91,12 @@ const sqlite = builtEngine('sqlite', 'sqlite3');
 test('a string parameter is written as code points, the same for every text encoding of a database', () => {
   assert.equal(encodeSqliteLiteral('hé🙂', 1), 'char(104,233,128578)');
   assert.equal(encodeSqliteLiteral('', 1), "''");
-  // Long text is split over several calls, each within SQLite's limit on function arguments.
+  // Long text is split over several calls, each within SQLite's limit on function arguments, joined in groups.
   const long = encodeSqliteLiteral('ab'.repeat(125), 1);
-  assert.equal(long.split('||').length, 3);
-  assert.match(long, /^(?:char\(\d+(?:,\d+){0,99}\)(?:\|\||$))+$/);
+  assert.match(long, /^\(char\((?:\d+,){99}\d+\)\|\|char\((?:\d+,){99}\d+\)\|\|char\((?:\d+,){49}\d+\)\)$/);
+  const longer = encodeSqliteLiteral('a'.repeat(3300), 1);
+  assert.equal(longer.split('||').length, 33);
+  assert.match(longer, /^\((?:char\([\d,]+\)(?:\|\|)?){32}\)\|\|char\([\d,]+\)$/);
 });
 
 describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () => {
@@ -142,9 +144,16 @@ describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () =>
 
   test('the longest string parameter that fits is within the expression depth SQLite allows', async () => {
     // Tabs encode shortest ("9,"), so they make the most char() calls for the size limit.
-    const text = '\t'.repeat(47_000) + '\u0000\n.shell id\n' + "'";
+    const text = '\t'.repeat(125_000) + '\u0000\n.shell id\n' + "'";
     const { results } = await adapter.query('SELECT ?1 = ?2 AS same, length(CAST(?1 AS BLOB)) AS n', [text, 'x']);
     assert.deepEqual(results[0]?.rows, [{ same: 0, n: text.length }]);
+    await assert.rejects(adapter.query('SELECT ?1', ['\t'.repeat(132_000)]), rejectsWith('invalid_request', /parameters are larger/));
+  });
+
+  test('ASCII text that fitted the limit as hex still fits as code points', async () => {
+    const text = 'z'.repeat(49_000);
+    const { results } = await adapter.query('SELECT length(?1) AS n, substr(?1, 48999) AS tail', [text]);
+    assert.deepEqual(results[0]?.rows, [{ n: 49_000, tail: 'zz' }]);
   });
 
   test('string parameters keep their text in a UTF-16 database, also one in WAL mode', async () => {
