@@ -258,6 +258,12 @@
   font-weight: 500;
   color: var(--of-text-2);
 }
+.office-format-filter {
+  min-height: 36px;
+  margin: 4px 0 8px;
+  padding: 4px 8px;
+  font-size: 13px;
+}
 .office-library,
 .office-history ul {
   margin: 0;

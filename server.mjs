@@ -3268,7 +3268,7 @@ const server = http.createServer(async (req, res) => {
           const payload = await readJson(req, OFFICE_LIMITS.uploadBytes * 1.4 + 1024);
           if (payload.blank === true) json(res, 201, await officeStore.blank(payload.name));
           else {
-            if (typeof payload.base64 !== "string" || !/^[A-Za-z0-9+/]*={0,2}$/.test(payload.base64)) throw new Error("DOCXのデータが不正です。");
+            if (typeof payload.base64 !== "string" || !/^[A-Za-z0-9+/]*={0,2}$/.test(payload.base64)) throw new Error("ファイルのデータが不正です。");
             json(res, 201, await officeStore.create(payload.name, Buffer.from(payload.base64, "base64")));
           }
           return;
@@ -3277,7 +3277,8 @@ const server = http.createServer(async (req, res) => {
         if (docMatch && req.method === "GET") {
           if (docMatch[2]) {
             const { meta, bytes } = await officeStore.download(docMatch[1], url.searchParams.get("revision"));
-            res.writeHead(200, { "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "content-disposition": `attachment; filename="document.docx"; filename*=UTF-8''${encodeURIComponent(meta.name)}`, "cache-control": "no-store", "x-content-type-options": "nosniff" }); res.end(bytes);
+            const OFFICE_DOWNLOAD_MIME = { docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation", pdf: "application/pdf", excel: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
+            res.writeHead(200, { "content-type": OFFICE_DOWNLOAD_MIME[meta.format] || "application/octet-stream", "content-disposition": `attachment; filename="document"; filename*=UTF-8''${encodeURIComponent(meta.name)}`, "cache-control": "no-store", "x-content-type-options": "nosniff" }); res.end(bytes);
           } else json(res, 200, await officeStore.open(docMatch[1]));
           return;
         }
