@@ -122,3 +122,23 @@ test('server engines must be local, and passwords never go in the file', () => {
     assert.throws(() => parseConfig({ databases: [entry] }, '/'), (error: unknown) => error instanceof ConfigError && message.test(error.message), JSON.stringify(entry));
   }
 });
+
+test('API key and audit log files are optional and resolved against the configuration directory', () => {
+  assert.deepEqual(parseConfig({}, '/etc/dmb').auth, undefined);
+  assert.deepEqual(parseConfig({}, '/etc/dmb').audit, undefined);
+  const config = parseConfig({ auth: { keysFile: 'data/api-keys.json' }, audit: { file: '/var/log/dmb/audit.log' } }, '/etc/dmb');
+  assert.deepEqual(config.auth, { keysFile: '/etc/dmb/data/api-keys.json' });
+  assert.deepEqual(config.audit, { file: '/var/log/dmb/audit.log' });
+  const cases: [object, RegExp][] = [
+    [{ auth: 'keys.json' }, /auth: must be an object/],
+    [{ auth: {} }, /auth\.keysFile: must be a file path/],
+    [{ auth: { keysFile: 'k', keys: ['dmb_x'] } }, /auth: unknown setting "keys"/],
+    [{ audit: { file: '' } }, /audit\.file: must be a file path/],
+    [{ audit: { file: 'a', level: 'all' } }, /audit: unknown setting "level"/],
+    // Keys do not lift the loopback restriction: there are no permissions yet.
+    [{ server: { host: '0.0.0.0' }, auth: { keysFile: 'k' } }, /server\.host: only loopback addresses/],
+  ];
+  for (const [value, message] of cases) {
+    assert.throws(() => parseConfig(value, '/'), (error: unknown) => error instanceof ConfigError && message.test(error.message), JSON.stringify(value));
+  }
+});

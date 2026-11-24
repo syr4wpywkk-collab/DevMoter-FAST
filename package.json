@@ -9,6 +9,8 @@
   },
   "scripts": {
     "start": "node src/main.ts",
+    "keys": "node src/cli/keys.ts",
+    "audit:verify": "node src/cli/audit.ts",
     "typecheck": "tsc --noEmit",
     "test": "node --test \"test/**/*.test.ts\"",
     "deps:check": "node scripts/deps/check.ts",

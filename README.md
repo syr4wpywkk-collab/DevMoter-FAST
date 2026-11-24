@@ -53,6 +53,8 @@ curl -s http://127.0.0.1:8787/v1/databases/app/query -H 'Content-Type: applicati
 
 認証がまだ無いため、ループバックアドレスでしか起動しません（ローカル検証専用）。4エンジンすべてを同じ API から操作できます（SQLite・DuckDB・PostgreSQL は `/query`、Valkey は `/command`。PostgreSQL と Valkey は起動済みのサーバーに Unix ソケットかループバックで接続します）。エンドポイント、エラー形式、SQLite アダプターの制限は [`docs/api/v1.md`](docs/api/v1.md) にあります。
 
+API キー（`npm run keys -- create <名前>`）と操作監査ログ（`npm run audit:verify`）は設定ファイルの `auth`・`audit` で有効になります。キーごとの権限はまだ無いので、キーを有効にしてもループバック限定のままです。詳細は `docs/api/v1.md`。
+
 ## エンジンのビルド
 
 4エンジンは、固定した上流コミットのソースから `build/<アーキテクチャ>/<エンジン>/` にビルドします。`engines/` には何も書き込みません。

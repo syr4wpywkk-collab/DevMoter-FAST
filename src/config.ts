@@ -7,10 +7,14 @@
 //     { "name": "analytics", "engine": "duckdb", "file": "data/analytics.duckdb", "readOnly": true },
 //     { "name": "main", "engine": "postgresql", "host": "/run/postgresql", "port": 5432, "database": "app", "user": "app", "passwordEnv": "DMB_PG_PASSWORD" },
 //     { "name": "cache", "engine": "valkey", "socketPath": "/run/valkey/valkey.sock", "db": 0 }
-//   ]
+//   ],
+//   "auth": { "keysFile": "data/api-keys.json" },
+//   "audit": { "file": "data/audit.log" }
 // }
 //
-// Relative `file` paths are resolved against the directory of the configuration file.
+// Relative file paths are resolved against the directory of the configuration file.
+// `auth` turns on API keys (see src/auth/keys.ts); `audit` turns on the audit log
+// (see src/audit/log.ts). Both are optional.
 // PostgreSQL and Valkey are servers that must already be running; they are reached
 // over a Unix socket or a loopback address only. Passwords are never written in the
 // file: `passwordEnv` names the environment variable that holds one.
@@ -64,6 +68,10 @@ export type DatabaseConfig = FileDatabaseConfig | PostgresqlDatabaseConfig | Val
 export interface Config {
   server: { host: string; port: number };
   databases: DatabaseConfig[];
+  /** API keys are required when set. */
+  auth?: { keysFile: string };
+  /** Requests and key changes are recorded when set. */
+  audit?: { file: string };
 }
 
 export class ConfigError extends Error {
@@ -82,14 +90,14 @@ function onlyKeys(value: Record<string, unknown>, allowed: readonly string[], wh
   if (unknown.length > 0) throw new ConfigError(`${where}: unknown setting ${unknown.map((key) => `"${key}"`).join(', ')}`);
 }
 
-/** The API has no authentication yet, so it may only listen on this machine. */
+/** API keys identify a caller but grant everything, so the API may only listen on this machine for now. */
 export function isLoopbackHost(host: string): boolean {
   return host === 'localhost' || host === '::1' || /^127(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}$/.test(host);
 }
 
 export function parseConfig(value: unknown, baseDir: string): Config {
   if (!isRecord(value)) throw new ConfigError('the configuration must be a JSON object');
-  onlyKeys(value, ['server', 'databases'], 'configuration');
+  onlyKeys(value, ['server', 'databases', 'auth', 'audit'], 'configuration');
 
   const server = value.server ?? {};
   if (!isRecord(server)) throw new ConfigError('server: must be an object');
@@ -97,7 +105,7 @@ export function parseConfig(value: unknown, baseDir: string): Config {
   const host = server.host ?? DEFAULT_HOST;
   const port = server.port ?? DEFAULT_PORT;
   if (typeof host !== 'string' || !isLoopbackHost(host)) {
-    throw new ConfigError('server.host: only loopback addresses (127.0.0.1, ::1, localhost) are allowed until authentication is implemented');
+    throw new ConfigError('server.host: only loopback addresses (127.0.0.1, ::1, localhost) are allowed until user authentication and permissions are implemented');
   }
   if (typeof port !== 'number' || !Number.isInteger(port) || port < 0 || port > 65_535) throw new ConfigError('server.port: must be a whole number between 0 and 65535');
 
@@ -166,7 +174,18 @@ export function parseConfig(value: unknown, baseDir: string): Config {
       throw new ConfigError(`${where}.engine: must be one of ${CONFIGURABLE_ENGINES.join(', ')}`);
     }
   }
-  return { server: { host, port }, databases };
+  const fileSetting = (section: 'auth' | 'audit', key: string): string | undefined => {
+    const settings = value[section];
+    if (settings === undefined) return undefined;
+    if (!isRecord(settings)) throw new ConfigError(`${section}: must be an object`);
+    onlyKeys(settings, [key], section);
+    const file = settings[key];
+    if (typeof file !== 'string' || file === '' || file.includes('\0')) throw new ConfigError(`${section}.${key}: must be a file path`);
+    return path.resolve(baseDir, file);
+  };
+  const keysFile = fileSetting('auth', 'keysFile');
+  const auditFile = fileSetting('audit', 'file');
+  return { server: { host, port }, databases, ...(keysFile === undefined ? {} : { auth: { keysFile } }), ...(auditFile === undefined ? {} : { audit: { file: auditFile } }) };
 }
 
 export async function loadConfig(file: string): Promise<Config> {
