@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 
-import { MAX_PARAMS, MAX_SQL_BYTES, createSqliteAdapter, encodeSqliteLiteral, sqliteErrorMessage, sqliteInvocation, sqliteTextEncoding } from '../../src/engines/sqlite.ts';
+import { MAX_PARAMS, MAX_SQL_BYTES, createSqliteAdapter, encodeSqliteLiteral, sqliteErrorMessage, sqliteInvocation } from '../../src/engines/sqlite.ts';
 import { EngineError, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine } from './helpers.ts';
 
@@ -21,11 +21,11 @@ test('parameters are encoded so that no character of a value is read as SQL', ()
   assert.equal(encodeSqliteLiteral(-0, 1), '0');
   assert.equal(encodeSqliteLiteral(1e21, 1), '1e+21');
   assert.equal(encodeSqliteLiteral('', 1), "''");
-  assert.equal(encodeSqliteLiteral("a'b", 1), "CAST(x'612762' AS TEXT)");
+  assert.equal(encodeSqliteLiteral("a'b", 1), 'char(97,39,98)');
   assert.equal(encodeSqliteLiteral({ $base64: 'AP8=' }, 1), "x'00ff'");
   assert.equal(encodeSqliteLiteral({ $base64: '' }, 1), "x''");
   for (const text of ["'); DROP TABLE t;--", 'line\n.shell id', '\u0000', 'あ🙂']) {
-    assert.match(encodeSqliteLiteral(text, 1), /^CAST\(x'[0-9a-f]+' AS TEXT\)$/);
+    assert.match(encodeSqliteLiteral(text, 1), /^char\(\d+(?:,\d+)*\)$/);
   }
 });
 
@@ -47,7 +47,7 @@ test('the shell runs in safe mode and nothing of the request is a program argume
   assert.deepEqual(secret.args, ['-safe', '-batch', '-noinit', '-bail', '-json', '/data/app.sqlite']);
   assert.equal(
     secret.input,
-    ".timeout 5000\n.explain off\n.parameter init\nINSERT INTO temp.sqlite_parameters(key,value) VALUES('?1',CAST(x'61' AS TEXT)),('?2',2);\nSELECT 'sql-secret', ?1, ?2\n",
+    ".timeout 5000\n.explain off\n.parameter init\nINSERT INTO temp.sqlite_parameters(key,value) VALUES('?1',char(97)),('?2',2);\nSELECT 'sql-secret', ?1, ?2\n",
   );
   assert.equal(sqliteInvocation({ binary: '/x/sqlite3', file: 'relative.sqlite' }, 'SELECT 1', []).args.at(-1), path.resolve('relative.sqlite'));
 });
@@ -88,31 +88,13 @@ test('error output is reduced to the engine message', () => {
 
 const sqlite = builtEngine('sqlite', 'sqlite3');
 
-test('a string parameter is written in the text encoding of the database', async () => {
-  assert.equal(encodeSqliteLiteral('hé🙂', 1), "CAST(x'68c3a9f09f9982' AS TEXT)");
-  assert.equal(encodeSqliteLiteral('hé🙂', 1, 'utf16le'), "CAST(x'6800e9003dd842de' AS TEXT)");
-  assert.equal(encodeSqliteLiteral('hé🙂', 1, 'utf16be'), "CAST(x'006800e9d83dde42' AS TEXT)");
-  assert.equal(encodeSqliteLiteral('', 1, 'utf16le'), "''");
-
-  const dir = await mkdtemp(path.join(os.tmpdir(), 'dmb-sqlite-encoding-'));
-  try {
-    const header = (code: number) => {
-      const bytes = Buffer.alloc(100);
-      bytes.write('SQLite format 3\0');
-      bytes.writeUInt32BE(code, 56);
-      return bytes;
-    };
-    for (const [code, encoding] of [[1, 'utf8'], [2, 'utf16le'], [3, 'utf16be'], [0, 'utf8']] as const) {
-      const file = path.join(dir, `db-${code}`);
-      await writeFile(file, header(code));
-      assert.equal(await sqliteTextEncoding(file), encoding);
-    }
-    await writeFile(path.join(dir, 'empty'), '');
-    assert.equal(await sqliteTextEncoding(path.join(dir, 'empty')), 'utf8');
-    assert.equal(await sqliteTextEncoding(path.join(dir, 'missing')), 'utf8');
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
+test('a string parameter is written as code points, the same for every text encoding of a database', () => {
+  assert.equal(encodeSqliteLiteral('hé🙂', 1), 'char(104,233,128578)');
+  assert.equal(encodeSqliteLiteral('', 1), "''");
+  // Long text is split over several calls, each within SQLite's limit on function arguments.
+  const long = encodeSqliteLiteral('ab'.repeat(125), 1);
+  assert.equal(long.split('||').length, 3);
+  assert.match(long, /^(?:char\(\d+(?:,\d+){0,99}\)(?:\|\||$))+$/);
 });
 
 describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () => {
@@ -158,15 +140,23 @@ describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () =>
     assert.deepEqual(results[0]?.rows, [{ crlf: '610D0A62', cr: '610D62', lf: '610A62', param: '780D0A79' }]);
   });
 
-  test('string parameters keep their text in a UTF-16 database', async () => {
-    for (const encoding of ['UTF-16le', 'UTF-16be']) {
-      const wide = createSqliteAdapter({ binary: sqlite.binary, file: path.join(dir, `${encoding}.sqlite`) });
+  test('the longest string parameter that fits is within the expression depth SQLite allows', async () => {
+    // Tabs encode shortest ("9,"), so they make the most char() calls for the size limit.
+    const text = '\t'.repeat(47_000) + '\u0000\n.shell id\n' + "'";
+    const { results } = await adapter.query('SELECT ?1 = ?2 AS same, length(CAST(?1 AS BLOB)) AS n', [text, 'x']);
+    assert.deepEqual(results[0]?.rows, [{ same: 0, n: text.length }]);
+  });
+
+  test('string parameters keep their text in a UTF-16 database, also one in WAL mode', async () => {
+    for (const [encoding, journal] of [['UTF-16le', 'DELETE'], ['UTF-16be', 'DELETE'], ['UTF-16le', 'WAL']]) {
+      const wide = createSqliteAdapter({ binary: sqlite.binary, file: path.join(dir, `${encoding}-${journal}.sqlite`) });
       try {
-        await wide.query(`PRAGMA encoding = '${encoding}'; CREATE TABLE w(s TEXT)`, []);
-        const { results } = await wide.query('INSERT INTO w VALUES (?1), (?2); SELECT s, length(s) AS n FROM w ORDER BY rowid', ['hé🙂', 'abc']);
-        assert.deepEqual(results[0]?.rows, [{ s: 'hé🙂', n: 3 }, { s: 'abc', n: 3 }], encoding);
-        const { results: found } = await wide.query('SELECT count(*) AS c FROM w WHERE s = ?1', ['hé🙂']);
-        assert.deepEqual(found[0]?.rows, [{ c: 1 }], encoding);
+        await wide.query(`PRAGMA encoding = '${encoding}'; PRAGMA journal_mode = ${journal}; CREATE TABLE w(s TEXT)`, []);
+        const text = 'hé🙂'.repeat(120);
+        const { results } = await wide.query('INSERT INTO w VALUES (?1), (?2); SELECT s, length(s) AS n FROM w ORDER BY rowid', [text, 'abc']);
+        assert.deepEqual(results[0]?.rows, [{ s: text, n: 360 }, { s: 'abc', n: 3 }], `${encoding} ${journal}`);
+        const { results: found } = await wide.query('SELECT count(*) AS c FROM w WHERE s = ?1', [text]);
+        assert.deepEqual(found[0]?.rows, [{ c: 1 }], `${encoding} ${journal}`);
       } finally {
         await wide.close();
       }

@@ -11,7 +11,7 @@
 // The SQL text and the parameters reach the shell on its standard input, never as program
 // arguments: the arguments of a process are visible to every user of the machine.
 
-import { mkdtemp, open, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -33,31 +33,16 @@ export interface SqliteAdapterOptions {
   readOnly?: boolean;
 }
 
-/** The encoding a database stores its text in; it is fixed when the database is created. */
-export type SqliteTextEncoding = 'utf8' | 'utf16le' | 'utf16be';
-
-/** Reads the text encoding from the database file's header. A file that is missing or still empty will be UTF-8. */
-export async function sqliteTextEncoding(file: string): Promise<SqliteTextEncoding> {
-  try {
-    const handle = await open(file, 'r');
-    try {
-      const { bytesRead, buffer } = await handle.read(Buffer.alloc(4), 0, 4, 56);
-      const code = bytesRead === 4 ? buffer.readUInt32BE(0) : 1;
-      return code === 2 ? 'utf16le' : code === 3 ? 'utf16be' : 'utf8';
-    } finally {
-      await handle.close();
-    }
-  } catch {
-    return 'utf8';
-  }
-}
+/** How many code points one char() call carries: well under SQLite's limit on function arguments. */
+const CHAR_ARGUMENTS = 100;
 
 /**
- * Encodes a parameter as an SQL literal. Strings are written as hex, so no
- * character of a parameter value is ever interpreted as SQL. SQLite reads the
- * bytes of that hex in the database's own text encoding, so they are written in it.
+ * Encodes a parameter as an SQL literal. A string is written as the code points of its
+ * characters, so no character of a value is ever interpreted as SQL, and the text is the
+ * same whatever encoding the database stores text in (the bytes of a hex literal would be
+ * read in that encoding).
  */
-export function encodeSqliteLiteral(param: QueryParam, position: number, encoding: SqliteTextEncoding = 'utf8'): string {
+export function encodeSqliteLiteral(param: QueryParam, position: number): string {
   if (param === null) return 'NULL';
   if (typeof param === 'boolean') return param ? '1' : '0';
   if (typeof param === 'number') {
@@ -67,9 +52,10 @@ export function encodeSqliteLiteral(param: QueryParam, position: number, encodin
   if (typeof param === 'string') {
     if (!param.isWellFormed()) throw new EngineError('invalid_request', `parameter ${position} is not valid Unicode`);
     if (param === '') return "''";
-    const bytes = Buffer.from(param, encoding === 'utf8' ? 'utf8' : 'utf16le');
-    if (encoding === 'utf16be') bytes.swap16();
-    return `CAST(x'${bytes.toString('hex')}' AS TEXT)`;
+    const points = Array.from(param, (character) => character.codePointAt(0));
+    const calls: string[] = [];
+    for (let index = 0; index < points.length; index += CHAR_ARGUMENTS) calls.push(`char(${points.slice(index, index + CHAR_ARGUMENTS).join(',')})`);
+    return calls.join('||');
   }
   if (typeof param === 'object' && !Array.isArray(param) && Object.keys(param).length === 1 && typeof param.$base64 === 'string') {
     if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(param.$base64)) {
@@ -88,7 +74,7 @@ export interface SqliteInvocation {
 }
 
 /** Builds the sqlite3 arguments and input for one request. */
-export function sqliteInvocation(options: SqliteAdapterOptions, sql: string, params: readonly QueryParam[], encoding: SqliteTextEncoding = 'utf8'): SqliteInvocation {
+export function sqliteInvocation(options: SqliteAdapterOptions, sql: string, params: readonly QueryParam[]): SqliteInvocation {
   if (typeof sql !== 'string' || sql.trim() === '') throw new EngineError('invalid_request', 'sql must be a non-empty string');
   if (sql.includes('\0')) throw new EngineError('invalid_request', 'sql must not contain a NUL character');
   // A lone surrogate has no UTF-8 form; it would reach the engine as U+FFFD, other text than was sent.
@@ -109,7 +95,7 @@ export function sqliteInvocation(options: SqliteAdapterOptions, sql: string, par
   // ".explain off": without it the shell prints EXPLAIN output as formatted text, not JSON.
   const lines = [`.timeout ${BUSY_TIMEOUT_MS}`, '.explain off'];
   if (params.length > 0) {
-    const values = params.map((param, index) => `('?${index + 1}',${encodeSqliteLiteral(param, index + 1, encoding)})`).join(',');
+    const values = params.map((param, index) => `('?${index + 1}',${encodeSqliteLiteral(param, index + 1)})`).join(',');
     if (values.length > MAX_PARAMS_BYTES) throw new EngineError('invalid_request', `the parameters are larger than ${MAX_PARAMS_BYTES} bytes once encoded`);
     lines.push('.parameter init', `INSERT INTO temp.sqlite_parameters(key,value) VALUES${values};`);
   }
@@ -141,8 +127,7 @@ export function createSqliteAdapter(options: SqliteAdapterOptions): SqlAdapter {
 
     async query(sql: string, params: readonly QueryParam[], queryOptions: QueryOptions = {}): Promise<QueryResult> {
       if (closed) throw new EngineError('engine_unavailable', 'the database is closed');
-      const encoding = Array.isArray(params) && params.some((param) => typeof param === 'string') ? await sqliteTextEncoding(options.file) : 'utf8';
-      const { args, input } = sqliteInvocation(options, sql, params, encoding);
+      const { args, input } = sqliteInvocation(options, sql, params);
       const timeoutMs = resolveTimeout(queryOptions.timeoutMs);
       // An empty private directory is the working directory and HOME, so the shell finds no init file and no relative path resolves.
       scratch ??= mkdtemp(path.join(os.tmpdir(), 'dmb-sqlite-'));
