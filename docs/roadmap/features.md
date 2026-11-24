@@ -14,7 +14,7 @@
 
 | # | 機能 | 初期 | 状態 | 実装・検証 |
 |---|---|---|---|---|
-| 1 | 上流ソースのバージョン・コミット固定 | ● | 未着手 |  |
+| 1 | 上流ソースのバージョン・コミット固定 | ● | 実装済み | `engines/manifest.json`、`scripts/upstream/verify.ts`、`engines/UPSTREAM.md` |
 | 2 | エンジン別ビルドスクリプト | ● | 未着手 |  |
 | 3 | ARM64ビルド対応 | ● | 未着手 |  |
 | 4 | x86-64ビルド対応 |  | 未着手 |  |
@@ -23,7 +23,7 @@
 | 7 | CIによる自動テスト | ● | 実装済み | `.github/workflows/ci.yml`（x86-64 / ARM64） |
 | 8 | エンジン別ヘルスチェック | ● | 未着手 |  |
 | 9 | 構造化ログ基盤 | ● | 実装済み | `src/logging/`、`test/logging/` |
-| 10 | コード行数・言語別統計の自動生成 | ● | 未着手 |  |
+| 10 | コード行数・言語別統計の自動生成 | ● | 実装済み | `scripts/stats/code-stats.ts`、[`docs/stats/code-stats.md`](../stats/code-stats.md) |
 
 ## Phase 2：統合データベースAPI
 

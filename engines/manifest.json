@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "engines": [
+    {
+      "name": "postgresql",
+      "directory": "engines/postgresql",
+      "repository": "https://github.com/postgres/postgres",
+      "branch": "master",
+      "commit": "19db7e5b36e33c80a032e0e811176ad3b115b0ca",
+      "commitDate": "2026-11-23T12:17:45Z",
+      "tree": "04acaad233683961f5432a4d8c3bfe87d2791ef7",
+      "upstreamVersion": "20devel",
+      "licenseFile": "COPYRIGHT"
+    },
+    {
+      "name": "sqlite",
+      "directory": "engines/sqlite",
+      "repository": "https://github.com/sqlite/sqlite",
+      "branch": "master",
+      "commit": "ebe179657df19e3b1c88f129cf6237400066c821",
+      "commitDate": "2026-11-23T16:34:55Z",
+      "tree": "2b3abd555493070afa07b98c66cab065c3422fb8",
+      "upstreamVersion": "3.55.0",
+      "licenseFile": "LICENSE.md"
+    },
+    {
+      "name": "duckdb",
+      "directory": "engines/duckdb",
+      "repository": "https://github.com/duckdb/duckdb",
+      "branch": "main",
+      "commit": "1f21520ea1e43348df41cd69ce6811a942415972",
+      "commitDate": "2026-11-23T15:15:15Z",
+      "tree": "17462981ad211b68c0344b11da2610c66327348c",
+      "upstreamVersion": "main (unreleased)",
+      "licenseFile": "LICENSE"
+    },
+    {
+      "name": "valkey",
+      "directory": "engines/valkey",
+      "repository": "https://github.com/valkey-io/valkey",
+      "branch": "unstable",
+      "commit": "28ef86b44342797ba1512b623b279287eaf979ba",
+      "commitDate": "2026-11-23T02:33:46Z",
+      "tree": "8529856daee8252a68478e1e2534bedf30c7efb6",
+      "upstreamVersion": "unstable (255.255.255)",
+      "licenseFile": "COPYING"
+    }
+  ]
+}

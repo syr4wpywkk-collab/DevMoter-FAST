@@ -26,7 +26,10 @@ npm ci              # 依存パッケージの導入
 npm run typecheck   # 型検査
 npm test            # 自動テスト
 npm run deps:check  # 依存関係検査（バージョン固定・取得元・ライセンス・既知の脆弱性）
-npm run check       # 上の3つをまとめて実行
+npm run upstream:verify  # engines/ が固定した上流コミットと一致するか（--online で上流にも照会）
+npm run stats:update     # コード行数・言語別統計を再生成（docs/stats/）
+npm run stats:check      # 統計が最新かどうか
+npm run check       # 型検査・テスト・依存関係検査・上流照合・統計確認をまとめて実行
 ```
 
 CI（GitHub Actions）は Pull Request と main への push ごとに、x86-64 と ARM64 の両方で同じ検査を実行します。
@@ -38,6 +41,14 @@ CI（GitHub Actions）は Pull Request と main への push ごとに、x86-64 �
 ```json
 {"time":"2026-11-24T00:00:00.000Z","level":"info","msg":"server started","service":"devmoter-base","port":8765}
 ```
+
+## 上流ソースの固定
+
+4エンジンの上流コミットは [`engines/manifest.json`](engines/manifest.json) に固定しています。`npm run upstream:verify` は各ディレクトリの git ツリー ID が固定値と一致することを確認するので、`engines/` 内を1バイトでも変更すると失敗します。経緯と更新手順は [`engines/UPSTREAM.md`](engines/UPSTREAM.md) にあります。
+
+## コード行数・言語別統計
+
+[`docs/stats/code-stats.md`](docs/stats/code-stats.md) に、独自コード・テスト・ドキュメント・設定・取り込んだエンジンを分けた行数と言語別の内訳があります。ファイルを追加・変更したら `npm run stats:update` で再生成してコミットしてください（`npm run check` が古い統計を検出します）。エンジンの行数は固定したツリー ID ごとに記録するので、固定先を変えない限り数え直しません。
 
 ## 依存関係検査
 
