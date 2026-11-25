@@ -29,9 +29,9 @@ fn proper(s: &str) -> String {
     for c in s.chars() {
         if c.is_alphabetic() {
             if word_start {
-                out.extend(c.to_uppercase());
+                out.push(super::upper_char(c));
             } else {
-                out.extend(c.to_lowercase());
+                out.push(super::lower_char(c));
             }
             word_start = false;
         } else {
