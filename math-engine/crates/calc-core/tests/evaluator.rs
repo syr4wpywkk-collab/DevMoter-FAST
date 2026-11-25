@@ -652,10 +652,16 @@ fn range_scalar_use_gives_array() {
 }
 
 #[test]
-fn range_in_arithmetic_is_value_error() {
+fn range_in_arithmetic_applies_element_wise() {
     let mut e = engine();
     set_num(&mut e, "A1", 1.0);
-    assert_eq!(err(&eval(&mut e, "=A1:A2+1")), CalcError::Value);
+    match eval(&mut e, "=A1:A2+1") {
+        Value::Array(a) => assert_eq!(
+            a.iter().cloned().collect::<Vec<_>>(),
+            vec![Value::Number(2.0), Value::Number(1.0)]
+        ),
+        other => panic!("expected array, got {other:?}"),
+    }
 }
 
 #[test]
