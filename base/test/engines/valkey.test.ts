@@ -182,6 +182,9 @@ test('the BLOCK option of XREAD and XREADGROUP is found before STREAMS only', ()
   assert.equal(takesBlockOption(['XREADGROUP', 'GROUP', 'g', 'c', 'COUNT', '1', 'block', '5', 'STREAMS', 's', '>']), true);
   assert.equal(takesBlockOption(['XREAD', 'STREAMS', 'block', '0']), false);
   assert.equal(takesBlockOption(['XREAD', 'COUNT', '1', 'STREAMS', 's', '0']), false);
+  assert.equal(takesBlockOption(['XREADGROUP', 'GROUP', 'streams', 'c', 'BLOCK', '0', 'STREAMS', 's', '>']), true);
+  assert.equal(takesBlockOption(['XREADGROUP', 'GROUP', 'g', 'streams', 'BLOCK', '0', 'STREAMS', 's', '>']), true);
+  assert.equal(takesBlockOption(['XREADGROUP', 'GROUP', 'block', 'block', 'NOACK', 'STREAMS', 's', '>']), false);
 });
 
 test('a command the server does not answer is stopped at the time limit or when cancelled', async () => {

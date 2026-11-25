@@ -90,12 +90,16 @@ export function refusal(name: string, subcommand: string | undefined, info: Comm
   return undefined;
 }
 
+/** Options of XREAD and XREADGROUP that take values, and how many: a value is never read as an option. */
+const STREAM_READ_VALUES: Record<string, number> = { group: 2, count: 1 };
+
 /** Whether XREAD or XREADGROUP has the BLOCK option: an option before STREAMS, after which only keys and IDs follow. */
 export function takesBlockOption(encoded: readonly (string | Buffer)[]): boolean {
-  for (const arg of encoded.slice(1)) {
-    const word = Buffer.from(arg).toString('latin1').split('\0', 1)[0]?.toLowerCase();
+  for (let index = 1; index < encoded.length; index += 1) {
+    const word = Buffer.from(encoded[index] as string | Buffer).toString('latin1').split('\0', 1)[0]?.toLowerCase() ?? '';
     if (word === 'streams') return false;
     if (word === 'block') return true;
+    index += STREAM_READ_VALUES[word] ?? 0;
   }
   return false;
 }
