@@ -213,7 +213,6 @@ impl CalcEngine {
         address: &str,
         input: CellInput,
     ) -> Result<(), EngineError> {
-        self.volatile_stale = true;
         let sheet_id = self
             .workbook
             .sheet_id(sheet)
@@ -267,12 +266,12 @@ impl CalcEngine {
             }
         }
         self.mark_dirty(id);
+        self.volatile_stale = true;
         Ok(())
     }
 
     /// Remove a cell's contents (back to blank), marking dependents dirty.
     pub fn clear_cell(&mut self, sheet: &str, address: &str) -> Result<(), EngineError> {
-        self.volatile_stale = true;
         let sheet_id = self
             .workbook
             .sheet_id(sheet)
@@ -303,6 +302,7 @@ impl CalcEngine {
             self.mark_dependents_dirty(c);
         }
         self.mark_dependents_dirty(id);
+        self.volatile_stale = true;
         Ok(())
     }
 

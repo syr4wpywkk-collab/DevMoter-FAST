@@ -200,6 +200,18 @@ fn volatile_value_is_stable_across_reads() {
 }
 
 #[test]
+fn rejected_edit_keeps_volatile_value() {
+    let mut e = engine();
+    set(&mut e, "B1", "=RAND()");
+    let first = e.get_value("Sheet1", "B1").unwrap();
+    assert!(
+        e.set_cell("Sheet1", "C1", CellInput::Formula("1+".into()))
+            .is_err()
+    );
+    assert_eq!(e.get_value("Sheet1", "B1").unwrap(), first);
+}
+
+#[test]
 fn volatile_cell_removed_when_formula_retires() {
     let mut e = engine();
     set(&mut e, "B1", "=RAND()");
