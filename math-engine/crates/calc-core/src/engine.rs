@@ -379,12 +379,26 @@ impl CalcEngine {
     }
 
     /// Recalculate before a read: dirty cells, plus volatile cells only
-    /// if an input changed since they last ran.
+    /// if an input changed since they last ran. Volatile cells without a
+    /// random/clock call (`INDIRECT`, `OFFSET`) are deterministic, so they
+    /// rerun on every read to pick up targets evaluated after them or
+    /// sheets added since.
     fn recalculate_pending(&mut self) -> Result<RecalcReport, EngineError> {
         let mut report = RecalcReport::default();
         if std::mem::take(&mut self.volatile_stale) {
             self.mark_volatile_dirty();
+        } else {
+            let dynamic: Vec<CellId> = self
+                .volatile
+                .iter()
+                .filter(|id| self.is_dynamic(id))
+                .copied()
+                .collect();
+            self.dirty.extend(dynamic);
         }
+        // A dynamic reference can read a formula evaluated after it in the
+        // same pass (no static edge orders them): rerun those once more.
+        let mut reran_dynamic = false;
         for _ in 0..MAX_RECALC_PASSES {
             if self.dirty.is_empty() {
                 return Ok(report);
@@ -401,10 +415,17 @@ impl CalcEngine {
             // Topological order over the remaining dirty cells (DFS post-order
             // on dependency edges restricted to the dirty set).
             let order = self.topo_order();
+            let mut early_dynamic = Vec::new();
+            let mut evaluated_any = false;
 
             for id in order {
                 if !self.dirty.contains(&id) {
                     continue;
+                }
+                if self.is_dynamic(&id) {
+                    early_dynamic.push(id);
+                } else if !early_dynamic.is_empty() {
+                    evaluated_any = true;
                 }
                 let expr = self.parsed[&id].clone();
                 // Release the old spill *before* evaluating so the
@@ -412,6 +433,10 @@ impl CalcEngine {
                 // `=SUM(C2:D3)` replacing a spiller must not read its
                 // stale spilled values).
                 let old = self.release_spill(id);
+                let before = self
+                    .volatile
+                    .contains(&id)
+                    .then(|| self.values.get(&id).cloned());
                 let (value, steps) = {
                     let mut ctx = self.make_ctx(id);
                     let v = ctx.eval(&expr)?;
@@ -424,11 +449,31 @@ impl CalcEngine {
                 for c in self.apply_result(id, value, old) {
                     self.mark_dependents_dirty(c);
                 }
+                // A rerun volatile cell's dependents were not dirtied up
+                // front: re-dirty them when its value changed.
+                if before.is_some_and(|b| b.as_ref() != self.values.get(&id)) {
+                    self.mark_dependents_dirty(id);
+                }
                 self.dirty.remove(&id);
                 report.evaluated.push(id);
             }
+            if evaluated_any && !reran_dynamic {
+                reran_dynamic = true;
+                self.dirty.extend(early_dynamic);
+            }
         }
         Ok(report)
+    }
+
+    /// A volatile formula without a random/clock call (`INDIRECT`,
+    /// `OFFSET`): deterministic, but its targets are unknown statically.
+    fn is_dynamic(&self, id: &CellId) -> bool {
+        self.volatile.contains(id)
+            && self.parsed.get(id).is_some_and(|e| {
+                !expr_calls(e, &|n| {
+                    NONDETERMINISTIC.iter().any(|f| f.eq_ignore_ascii_case(n))
+                })
+            })
     }
 
     /// Store a formula result for `id`, handling spill bookkeeping.
@@ -708,24 +753,28 @@ impl CalcEngine {
     }
 }
 
+/// Volatile functions whose result changes without any input change.
+const NONDETERMINISTIC: [&str; 5] = ["RAND", "RANDBETWEEN", "RANDARRAY", "NOW", "TODAY"];
+
 /// Does `expr` contain a call the registry marks volatile?
 fn expr_is_volatile(expr: &Expr, registry: &dyn FunctionRegistry) -> bool {
+    expr_calls(expr, &|name| registry.is_volatile(name))
+}
+
+/// Does `expr` contain a call to a function matching `pred`?
+fn expr_calls(expr: &Expr, pred: &dyn Fn(&str) -> bool) -> bool {
     match expr {
         Expr::Literal(_)
         | Expr::Missing
         | Expr::Name(_)
         | Expr::CellRef { .. }
         | Expr::RangeRef { .. } => false,
-        Expr::Unary { operand, .. } | Expr::Percent(operand) => expr_is_volatile(operand, registry),
-        Expr::Binary { left, right, .. } => {
-            expr_is_volatile(left, registry) || expr_is_volatile(right, registry)
-        }
-        Expr::Call { name, args } => {
-            registry.is_volatile(name) || args.iter().any(|a| expr_is_volatile(a, registry))
-        }
-        Expr::ArrayLiteral(rows) => rows.iter().flatten().any(|a| expr_is_volatile(a, registry)),
+        Expr::Unary { operand, .. } | Expr::Percent(operand) => expr_calls(operand, pred),
+        Expr::Binary { left, right, .. } => expr_calls(left, pred) || expr_calls(right, pred),
+        Expr::Call { name, args } => pred(name) || args.iter().any(|a| expr_calls(a, pred)),
+        Expr::ArrayLiteral(rows) => rows.iter().flatten().any(|a| expr_calls(a, pred)),
         Expr::Invoke { callee, args } => {
-            expr_is_volatile(callee, registry) || args.iter().any(|a| expr_is_volatile(a, registry))
+            expr_calls(callee, pred) || args.iter().any(|a| expr_calls(a, pred))
         }
     }
 }

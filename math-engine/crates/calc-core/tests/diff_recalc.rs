@@ -212,6 +212,15 @@ fn rejected_edit_keeps_volatile_value() {
 }
 
 #[test]
+fn dynamic_reference_rereads_after_sheet_added() {
+    let mut e = engine();
+    set(&mut e, "A1", "=ISERROR(INDIRECT(\"Data!B1\"))");
+    assert_eq!(e.get_value("Sheet1", "A1").unwrap(), Value::Boolean(true));
+    e.add_sheet("Data").unwrap();
+    assert_eq!(e.get_value("Sheet1", "A1").unwrap(), Value::Boolean(false));
+}
+
+#[test]
 fn volatile_cell_removed_when_formula_retires() {
     let mut e = engine();
     set(&mut e, "B1", "=RAND()");
@@ -319,4 +328,15 @@ fn partial_cycle_detected_on_differential_recalc() {
     let r = e.recalculate().unwrap();
     assert_eq!(r.cycle_cells.len(), 2);
     assert_eq!(evaluated_addrs(&r), HashSet::new());
+}
+
+#[test]
+fn dynamic_reference_reads_target_evaluated_later() {
+    let mut e = engine();
+    set(&mut e, "B1", "=1");
+    set(&mut e, "B2", "=B1*2");
+    set(&mut e, "A1", "=INDIRECT(\"B2\")+0");
+    assert_eq!(e.get_value("Sheet1", "A1").unwrap(), Value::Number(2.0));
+    set(&mut e, "B1", "=5");
+    assert_eq!(e.get_value("Sheet1", "A1").unwrap(), Value::Number(10.0));
 }
