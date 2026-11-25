@@ -23,7 +23,7 @@ use crate::cell::{CellId, CellRef, RangeRef, RefTarget, parse_sheet_qualified_re
 use crate::error::CalcError;
 use crate::lambda::LambdaValue;
 use crate::reference::{MAX_REF_TEXT_LEN, RefValue};
-use crate::value::Value;
+use crate::value::{Value, round_15};
 use crate::workbook::{DateSystem, Workbook};
 
 /// Evaluation step budget per recalculation (plan §10.4: 評価ステップ100万).
@@ -738,7 +738,10 @@ fn type_rank(v: &Value) -> u8 {
 fn compare_values(l: &Value, r: &Value) -> std::cmp::Ordering {
     use std::cmp::Ordering;
     match (l, r) {
-        (Value::Number(a), Value::Number(b)) => a.partial_cmp(b).unwrap_or(Ordering::Equal),
+        // Excel compares numbers at the 15 digits it keeps: `0.1+0.2=0.3` is TRUE.
+        (Value::Number(a), Value::Number(b)) => round_15(*a)
+            .partial_cmp(&round_15(*b))
+            .unwrap_or(Ordering::Equal),
         (Value::Text(a), Value::Text(b)) => a.to_ascii_lowercase().cmp(&b.to_ascii_lowercase()),
         (Value::Boolean(a), Value::Boolean(b)) => a.cmp(b),
         (Value::Blank, Value::Blank) => Ordering::Equal,
