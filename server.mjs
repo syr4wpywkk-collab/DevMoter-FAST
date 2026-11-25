@@ -663,7 +663,9 @@ async function readProjectRegistry() {
     // Bootstrap the registry below.
   }
 
-  const candidates = [process.env.CODEX_CWD, process.cwd()]
+  // Seed from the configured workspace; DevMoter's own install dir only when none is set.
+  const configured = [process.env.OPENCODE_DIRECTORY, process.env.CODEX_CWD].filter(Boolean);
+  const candidates = (configured.length ? configured : [process.cwd()])
     .filter(Boolean)
     .map(value => resolve(String(value)))
     .filter(value => value !== resolve(HOME_DIR));
