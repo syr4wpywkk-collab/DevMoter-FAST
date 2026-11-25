@@ -210,12 +210,16 @@ export function createOfficeStore({ rootDir }) {
         throw fail("文書を読み込めません。");
       return readHandle(handle, OFFICE_LIMITS.uploadBytes);
     }).catch((error) => {
+      if (error?.code === "ENOENT") throw fail("文書が見つかりません。", 404);
       if (error?.code === "ELOOP" || error?.code === "EFBIG") throw fail("文書を読み込めません。");
       throw error;
     });
   const metadata = async (id) => {
     const target = dir(id);
-    const info = await lstat(target);
+    const info = await lstat(target).catch((error) => {
+      if (error?.code === "ENOENT") throw fail("文書が見つかりません。", 404);
+      throw error;
+    });
     if (
       !info.isDirectory() ||
       info.isSymbolicLink() ||
