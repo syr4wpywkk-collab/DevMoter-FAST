@@ -39,7 +39,7 @@ DevMoter Base は DevMoter FAST リポジトリの `base/` にあります。CI�
 `src/logging/` のロガーは1行1 JSON で出力し、パスワード・トークン・API キー・接続 URL 内の認証情報を自動で伏せます。出力レベルは環境変数 `DEVMOTER_BASE_LOG_LEVEL`（`trace` `debug` `info` `warn` `error` `fatal` `silent`、既定は `info`）で変更します。
 
 ```json
-{"time":"2026-11-24T00:00:00.000Z","level":"info","msg":"server started","service":"devmoter-base","port":8765}
+{"time":"2026-11-24T00:00:00.000Z","level":"info","msg":"listening","service":"devmoter-base","host":"127.0.0.1","port":8787,"databases":["app","app-readonly","analytics"],"enginesDir":"/path/to/base/build/x86_64","apiKeys":true,"auditLog":true}
 ```
 
 ## 統合 REST API
@@ -47,13 +47,14 @@ DevMoter Base は DevMoter FAST リポジトリの `base/` にあります。CI�
 ```sh
 npm run build:engines -- sqlite
 cp devmoter-base.config.example.json devmoter-base.config.json && mkdir -p data
-npm start
-curl -s http://127.0.0.1:8787/v1/databases/app/query -H 'Content-Type: application/json' -d '{"sql": "SELECT sqlite_version() AS v"}'
+KEY=$(npm run -s keys -- create local | tail -n 1)   # サンプル設定は API キー認証が有効。キーはこの1回だけ表示される
+npm start &
+curl -s http://127.0.0.1:8787/v1/databases/app/query -H "Authorization: Bearer $KEY" -H 'Content-Type: application/json' -d '{"sql": "SELECT sqlite_version() AS v"}'
 ```
 
-認証がまだ無いため、ループバックアドレスでしか起動しません（ローカル検証専用）。4エンジンすべてを同じ API から操作できます（SQLite・DuckDB・PostgreSQL は `/query`、Valkey は `/command`。PostgreSQL と Valkey は起動済みのサーバーに Unix ソケットかループバックで接続します）。エンドポイント、エラー形式、SQLite アダプターの制限は [`docs/api/v1.md`](docs/api/v1.md) にあります。
+`Authorization` ヘッダーが無い要求は `401 unauthorized` になります（`/v1/health` を除く）。キーごとの権限がまだ無いため、ループバックアドレスでしか起動しません（ローカル検証専用）。4エンジンすべてを同じ API から操作できます（SQLite・DuckDB・PostgreSQL は `/query`、Valkey は `/command`。PostgreSQL と Valkey は起動済みのサーバーに Unix ソケットかループバックで接続します）。エンドポイント、エラー形式、SQLite アダプターの制限は [`docs/api/v1.md`](docs/api/v1.md) にあります。
 
-API キー（`npm run keys -- create <名前>`）と操作監査ログ（`npm run audit:verify`）は設定ファイルの `auth`・`audit` で有効になります。キーごとの権限はまだ無いので、キーを有効にしてもループバック限定のままです。詳細は `docs/api/v1.md`。
+API キー（`npm run keys -- create <名前>`）と操作監査ログ（`npm run audit:verify`）は設定ファイルの `auth`・`audit` で有効になります（サンプル設定ではどちらも有効）。`auth` を設定から外すとキー無しで呼べます。詳細は `docs/api/v1.md`。
 
 ## エンジンのビルド
 
