@@ -36,11 +36,9 @@ export class HostAgentRuntime {
   constructor() {
     this.connectEvents();
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && !this.deviceBlocked) void this.refresh().catch(() => {});
+      if (document.visibilityState === "visible") this.resume();
     });
-    window.addEventListener("pageshow", () => {
-      if (!this.deviceBlocked) void this.refresh().catch(() => {});
-    });
+    window.addEventListener("pageshow", () => this.resume());
     window.addEventListener("devmoter:device-trust-changed", event => {
       if ((event as CustomEvent<{ trusted?: boolean }>).detail?.trusted !== true) return;
       this.deviceBlocked = false;
@@ -121,6 +119,16 @@ export class HostAgentRuntime {
       })
       .finally(() => { this.refreshInFlight = null; });
     return this.refreshInFlight;
+  }
+
+  // One request per return to the tab: another tab may have registered this device.
+  private resume() {
+    const wasBlocked = this.deviceBlocked;
+    void this.refresh().then(() => {
+      if (!wasBlocked) return;
+      this.deviceBlocked = false;
+      this.connectEvents();
+    }).catch(() => {});
   }
 
   private pauseForDevice() {
