@@ -17,7 +17,7 @@ pub fn scalar_eq(l: &Value, r: &Value) -> bool {
     use Value::*;
     match (l, r) {
         // Same 15-digit equality as the `=` operator.
-        (Number(a), Number(b)) => round_15(*a) == round_15(*b),
+        (Number(a), Number(b)) => eq_15(*a, *b),
         (Text(a), Text(b)) => a.eq_ignore_ascii_case(b),
         (Boolean(a), Boolean(b)) => a == b,
         (Blank, Blank) => true,
@@ -26,6 +26,12 @@ pub fn scalar_eq(l: &Value, r: &Value) -> bool {
         (Blank, Text(b)) | (Text(b), Blank) => b.is_empty(),
         _ => false,
     }
+}
+
+/// 15-digit equality; values further apart than one unit in the 15th
+/// digit skip the (string-based) rounding, keeping `UNIQUE` fast.
+fn eq_15(a: f64, b: f64) -> bool {
+    a == b || ((a - b).abs() <= 1e-13 * a.abs().max(b.abs()) && round_15(a) == round_15(b))
 }
 
 /// Type rank for SORT's key ordering (v2 `docs/functions/SORT.md`):
