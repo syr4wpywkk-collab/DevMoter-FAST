@@ -1,0 +1,2983 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {},
+  "cases": [
+    {
+      "id": "I11-BESSELI-001",
+      "formula": "=BESSELI(1.5,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.9816664286,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Spec doc example value 1.646723 is wrong; true I_1(1.5)=0.9816664286."
+    },
+    {
+      "id": "I11-BESSELI-002",
+      "formula": "=BESSELI(0,0)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELI-003",
+      "formula": "=BESSELI(2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 2.2795853023,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELI-004",
+      "formula": "=BESSELI(1.5,1.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.9816664286,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "n truncated toward zero."
+    },
+    {
+      "id": "I11-BESSELI-005",
+      "formula": "=BESSELI(1.5,-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELI-006",
+      "formula": "=BESSELI(-2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 2.2795853023,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELI-007",
+      "formula": "=BESSELI(-1.5,1)",
+      "inputs": {},
+      "expected": {
+        "number": -0.9816664286,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "I_n(-x)=(-1)^n I_n(x) parity, specOpen in spec.",
+      "specOpen": true,
+      "specOpenReason": "Excel parity for negative x with odd n is unconfirmed in the spec doc."
+    },
+    {
+      "id": "I11-BESSELI-008",
+      "formula": "=BESSELI(2,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6889484477,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELI-009",
+      "formula": "=BESSELI(\"x\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELI-010",
+      "formula": "=BESSELI(A1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Blank x -> 0.",
+      "specOpen": true,
+      "specOpenReason": "Blank x -> 0 coercion is marked confirm in the spec."
+    },
+    {
+      "id": "I11-BESSELJ-001",
+      "formula": "=BESSELJ(1.9,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.3299258287,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Spec doc value (Excel's low-precision result); true J_2(1.9)=0.3299257277."
+    },
+    {
+      "id": "I11-BESSELJ-002",
+      "formula": "=BESSELJ(0,0)",
+      "inputs": {},
+      "expected": {
+        "number": 1.0,
+        "tolerance": 1e-08
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "J_0(0)=1 within fit accuracy (~3e-9)."
+    },
+    {
+      "id": "I11-BESSELJ-003",
+      "formula": "=BESSELJ(5,0)",
+      "inputs": {},
+      "expected": {
+        "number": -0.1775967713,
+        "tolerance": 1e-08
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELJ-004",
+      "formula": "=BESSELJ(1.9,2.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.3299258287,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "n truncation."
+    },
+    {
+      "id": "I11-BESSELJ-005",
+      "formula": "=BESSELJ(1,-2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELJ-006",
+      "formula": "=BESSELJ(2,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5767248078,
+        "tolerance": 1e-08
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELJ-007",
+      "formula": "=BESSELJ(10,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0434727462,
+        "tolerance": 1e-08
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELJ-008",
+      "formula": "=BESSELJ(2,10)",
+      "inputs": {},
+      "expected": {
+        "number": 2.515386e-07,
+        "tolerance": 1e-11
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "n > x: Miller downward recurrence branch."
+    },
+    {
+      "id": "I11-BESSELJ-009",
+      "formula": "=BESSELJ(\"x\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELJ-010",
+      "formula": "=BESSELJ(A1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Blank x -> 0.",
+      "specOpen": true,
+      "specOpenReason": "Blank x -> 0 coercion is marked confirm in the spec."
+    },
+    {
+      "id": "I11-BESSELK-001",
+      "formula": "=BESSELK(1.5,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.2773878045,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELK-002",
+      "formula": "=BESSELK(2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.1138938938,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELK-003",
+      "formula": "=BESSELK(1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.4210244382,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Spec doc value 0.601907 is wrong; true K_0(1)=0.4210244382."
+    },
+    {
+      "id": "I11-BESSELK-004",
+      "formula": "=BESSELK(1.5,1.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.2773878045,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "n truncation."
+    },
+    {
+      "id": "I11-BESSELK-005",
+      "formula": "=BESSELK(0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELK-006",
+      "formula": "=BESSELK(-1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELK-007",
+      "formula": "=BESSELK(1,-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELK-008",
+      "formula": "=BESSELK(1.5,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5836559633,
+        "tolerance": 5e-07
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELK-009",
+      "formula": "=BESSELK(10,0)",
+      "inputs": {},
+      "expected": {
+        "number": 1.77800623e-05,
+        "tolerance": 1e-10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELK-010",
+      "formula": "=BESSELK(\"x\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELY-001",
+      "formula": "=BESSELY(2.5,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.145918138,
+        "tolerance": 1e-08
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELY-002",
+      "formula": "=BESSELY(1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0882569642,
+        "tolerance": 1e-08
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELY-003",
+      "formula": "=BESSELY(10,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0556711673,
+        "tolerance": 1e-08
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELY-004",
+      "formula": "=BESSELY(2.5,1.9)",
+      "inputs": {},
+      "expected": {
+        "number": 0.145918138,
+        "tolerance": 1e-08
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "n truncation."
+    },
+    {
+      "id": "I11-BESSELY-005",
+      "formula": "=BESSELY(-1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELY-006",
+      "formula": "=BESSELY(0,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELY-007",
+      "formula": "=BESSELY(1,-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELY-008",
+      "formula": "=BESSELY(2.5,2)",
+      "inputs": {},
+      "expected": {
+        "number": -0.3813358492,
+        "tolerance": 1e-08
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELY-009",
+      "formula": "=BESSELY(1,1)",
+      "inputs": {},
+      "expected": {
+        "number": -0.7812128213,
+        "tolerance": 1e-08
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BESSELY-010",
+      "formula": "=BESSELY(\"x\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2DEC-001",
+      "formula": "=BIN2DEC(\"1100100\")",
+      "inputs": {},
+      "expected": {
+        "number": 100
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2DEC-002",
+      "formula": "=BIN2DEC(\"1111111111\")",
+      "inputs": {},
+      "expected": {
+        "number": -1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2DEC-003",
+      "formula": "=BIN2DEC(\"1000000000\")",
+      "inputs": {},
+      "expected": {
+        "number": -512
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2DEC-004",
+      "formula": "=BIN2DEC(\"0111111111\")",
+      "inputs": {},
+      "expected": {
+        "number": 511
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2DEC-005",
+      "formula": "=BIN2DEC(\"1010\")",
+      "inputs": {},
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2DEC-006",
+      "formula": "=BIN2DEC(101)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Numeric arg with 0/1 digits accepted."
+    },
+    {
+      "id": "I11-BIN2DEC-007",
+      "formula": "=BIN2DEC(\"2\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2DEC-008",
+      "formula": "=BIN2DEC(\"11111111111\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "11 chars exceeds the 10-bit limit."
+    },
+    {
+      "id": "I11-BIN2DEC-009",
+      "formula": "=BIN2DEC(TRUE)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Boolean coercion of the binary argument is unconfirmed; Excel treats TRUE as non-binary input."
+    },
+    {
+      "id": "I11-BIN2DEC-010",
+      "formula": "=BIN2DEC(A1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank argument -> 0 is marked confirm in the spec."
+    },
+    {
+      "id": "I11-BIN2HEX-001",
+      "formula": "=BIN2HEX(\"11111011\",4)",
+      "inputs": {},
+      "expected": {
+        "text": "00FB"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2HEX-002",
+      "formula": "=BIN2HEX(\"1110\")",
+      "inputs": {},
+      "expected": {
+        "text": "E"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2HEX-003",
+      "formula": "=BIN2HEX(\"1111111111\")",
+      "inputs": {},
+      "expected": {
+        "text": "FFFFFFFFFF"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2HEX-004",
+      "formula": "=BIN2HEX(\"1001\",2)",
+      "inputs": {},
+      "expected": {
+        "text": "09"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2HEX-005",
+      "formula": "=BIN2HEX(\"102\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2HEX-006",
+      "formula": "=BIN2HEX(\"1000000000\",3)",
+      "inputs": {},
+      "expected": {
+        "text": "FFFFFFFE00"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Negative ignores places; -512 = FFFFFE00."
+    },
+    {
+      "id": "I11-BIN2HEX-007",
+      "formula": "=BIN2HEX(\"111111111\",2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Result needs 3 hex digits."
+    },
+    {
+      "id": "I11-BIN2HEX-008",
+      "formula": "=BIN2HEX(\"1\",-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2HEX-009",
+      "formula": "=BIN2HEX(\"1\",11)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2HEX-010",
+      "formula": "=BIN2HEX(\"1\",4.9)",
+      "inputs": {},
+      "expected": {
+        "text": "0001"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "places truncated to integer.",
+      "specOpen": true,
+      "specOpenReason": "places non-integer truncation is marked confirm in the spec."
+    },
+    {
+      "id": "I11-BIN2OCT-001",
+      "formula": "=BIN2OCT(\"1001\",4)",
+      "inputs": {},
+      "expected": {
+        "text": "0011"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2OCT-002",
+      "formula": "=BIN2OCT(\"1111111111\")",
+      "inputs": {},
+      "expected": {
+        "text": "7777777777"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2OCT-003",
+      "formula": "=BIN2OCT(\"1100100\")",
+      "inputs": {},
+      "expected": {
+        "text": "144"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2OCT-004",
+      "formula": "=BIN2OCT(\"100\",2)",
+      "inputs": {},
+      "expected": {
+        "text": "04"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2OCT-005",
+      "formula": "=BIN2OCT(\"2\")",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2OCT-006",
+      "formula": "=BIN2OCT(\"1000000000\",3)",
+      "inputs": {},
+      "expected": {
+        "text": "7777777000"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Negative ignores places."
+    },
+    {
+      "id": "I11-BIN2OCT-007",
+      "formula": "=BIN2OCT(\"111111111\",2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2OCT-008",
+      "formula": "=BIN2OCT(\"1\",-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2OCT-009",
+      "formula": "=BIN2OCT(\"1\",11)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BIN2OCT-010",
+      "formula": "=BIN2OCT(\"1\",\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc asks #VALUE! vs #NUM! for non-numeric places; implementation returns #VALUE! via standard coercion."
+    },
+    {
+      "id": "I11-BITAND-001",
+      "formula": "=BITAND(1,5)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITAND-002",
+      "formula": "=BITAND(13,25)",
+      "inputs": {},
+      "expected": {
+        "number": 9
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITAND-003",
+      "formula": "=BITAND(255,240)",
+      "inputs": {},
+      "expected": {
+        "number": 240
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITAND-004",
+      "formula": "=BITAND(-1,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITAND-005",
+      "formula": "=BITAND(281474976710656,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "2^48 boundary is exclusive."
+    },
+    {
+      "id": "I11-BITAND-006",
+      "formula": "=BITAND(281474976710655,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITAND-007",
+      "formula": "=BITAND(0,7)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITAND-008",
+      "formula": "=BITAND(13.9,25.9)",
+      "inputs": {},
+      "expected": {
+        "number": 9
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether fractional args truncate or #NUM! is an open question in the spec; implementation truncates."
+    },
+    {
+      "id": "I11-BITAND-009",
+      "formula": "=BITAND(\"x\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITAND-010",
+      "formula": "=BITAND(A1,5)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank operand -> 0 is marked confirm in the spec."
+    },
+    {
+      "id": "I11-BITLSHIFT-001",
+      "formula": "=BITLSHIFT(4,2)",
+      "inputs": {},
+      "expected": {
+        "number": 16
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITLSHIFT-002",
+      "formula": "=BITLSHIFT(4,-1)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Negative shift acts as BITRSHIFT."
+    },
+    {
+      "id": "I11-BITLSHIFT-003",
+      "formula": "=BITLSHIFT(1,47)",
+      "inputs": {},
+      "expected": {
+        "number": 140737488355328
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITLSHIFT-004",
+      "formula": "=BITLSHIFT(3,47)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "3*2^47 >= 2^48 overflow."
+    },
+    {
+      "id": "I11-BITLSHIFT-005",
+      "formula": "=BITLSHIFT(7,0)",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITLSHIFT-006",
+      "formula": "=BITLSHIFT(0,48)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Behavior for shift >= 48 on a zero operand is unconfirmed; returns 0."
+    },
+    {
+      "id": "I11-BITLSHIFT-007",
+      "formula": "=BITLSHIFT(-1,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITLSHIFT-008",
+      "formula": "=BITLSHIFT(281474976710656,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITLSHIFT-009",
+      "formula": "=BITLSHIFT(\"x\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITLSHIFT-010",
+      "formula": "=BITLSHIFT(13,-2)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITOR-001",
+      "formula": "=BITOR(23,10)",
+      "inputs": {},
+      "expected": {
+        "number": 31
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITOR-002",
+      "formula": "=BITOR(8,4)",
+      "inputs": {},
+      "expected": {
+        "number": 12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITOR-003",
+      "formula": "=BITOR(0,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITOR-004",
+      "formula": "=BITOR(-1,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITOR-005",
+      "formula": "=BITOR(281474976710656,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITOR-006",
+      "formula": "=BITOR(5,3)",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITOR-007",
+      "formula": "=BITOR(281474976710655,0)",
+      "inputs": {},
+      "expected": {
+        "number": 281474976710655
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITOR-008",
+      "formula": "=BITOR(23.9,10.9)",
+      "inputs": {},
+      "expected": {
+        "number": 31
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Fractional-arg truncation vs #NUM! is open in the spec; implementation truncates."
+    },
+    {
+      "id": "I11-BITOR-009",
+      "formula": "=BITOR(\"x\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITOR-010",
+      "formula": "=BITOR(A1,5)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank operand -> 0 is marked confirm in the spec."
+    },
+    {
+      "id": "I11-BITRSHIFT-001",
+      "formula": "=BITRSHIFT(13,2)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITRSHIFT-002",
+      "formula": "=BITRSHIFT(4,-1)",
+      "inputs": {},
+      "expected": {
+        "number": 8
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Negative shift moves left."
+    },
+    {
+      "id": "I11-BITRSHIFT-003",
+      "formula": "=BITRSHIFT(7,3)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITRSHIFT-004",
+      "formula": "=BITRSHIFT(1,-48)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Left-shift overflow."
+    },
+    {
+      "id": "I11-BITRSHIFT-005",
+      "formula": "=BITRSHIFT(281474976710655,48)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITRSHIFT-006",
+      "formula": "=BITRSHIFT(7,0)",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITRSHIFT-007",
+      "formula": "=BITRSHIFT(-1,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITRSHIFT-008",
+      "formula": "=BITRSHIFT(13,2.9)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Fractional shift truncation is unconfirmed in the spec; implementation truncates."
+    },
+    {
+      "id": "I11-BITRSHIFT-009",
+      "formula": "=BITRSHIFT(\"x\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITRSHIFT-010",
+      "formula": "=BITRSHIFT(4,A1)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank shift_amount -> 0 is unconfirmed."
+    },
+    {
+      "id": "I11-BITXOR-001",
+      "formula": "=BITXOR(5,3)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITXOR-002",
+      "formula": "=BITXOR(255,255)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITXOR-003",
+      "formula": "=BITXOR(10,12)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITXOR-004",
+      "formula": "=BITXOR(1,-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITXOR-005",
+      "formula": "=BITXOR(281474976710656,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITXOR-006",
+      "formula": "=BITXOR(8,4)",
+      "inputs": {},
+      "expected": {
+        "number": 12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITXOR-007",
+      "formula": "=BITXOR(5.9,3.9)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Fractional-arg truncation vs #NUM! is open in the spec; implementation truncates."
+    },
+    {
+      "id": "I11-BITXOR-008",
+      "formula": "=BITXOR(\"x\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-BITXOR-009",
+      "formula": "=BITXOR(A1,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank operand -> 0 is marked confirm in the spec."
+    },
+    {
+      "id": "I11-BITXOR-010",
+      "formula": "=BITXOR(1,3)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-COMPLEX-001",
+      "formula": "=COMPLEX(3,4)",
+      "inputs": {},
+      "expected": {
+        "text": "3+4i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-COMPLEX-002",
+      "formula": "=COMPLEX(3,4,\"j\")",
+      "inputs": {},
+      "expected": {
+        "text": "3+4j"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-COMPLEX-003",
+      "formula": "=COMPLEX(0,1)",
+      "inputs": {},
+      "expected": {
+        "text": "i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-COMPLEX-004",
+      "formula": "=COMPLEX(2,0)",
+      "inputs": {},
+      "expected": {
+        "text": "2"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-COMPLEX-005",
+      "formula": "=COMPLEX(3,4,\"k\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-COMPLEX-006",
+      "formula": "=COMPLEX(3,-4)",
+      "inputs": {},
+      "expected": {
+        "text": "3-4i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-COMPLEX-007",
+      "formula": "=COMPLEX(0,4)",
+      "inputs": {},
+      "expected": {
+        "text": "4i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-COMPLEX-008",
+      "formula": "=COMPLEX(3,1)",
+      "inputs": {},
+      "expected": {
+        "text": "3+i"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-COMPLEX-009",
+      "formula": "=COMPLEX(1,2,\"J\")",
+      "inputs": {},
+      "expected": {
+        "text": "1+2j"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Uppercase suffix acceptance is marked confirm in the spec; output is lowercased."
+    },
+    {
+      "id": "I11-COMPLEX-010",
+      "formula": "=COMPLEX(\"x\",1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-CONVERT-001",
+      "formula": "=CONVERT(1,\"lbm\",\"kg\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.45359237,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-CONVERT-002",
+      "formula": "=CONVERT(68,\"F\",\"C\")",
+      "inputs": {},
+      "expected": {
+        "number": 20.0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-CONVERT-003",
+      "formula": "=CONVERT(2.5,\"ft\",\"sec\")",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Different categories."
+    },
+    {
+      "id": "I11-CONVERT-004",
+      "formula": "=CONVERT(100,\"m\",\"km\")",
+      "inputs": {},
+      "expected": {
+        "number": 0.1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-CONVERT-005",
+      "formula": "=CONVERT(1,\"gal\",\"l\")",
+      "inputs": {},
+      "expected": {
+        "number": 3.785411784,
+        "tolerance": 1e-09
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-CONVERT-006",
+      "formula": "=CONVERT(1,\"C\",\"K\")",
+      "inputs": {},
+      "expected": {
+        "number": 274.15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-CONVERT-007",
+      "formula": "=CONVERT(1,\"zzz\",\"m\")",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-CONVERT-008",
+      "formula": "=CONVERT(1,\"Kibyte\",\"byte\")",
+      "inputs": {},
+      "expected": {
+        "number": 1024.0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-CONVERT-009",
+      "formula": "=CONVERT(1,\"mi\",\"m\")",
+      "inputs": {},
+      "expected": {
+        "number": 1609.344
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-CONVERT-010",
+      "formula": "=CONVERT(\"x\",\"m\",\"km\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2BIN-001",
+      "formula": "=DEC2BIN(9,4)",
+      "inputs": {},
+      "expected": {
+        "text": "1001"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2BIN-002",
+      "formula": "=DEC2BIN(-100)",
+      "inputs": {},
+      "expected": {
+        "text": "1110011100"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2BIN-003",
+      "formula": "=DEC2BIN(511)",
+      "inputs": {},
+      "expected": {
+        "text": "111111111"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2BIN-004",
+      "formula": "=DEC2BIN(5,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2BIN-005",
+      "formula": "=DEC2BIN(512)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2BIN-006",
+      "formula": "=DEC2BIN(4.9)",
+      "inputs": {},
+      "expected": {
+        "text": "100"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Truncated toward zero."
+    },
+    {
+      "id": "I11-DEC2BIN-007",
+      "formula": "=DEC2BIN(-1)",
+      "inputs": {},
+      "expected": {
+        "text": "1111111111"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2BIN-008",
+      "formula": "=DEC2BIN(-512)",
+      "inputs": {},
+      "expected": {
+        "text": "1000000000"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2BIN-009",
+      "formula": "=DEC2BIN(-513)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2BIN-010",
+      "formula": "=DEC2BIN(-4.9)",
+      "inputs": {},
+      "expected": {
+        "text": "1111111100"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Truncation direction for negative fractions is an open question; implementation truncates toward zero."
+    },
+    {
+      "id": "I11-DEC2HEX-001",
+      "formula": "=DEC2HEX(100,4)",
+      "inputs": {},
+      "expected": {
+        "text": "0064"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2HEX-002",
+      "formula": "=DEC2HEX(-54)",
+      "inputs": {},
+      "expected": {
+        "text": "FFFFFFFFCA"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2HEX-003",
+      "formula": "=DEC2HEX(255)",
+      "inputs": {},
+      "expected": {
+        "text": "FF"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2HEX-004",
+      "formula": "=DEC2HEX(28)",
+      "inputs": {},
+      "expected": {
+        "text": "1C"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2HEX-005",
+      "formula": "=DEC2HEX(549755813888)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2HEX-006",
+      "formula": "=DEC2HEX(-1)",
+      "inputs": {},
+      "expected": {
+        "text": "FFFFFFFFFF"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2HEX-007",
+      "formula": "=DEC2HEX(100,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2HEX-008",
+      "formula": "=DEC2HEX(1,11)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2HEX-009",
+      "formula": "=DEC2HEX(255.9)",
+      "inputs": {},
+      "expected": {
+        "text": "FF"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "places/fraction truncation details are marked confirm in the spec."
+    },
+    {
+      "id": "I11-DEC2HEX-010",
+      "formula": "=DEC2HEX(-549755813888)",
+      "inputs": {},
+      "expected": {
+        "text": "8000000000"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2OCT-001",
+      "formula": "=DEC2OCT(58,3)",
+      "inputs": {},
+      "expected": {
+        "text": "072"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2OCT-002",
+      "formula": "=DEC2OCT(-100)",
+      "inputs": {},
+      "expected": {
+        "text": "7777777634"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2OCT-003",
+      "formula": "=DEC2OCT(8)",
+      "inputs": {},
+      "expected": {
+        "text": "10"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2OCT-004",
+      "formula": "=DEC2OCT(536870912)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2OCT-005",
+      "formula": "=DEC2OCT(-1)",
+      "inputs": {},
+      "expected": {
+        "text": "7777777777"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2OCT-006",
+      "formula": "=DEC2OCT(58,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2OCT-007",
+      "formula": "=DEC2OCT(1,-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2OCT-008",
+      "formula": "=DEC2OCT(64,4)",
+      "inputs": {},
+      "expected": {
+        "text": "0100"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2OCT-009",
+      "formula": "=DEC2OCT(-536870912)",
+      "inputs": {},
+      "expected": {
+        "text": "4000000000"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DEC2OCT-010",
+      "formula": "=DEC2OCT(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DELTA-001",
+      "formula": "=DELTA(5,4)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DELTA-002",
+      "formula": "=DELTA(5,5)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DELTA-003",
+      "formula": "=DELTA(0.5,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DELTA-004",
+      "formula": "=DELTA(0)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "number2 defaults to 0."
+    },
+    {
+      "id": "I11-DELTA-005",
+      "formula": "=DELTA(\"x\",0)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DELTA-006",
+      "formula": "=DELTA(-2,-2)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DELTA-007",
+      "formula": "=DELTA(\"5\",5)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether text '5' coerces (then compares equal) or #VALUE! is an open question; implementation coerces."
+    },
+    {
+      "id": "I11-DELTA-008",
+      "formula": "=DELTA(3)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I11-DELTA-009",
+      "formula": "=DELTA(0.1+0.2,0.3)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Exact IEEE compare assumed (open in spec)."
+    },
+    {
+      "id": "I11-DELTA-010",
+      "formula": "=DELTA(TRUE,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Boolean coercion per standard numeric rules is marked confirm in the spec."
+    }
+  ]
+}

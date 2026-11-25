@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["crates/calc-core", "crates/calc-functions", "crates/calc-cli", "crates/calc-wasm"]
+# cargo-fuzz requires the fuzz crate to live outside the workspace.
+exclude = ["fuzz"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license-file = "LICENSE"
+rust-version = "1.85"
+
+[profile.release]
+lto = true

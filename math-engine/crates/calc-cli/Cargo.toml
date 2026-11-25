@@ -1,0 +1,11 @@
+[package]
+name = "calc-cli"
+version.workspace = true
+edition.workspace = true
+license-file.workspace = true
+rust-version.workspace = true
+description = "Development CLI for evaluating formulas and running compatibility checks"
+
+[dependencies]
+calc-core = { path = "../calc-core" }
+calc-functions = { path = "../calc-functions" }
