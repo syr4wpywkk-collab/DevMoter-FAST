@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import net from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 
 import { EngineError, type CommandArg, type KeyValueAdapter } from '../../src/engines/types.ts';
-import { MAX_ARGS, MAX_COMMAND_BYTES, createValkeyAdapter, encodeArguments, parseCommandInfo, refusal } from '../../src/engines/valkey.ts';
+import { MAX_ARGS, MAX_COMMAND_BYTES, createValkeyAdapter, encodeArguments, parseCommandInfo, refusal, takesBlockOption } from '../../src/engines/valkey.ts';
 import { builtEngine, startValkey, type TestServer } from './helpers.ts';
 
 const rejectsWith = (code: string, message?: RegExp) => (error: unknown) =>
@@ -144,11 +148,16 @@ describe('Valkey adapter against the built engine', { skip: valkey.skip }, () =>
     assert.deepEqual(await run('HGETALL', 'bom-hash'), { '\ufefff': '1', f: '2' });
   });
 
-  test('a blocked command is stopped at the time limit or when cancelled', async () => {
-    await assert.rejects(adapter.command(['BLPOP', 'no-such-list', 0], { timeoutMs: 200 }), rejectsWith('timeout'));
-    const abort = new AbortController();
-    setTimeout(() => abort.abort(), 100);
-    await assert.rejects(adapter.command(['BLPOP', 'no-such-list', 0], { signal: abort.signal }), rejectsWith('cancelled'));
+  test('blocking commands are refused, so none holds a request slot waiting for data', async () => {
+    const blocking: CommandArg[][] = [
+      ['BLPOP', 'no-such-list', 0], ['BRPOP', 'no-such-list', 1], ['BLMOVE', 'a', 'b', 'LEFT', 'RIGHT', 0], ['BLMPOP', 0, 1, 'a', 'LEFT'], ['BRPOPLPUSH', 'a', 'b', 0],
+      ['BZPOPMIN', 'z', 0], ['BZPOPMAX', 'z', 0], ['BZMPOP', 0, 1, 'z', 'MIN'], ['WAIT', 1, 0], ['XREAD', 'BLOCK', 0, 'STREAMS', 's', '$'], ['xread', 'COUNT', 1, 'block', 0, 'STREAMS', 's', '$'],
+      ['XREADGROUP', 'GROUP', 'g', 'c', 'BLOCK', 0, 'STREAMS', 's', '>'],
+    ];
+    for (const command of blocking) await assert.rejects(adapter.command(command), rejectsWith('command_not_allowed', /blocking commands are not available/), JSON.stringify(command));
+    assert.equal(await run('XADD', 'stream', '1-1', 'f', 'v'), '1-1');
+    assert.deepEqual(await run('XREAD', 'COUNT', 1, 'STREAMS', 'stream', '0'), { stream: [['1-1', ['f', 'v']]] });
+    assert.deepEqual(await run('XREAD', 'STREAMS', 'block', '0'), null, 'a stream named "block" is a key, not the option');
     assert.equal(await run('PING'), 'PONG');
   });
 
@@ -166,6 +175,33 @@ describe('Valkey adapter against the built engine', { skip: valkey.skip }, () =>
     await closed.close();
     await assert.rejects(closed.command(['PING']), rejectsWith('engine_unavailable'));
   });
+});
+
+test('the BLOCK option of XREAD and XREADGROUP is found before STREAMS only', () => {
+  assert.equal(takesBlockOption(['XREAD', 'BLOCK', '0', 'STREAMS', 's', '$']), true);
+  assert.equal(takesBlockOption(['XREADGROUP', 'GROUP', 'g', 'c', 'COUNT', '1', 'block', '5', 'STREAMS', 's', '>']), true);
+  assert.equal(takesBlockOption(['XREAD', 'STREAMS', 'block', '0']), false);
+  assert.equal(takesBlockOption(['XREAD', 'COUNT', '1', 'STREAMS', 's', '0']), false);
+});
+
+test('a command the server does not answer is stopped at the time limit or when cancelled', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'dmb-valkey-silent-'));
+  const sockets = new Set<net.Socket>();
+  const silent = net.createServer((socket) => sockets.add(socket));
+  const socketPath = path.join(dir, 'silent.sock');
+  await new Promise<void>((resolve) => silent.listen(socketPath, resolve));
+  const adapter = createValkeyAdapter({ socketPath });
+  try {
+    await assert.rejects(adapter.command(['GET', 'k'], { timeoutMs: 200 }), rejectsWith('timeout'));
+    const abort = new AbortController();
+    setTimeout(() => abort.abort(), 100);
+    await assert.rejects(adapter.command(['GET', 'k'], { signal: abort.signal }), rejectsWith('cancelled'));
+  } finally {
+    await adapter.close();
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolve) => silent.close(resolve));
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 describe('Valkey adapter against a server whose user may not run COMMAND INFO', { skip: valkey.skip }, () => {

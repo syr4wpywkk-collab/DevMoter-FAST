@@ -39,7 +39,11 @@ const REFUSED_CATEGORIES: Record<string, string> = {
   '@pubsub': 'pub/sub commands are not available through the API',
   '@transaction': 'transactions are not available: each request uses its own connection',
   '@connection': 'connection commands are not available: each request uses its own connection',
+  // A request waiting for data holds its connection and a slot of the API's concurrency limit until its time runs out.
+  '@blocking': 'blocking commands are not available: each request uses its own connection, so the waiting would only hold a request slot; use the non-blocking form (LPOP, LMOVE, XREAD without BLOCK, ...)',
 };
+/** Members of @blocking that block only when given the BLOCK option. */
+const BLOCK_OPTION = new Set(['xread', 'xreadgroup']);
 /** Harmless members of @connection. */
 const ALWAYS_ALLOWED = new Set(['ping', 'echo']);
 
@@ -76,6 +80,7 @@ export function refusal(name: string, subcommand: string | undefined, info: Comm
   if (ALWAYS_ALLOWED.has(name.toLowerCase())) return undefined;
   const refuse = (reason: string) => new EngineError('command_not_allowed', `"${label}" is not allowed: ${reason}`);
   for (const category of effective.categories) {
+    if (category === '@blocking' && BLOCK_OPTION.has(name.toLowerCase())) continue;
     const reason = REFUSED_CATEGORIES[category];
     if (reason !== undefined) return refuse(reason);
   }
@@ -83,6 +88,16 @@ export function refusal(name: string, subcommand: string | undefined, info: Comm
   if (effective.flags.includes('pubsub')) return refuse(REFUSED_CATEGORIES['@pubsub'] as string);
   if (readOnly && !effective.flags.includes('readonly')) return refuse('this database is read-only');
   return undefined;
+}
+
+/** Whether XREAD or XREADGROUP has the BLOCK option: an option before STREAMS, after which only keys and IDs follow. */
+export function takesBlockOption(encoded: readonly (string | Buffer)[]): boolean {
+  for (const arg of encoded.slice(1)) {
+    const word = Buffer.from(arg).toString('latin1').split('\0', 1)[0]?.toLowerCase();
+    if (word === 'streams') return false;
+    if (word === 'block') return true;
+  }
+  return false;
 }
 
 /**
@@ -230,6 +245,9 @@ export function createValkeyAdapter(options: ValkeyAdapterOptions): KeyValueAdap
         const subcommand = typeof encoded[1] === 'string' ? encoded[1] : undefined;
         const refused = refusal(encoded[0] as string, subcommand, info, options.readOnly === true);
         if (refused) throw refused;
+        if (BLOCK_OPTION.has(name) && takesBlockOption(encoded)) {
+          throw new EngineError('command_not_allowed', `"${encoded[0] as string}" is not allowed with BLOCK: ${REFUSED_CATEGORIES['@blocking'] as string}`);
+        }
         if (crossesDatabases(encoded)) throw new EngineError('command_not_allowed', `"${encoded[0] as string}" is not allowed with another logical database: a database entry reaches only the one it is configured for`);
         const reply = await connection.send(encoded);
         if (reply instanceof RespError) throw new EngineError('query_failed', reply.error);
