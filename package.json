@@ -42,7 +42,7 @@
     "jszip": "3.10.2",
     "marked": "^18.2.1",
     "node-pty": "^1.1.0",
-    "oauth4webapi": "3.8.8",
+    "oauth4webapi": "3.8.9",
     "pdf-lib": "1.17.1",
     "pdfjs-dist": "4.2.67",
     "pptxgenjs": "4.0.1",
