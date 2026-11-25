@@ -141,7 +141,6 @@ test('API key and audit log files are optional and resolved against the configur
     [{ auth: { keysFile: 'data/x' }, audit: { file: './data/../data/x' } }, /audit\.file: \/data\/x is also auth\.keysFile/],
     [{ databases: [{ name: 'app', engine: 'sqlite', file: 'app.db' }], audit: { file: 'app.db' } }, /audit\.file: \/app\.db is also databases\[0\]\.file/],
     [{ databases: [{ name: 'app', engine: 'duckdb', file: 'k' }], auth: { keysFile: 'k' } }, /auth\.keysFile: \/k is also databases\[0\]\.file/],
-    [{ databases: [{ name: 'a', engine: 'sqlite', file: 'x.db' }, { name: 'b', engine: 'sqlite', file: 'x.db' }] }, /databases\[1\]\.file: \/x\.db is also databases\[0\]\.file/],
   ];
   for (const [value, message] of cases) {
     assert.throws(() => parseConfig(value, '/'), (error: unknown) => error instanceof ConfigError && message.test(error.message), JSON.stringify(value));
@@ -155,4 +154,30 @@ test('"localhost" is bound as 127.0.0.1, never through the resolver', () => {
   assert.equal(loopbackAddress('127.0.0.2'), '127.0.0.2');
   assert.equal(loopbackAddress('::1'), '::1');
   for (const host of ['localhost', '127.0.0.1', '::1']) assert.equal(isLoopbackHost(loopbackAddress(host)), true);
+});
+
+test('lets SQLite databases share a file, and nothing else', () => {
+  const config = parseConfig(
+    {
+      databases: [
+        { name: 'app', engine: 'sqlite', file: 'app.sqlite' },
+        { name: 'app-readonly', engine: 'sqlite', file: 'app.sqlite', readOnly: true },
+      ],
+    },
+    '/etc/dmb',
+  );
+  assert.deepEqual(config.databases.map((database) => 'file' in database && database.file), ['/etc/dmb/app.sqlite', '/etc/dmb/app.sqlite']);
+  assert.throws(
+    () => parseConfig({ databases: [{ name: 'a', engine: 'sqlite', file: 'x' }, { name: 'b', engine: 'duckdb', file: 'x' }] }, '/etc/dmb'),
+    /databases\[1\]\.file: .* is also databases\[0\]\.file/,
+  );
+  assert.throws(
+    () => parseConfig({ databases: [{ name: 'a', engine: 'sqlite', file: 'x' }], audit: { file: 'x' } }, '/etc/dmb'),
+    /audit\.file: .* is also databases\[0\]\.file/,
+  );
+});
+
+test('the example configuration loads', async () => {
+  const config = await loadConfig(path.join(import.meta.dirname, '..', 'devmoter-base.config.example.json'));
+  assert.deepEqual(config.databases.map((database) => database.name), ['app', 'app-readonly', 'analytics']);
 });
