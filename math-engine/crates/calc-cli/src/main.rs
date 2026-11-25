@@ -5,7 +5,7 @@
 
 use std::process::ExitCode;
 
-use calc_core::CalcEngine;
+use calc_core::{CalcEngine, EngineError};
 
 const USAGE: &str = "\
 calc-cli — development CLI for the calc engine
@@ -45,11 +45,28 @@ fn run(args: &[String]) -> Outcome {
             ),
             Some(formula) => match engine().eval_formula("Sheet1", formula) {
                 Ok(v) => Outcome::Ok(format!("{v}\n")),
-                Err(e) => Outcome::Err(3, format!("error: {e}\n")),
+                Err(e) => Outcome::Err(3, error_message(formula, &e)),
             },
         },
         Some(other) => Outcome::Err(2, format!("error: unknown command `{other}`\n\n{USAGE}")),
     }
+}
+
+/// A syntax error also gets its 1-based character column and a caret
+/// under that position, so non-ASCII formulas point at the right place.
+fn error_message(formula: &str, e: &EngineError) -> String {
+    let EngineError::Parse(p) = e else {
+        return format!("error: {e}\n");
+    };
+    let Some(before) = formula.get(..p.offset) else {
+        return format!("error: {e}\n");
+    };
+    let col = before.chars().count();
+    format!(
+        "error: {e} (character {})\n  {formula}\n  {}^\n",
+        col + 1,
+        " ".repeat(col)
+    )
 }
 
 fn main() -> ExitCode {
@@ -103,6 +120,24 @@ mod tests {
         match run(&args(&["eval", "=NOSUCHFN(1)"])) {
             Outcome::Ok(msg) => assert!(msg.contains("#NAME?")),
             Outcome::Err(..) => panic!("expected #NAME? value"),
+        }
+    }
+
+    #[test]
+    fn syntax_error_points_at_position_in_input() {
+        match run(&args(&["eval", "==1"])) {
+            Outcome::Err(3, msg) => assert_eq!(
+                msg,
+                "error: unexpected token at byte 1 (character 2)\n  ==1\n   ^\n"
+            ),
+            _ => panic!("expected syntax error"),
+        }
+        match run(&args(&["eval", "=\"あ\"+"])) {
+            Outcome::Err(3, msg) => assert!(
+                msg.ends_with("(character 6)\n  =\"あ\"+\n       ^\n"),
+                "{msg}"
+            ),
+            _ => panic!("expected syntax error"),
         }
     }
 
