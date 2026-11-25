@@ -149,32 +149,98 @@ impl Value {
     }
 }
 
-/// Parse text into a number the way Excel's implicit conversion does for
-/// direct arguments: surrounding whitespace is ignored, a leading `+`/`-` is
-/// allowed, and decimal/exponent forms are accepted. A trailing `%` divides
-/// by 100 (Excel allows `="5%"+0`). Empty/whitespace-only text is rejected.
+/// Parse text into a number the way Excel (en-US) does for both `VALUE` and
+/// implicit conversion (`"1,000"+0`): surrounding whitespace is ignored, an
+/// optional sign and `$` may lead, `,` separators must sit in 3-digit groups,
+/// `.` is the decimal point, `E` an exponent, and a trailing `%` divides by
+/// 100. Empty text, `NaN`/`inf` spellings and overflow are rejected.
 pub fn parse_number_text(s: &str) -> Option<f64> {
-    let t = s.trim();
+    let mut t = s.trim();
     if t.is_empty() {
         return None;
     }
+    let mut scale = 1.0;
     if let Some(rest) = t.strip_suffix('%') {
-        return parse_number_text(rest).map(|n| n / 100.0);
+        t = rest.trim_end();
+        scale = 0.01;
     }
-    // Reject spellings Rust accepts but Excel formulas cannot produce as
-    // literals ("NaN", "inf") — except that typed input may still create
-    // them via number formatting; implicit text->number rejects them.
-    if t.eq_ignore_ascii_case("nan")
-        || t.eq_ignore_ascii_case("inf")
-        || t.eq_ignore_ascii_case("infinity")
-        || t.eq_ignore_ascii_case("+inf")
-        || t.eq_ignore_ascii_case("-inf")
-        || t.eq_ignore_ascii_case("+infinity")
-        || t.eq_ignore_ascii_case("-infinity")
-    {
+    // Split off an exponent: at most one 'e'/'E', after which an
+    // optional sign and a non-empty digit run are required.
+    let is_exp = |c: char| c == 'e' || c == 'E';
+    let exp_index = t.find(is_exp);
+    let (mantissa, exp) = match exp_index {
+        Some(i) => {
+            let exp = &t[i + 1..];
+            let digits = exp.strip_prefix(|c| c == '+' || c == '-').unwrap_or(exp);
+            if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+                return None;
+            }
+            (&t[..i], Some(exp))
+        }
+        None => (t, None),
+    };
+    let negative = mantissa.starts_with('-') || mantissa.starts_with("$-");
+    let m = mantissa.strip_prefix('$').unwrap_or(mantissa);
+    let m = m.strip_prefix(|c| c == '+' || c == '-').unwrap_or(m);
+    let m = m.strip_prefix('$').unwrap_or(m);
+    if m.is_empty() {
         return None;
     }
-    t.parse::<f64>().ok()
+    let (int, frac) = match m.split_once('.') {
+        Some((i, f)) => (i, Some(f)),
+        None => (m, None),
+    };
+    // Validate `,` grouping in the integer part: first group 1-3
+    // digits, every later group exactly 3.
+    let mut int_digits = String::new();
+    if int.contains(',') {
+        let mut groups = int.split(',');
+        let first = groups.next().unwrap();
+        if first.is_empty() || first.len() > 3 || !first.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        int_digits.push_str(first);
+        for g in groups {
+            if g.len() != 3 || !g.bytes().all(|b| b.is_ascii_digit()) {
+                return None;
+            }
+            int_digits.push_str(g);
+        }
+    } else if int.bytes().all(|b| b.is_ascii_digit()) {
+        int_digits.push_str(int);
+    } else {
+        return None;
+    }
+    let frac_digits = frac.unwrap_or("");
+    if !frac_digits.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    if int_digits.is_empty() && frac_digits.is_empty() {
+        return None;
+    }
+    // Rebuild without commas: sign + int_digits + optional fraction.
+    let mut canonical = String::new();
+    if negative {
+        canonical.push('-');
+    }
+    canonical.push_str(if int_digits.is_empty() {
+        "0"
+    } else {
+        &int_digits
+    });
+    if frac.is_some() {
+        canonical.push('.');
+        canonical.push_str(frac_digits);
+    }
+    if let Some(exp) = exp {
+        canonical.push('e');
+        canonical.push_str(exp);
+    }
+    canonical
+        .parse::<f64>()
+        .ok()
+        .filter(|n| n.is_finite())
+        .map(|n| n * scale)
 }
 
 /// Format a number roughly like Excel's General format: integers without a

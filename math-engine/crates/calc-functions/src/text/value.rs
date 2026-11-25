@@ -4,15 +4,16 @@
 //! Fixed en-US-locale parsing: surrounding whitespace ignored, optional
 //! sign, `.` decimal point, `,` thousands separators only in valid
 //! 3-digit grouping positions, `E`/`e` exponent, trailing `%` dividing
-//! by 100. Unparseable text (including `"1,2,3"`, `"--3"`, `""`) is
-//! `#VALUE!`. Date/time and currency strings are outside the subset
-//! (spec doc open questions) and error.
+//! by 100, a `$` after the sign. Unparseable text (including `"1,2,3"`,
+//! `"--3"`, `""`) is `#VALUE!`. The rules are `parse_number_text`'s, so
+//! `VALUE("1,000")` and `"1,000"+0` agree. Date/time strings are outside
+//! the subset (spec doc open questions) and error.
 
 use calc_core::ast::Expr;
 use calc_core::error::CalcError;
 use calc_core::eval::{EvalContext, EvalError};
 use calc_core::registry::check_arity;
-use calc_core::value::Value;
+use calc_core::value::{Value, parse_number_text};
 
 pub fn call(ctx: &mut EvalContext<'_>, args: &[Expr]) -> Result<Value, EvalError> {
     if let Err(e) = check_arity(args, 1, 1) {
@@ -20,7 +21,7 @@ pub fn call(ctx: &mut EvalContext<'_>, args: &[Expr]) -> Result<Value, EvalError
     }
     let v = ctx.eval(&args[0])?;
     let result = match &v {
-        Value::Text(s) => parse_value_text(s).ok_or(CalcError::Value),
+        Value::Text(s) => parse_number_text(s).ok_or(CalcError::Value),
         // `VALUE` of an empty/blank input is `#VALUE!` like `VALUE("")`.
         Value::Blank => Err(CalcError::Value),
         _ => v.to_number(),
@@ -29,95 +30,6 @@ pub fn call(ctx: &mut EvalContext<'_>, args: &[Expr]) -> Result<Value, EvalError
         Ok(n) => Ok(Value::Number(n)),
         Err(e) => Ok(Value::Error(e)),
     }
-}
-
-/// Fixed-locale (en-US) numeric text parser per the spec subset.
-fn parse_value_text(s: &str) -> Option<f64> {
-    let mut t = s.trim();
-    if t.is_empty() {
-        return None;
-    }
-    let mut scale = 1.0;
-    if let Some(rest) = t.strip_suffix('%') {
-        t = rest.trim_end();
-        scale = 0.01;
-    }
-    // Split off an exponent: at most one 'e'/'E', after which an
-    // optional sign and a non-empty digit run are required.
-    let is_exp = |c: char| c == 'e' || c == 'E';
-    let exp_index = t.find(is_exp);
-    let (mantissa, exp) = match exp_index {
-        Some(i) => {
-            let exp = &t[i + 1..];
-            let digits = exp.strip_prefix(|c| c == '+' || c == '-').unwrap_or(exp);
-            if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-                return None;
-            }
-            (&t[..i], Some(exp))
-        }
-        None => (t, None),
-    };
-    let m = mantissa
-        .strip_prefix(|c| c == '+' || c == '-')
-        .unwrap_or(mantissa);
-    if m.is_empty() {
-        return None;
-    }
-    let (int, frac) = match m.split_once('.') {
-        Some((i, f)) => (i, Some(f)),
-        None => (m, None),
-    };
-    // Validate `,` grouping in the integer part: first group 1-3
-    // digits, every later group exactly 3.
-    let mut int_digits = String::new();
-    if int.contains(',') {
-        let mut groups = int.split(',');
-        let first = groups.next().unwrap();
-        if first.is_empty() || first.len() > 3 || !first.bytes().all(|b| b.is_ascii_digit()) {
-            return None;
-        }
-        int_digits.push_str(first);
-        for g in groups {
-            if g.len() != 3 || !g.bytes().all(|b| b.is_ascii_digit()) {
-                return None;
-            }
-            int_digits.push_str(g);
-        }
-    } else if int.bytes().all(|b| b.is_ascii_digit()) {
-        int_digits.push_str(int);
-    } else {
-        return None;
-    }
-    let frac_digits = frac.unwrap_or("");
-    if !frac_digits.bytes().all(|b| b.is_ascii_digit()) {
-        return None;
-    }
-    if int_digits.is_empty() && frac_digits.is_empty() {
-        return None;
-    }
-    // Rebuild without commas: sign + int_digits + optional fraction.
-    let mut canonical = String::new();
-    if mantissa.starts_with('-') {
-        canonical.push('-');
-    }
-    canonical.push_str(if int_digits.is_empty() {
-        "0"
-    } else {
-        &int_digits
-    });
-    if frac.is_some() {
-        canonical.push('.');
-        canonical.push_str(frac_digits);
-    }
-    if let Some(exp) = exp {
-        canonical.push('e');
-        canonical.push_str(exp);
-    }
-    canonical
-        .parse::<f64>()
-        .ok()
-        .filter(|n| n.is_finite())
-        .map(|n| n * scale)
 }
 
 #[cfg(test)]

@@ -845,3 +845,16 @@ fn bool_cell_arithmetic() {
         .unwrap();
     assert_eq!(eval_num(&mut e, "=A1+5"), 6.0);
 }
+
+#[test]
+fn implicit_text_conversion_matches_value() {
+    let mut e = engine();
+    for formula in [
+        "\"1,000\"+0",
+        "VALUE(\"1,000\")",
+        "\"$1,000\"+0",
+        "VALUE(\"$1,000\")",
+    ] {
+        assert_eq!(eval_num(&mut e, formula), 1000.0, "{formula}");
+    }
+}

@@ -118,8 +118,23 @@ fn to_number_from_percent_text() {
 }
 
 #[test]
+fn to_number_from_grouped_and_currency_text() {
+    for (s, n) in [
+        ("1,000", 1000.0),
+        ("$1,000", 1000.0),
+        ("-$1,234.5", -1234.5),
+        ("$-2", -2.0),
+        ("12,345,678", 12345678.0),
+    ] {
+        assert_eq!(Value::Text(s.into()).to_number(), Ok(n), "input {s:?}");
+    }
+}
+
+#[test]
 fn to_number_from_bad_text_is_value_error() {
-    for s in ["", "   ", "abc", "12a", "1,000"] {
+    for s in [
+        "", "   ", "abc", "12a", "1,00", "1,2,3", "$", "1e400", "inf",
+    ] {
         assert_eq!(
             Value::Text(s.into()).to_number(),
             Err(CalcError::Value),
