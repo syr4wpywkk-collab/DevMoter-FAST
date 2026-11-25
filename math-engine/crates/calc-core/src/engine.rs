@@ -120,6 +120,10 @@ pub struct CalcEngine {
     /// `set_cell`/`clear_cell`/`set_registry` so each `recalculate()`
     /// pass needn't rescan every parsed formula.
     volatile: HashSet<CellId>,
+    /// An input changed since volatile cells last ran: reads
+    /// (`get_value`/`eval_formula`) refresh them only then, so reading a
+    /// `RAND()` twice gives the same value (like Excel).
+    volatile_stale: bool,
     clock: Box<dyn Clock>,
     rng: Box<dyn RngSource>,
     registry: Box<dyn FunctionRegistry>,
@@ -146,6 +150,7 @@ impl CalcEngine {
             rev_cells: HashMap::new(),
             range_watchers: HashMap::new(),
             volatile: HashSet::new(),
+            volatile_stale: false,
             clock: Box::new(SystemClock),
             rng,
             registry: Box::new(EmptyRegistry),
@@ -156,12 +161,14 @@ impl CalcEngine {
     /// default [`SystemClock`].
     pub fn set_clock(&mut self, clock: Box<dyn Clock>) {
         self.clock = clock;
+        self.volatile_stale = true;
     }
 
     /// Inject the random source for volatile `RAND`-family functions.
     /// Replaces the default `SplitMix64` seeded per workbook.
     pub fn set_rng(&mut self, rng: Box<dyn RngSource>) {
         self.rng = rng;
+        self.volatile_stale = true;
     }
 
     /// Inject the function registry used to dispatch `Expr::Call` nodes
@@ -178,6 +185,7 @@ impl CalcEngine {
             .filter_map(|(id, expr)| expr_is_volatile(expr, registry.as_ref()).then_some(*id))
             .collect();
         self.registry = registry;
+        self.volatile_stale = true;
     }
 
     pub fn workbook(&self) -> &Workbook {
@@ -205,6 +213,7 @@ impl CalcEngine {
         address: &str,
         input: CellInput,
     ) -> Result<(), EngineError> {
+        self.volatile_stale = true;
         let sheet_id = self
             .workbook
             .sheet_id(sheet)
@@ -263,6 +272,7 @@ impl CalcEngine {
 
     /// Remove a cell's contents (back to blank), marking dependents dirty.
     pub fn clear_cell(&mut self, sheet: &str, address: &str) -> Result<(), EngineError> {
+        self.volatile_stale = true;
         let sheet_id = self
             .workbook
             .sheet_id(sheet)
@@ -303,7 +313,7 @@ impl CalcEngine {
             .sheet_id(sheet)
             .ok_or(WorkbookError::SheetNotFound)?;
         let r = CellRef::from_a1(address).map_err(WorkbookError::BadAddress)?;
-        self.recalculate()?;
+        self.recalculate_pending()?;
         Ok(self
             .values
             .get(&CellId {
@@ -323,7 +333,7 @@ impl CalcEngine {
             .workbook
             .sheet_id(sheet)
             .ok_or(WorkbookError::SheetNotFound)?;
-        self.recalculate()?;
+        self.recalculate_pending()?;
         let expr = parse(formula)?;
         let mut ctx = self.make_ctx(CellId {
             sheet_id,
@@ -359,11 +369,22 @@ impl CalcEngine {
     /// re-dirtied. Since that may dirty cells already visited this pass,
     /// evaluation runs in passes until the dirty set drains (bounded by
     /// [`MAX_RECALC_PASSES`] against pathological spill feedback).
+    ///
+    /// Volatile cells (RAND, RANDBETWEEN, TODAY, NOW per the registry)
+    /// rerun on every explicit `recalculate()`; reads only rerun them
+    /// after an input changed.
     pub fn recalculate(&mut self) -> Result<RecalcReport, EngineError> {
+        self.volatile_stale = true;
+        self.recalculate_pending()
+    }
+
+    /// Recalculate before a read: dirty cells, plus volatile cells only
+    /// if an input changed since they last ran.
+    fn recalculate_pending(&mut self) -> Result<RecalcReport, EngineError> {
         let mut report = RecalcReport::default();
-        // Volatile cells (RAND, RANDBETWEEN, TODAY, NOW per the
-        // registry) recalculate on every pass over recalculate().
-        self.mark_volatile_dirty();
+        if std::mem::take(&mut self.volatile_stale) {
+            self.mark_volatile_dirty();
+        }
         for _ in 0..MAX_RECALC_PASSES {
             if self.dirty.is_empty() {
                 return Ok(report);

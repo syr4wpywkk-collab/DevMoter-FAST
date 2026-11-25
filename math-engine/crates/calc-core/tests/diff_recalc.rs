@@ -184,6 +184,22 @@ fn volatile_cell_reevaluates_every_pass() {
 }
 
 #[test]
+fn volatile_value_is_stable_across_reads() {
+    let mut e = engine();
+    set(&mut e, "B1", "=RAND()");
+    let first = e.get_value("Sheet1", "B1").unwrap();
+    assert_eq!(e.get_value("Sheet1", "B1").unwrap(), first);
+    assert_eq!(e.eval_formula("Sheet1", "=B1").unwrap(), first);
+
+    // An input change or an explicit recalculation reruns RAND().
+    set_num(&mut e, "A9", 1.0);
+    let r = e.recalculate().unwrap();
+    assert!(evaluated_addrs(&r).contains("B1"));
+    let after_edit = e.get_value("Sheet1", "B1").unwrap();
+    assert_eq!(e.get_value("Sheet1", "B1").unwrap(), after_edit);
+}
+
+#[test]
 fn volatile_cell_removed_when_formula_retires() {
     let mut e = engine();
     set(&mut e, "B1", "=RAND()");
