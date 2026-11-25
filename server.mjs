@@ -2394,16 +2394,25 @@ async function proxy(req, res, { upstreamUrl, policyPath }) {
   res.on("close", onClientClosed);
 
   try {
-    const upstream = await fetch(upstreamUrl, {
-      method: req.method,
-      headers: await openCodeHeadersForRequest(req, {
-        "content-type": req.headers["content-type"] || "application/json",
-        "accept": req.headers["accept"] || "*/*"
-      }, policyPath),
-      body,
-      redirect: "error",
-      signal: upstreamAbort.signal
-    });
+    const requestHeaders = await openCodeHeadersForRequest(req, {
+      "content-type": req.headers["content-type"] || "application/json",
+      "accept": req.headers["accept"] || "*/*"
+    }, policyPath);
+    let upstream;
+    try {
+      upstream = await fetch(upstreamUrl, {
+        method: req.method,
+        headers: requestHeaders,
+        body,
+        redirect: "error",
+        signal: upstreamAbort.signal
+      });
+    } catch (error) {
+      if (endIfResponseStarted(res)) return;
+      console.warn("OpenCode upstream unavailable", redactLog(`${req.method} ${policyPath}: ${errorMessage(error)}`));
+      json(res, 502, { error: "OpenCode upstream is unavailable. Check that OpenCode is running and try again." });
+      return;
+    }
 
     const { headers, rawContentType, mediaType } = buildProxyResponseHeaders(
       upstream.headers,
