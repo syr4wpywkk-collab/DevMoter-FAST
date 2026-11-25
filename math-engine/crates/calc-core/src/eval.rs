@@ -417,17 +417,17 @@ impl<'a> EvalContext<'a> {
             )),
             Expr::Unary { op, operand } => {
                 let v = self.eval(operand)?;
-                Ok(ArgValue::Scalar(lift_unary(&v, |x| unary_op(*op, x))))
+                self.charged(lift_unary(&v, |x| unary_op(*op, x)))
             }
             Expr::Percent(operand) => {
                 let v = self.eval(operand)?;
-                Ok(ArgValue::Scalar(lift_unary(&v, |x| match x.error() {
+                self.charged(lift_unary(&v, |x| match x.error() {
                     Some(e) => Value::Error(e),
                     None => match x.to_number() {
                         Ok(n) => Value::Number(n / 100.0),
                         Err(e) => Value::Error(e),
                     },
-                })))
+                }))
             }
             Expr::Binary { op, left, right } => {
                 let l = self.eval(left)?;
@@ -438,7 +438,7 @@ impl<'a> EvalContext<'a> {
                         return Ok(ArgValue::Scalar(Value::Error(e)));
                     }
                 }
-                Ok(ArgValue::Scalar(lift_binary(*op, &l, &r)))
+                self.charged(lift_binary(*op, &l, &r))
             }
             Expr::Call { name, args } => match self.registry.dispatch(name, self, args) {
                 Some(result) => result.map(ArgValue::Scalar),
@@ -647,6 +647,17 @@ impl<'a> EvalContext<'a> {
     /// so the lambda sees `Blank`.
     fn eval_call_args(&mut self, args: &[Expr]) -> Result<Vec<Value>, EvalError> {
         args.iter().map(|a| self.eval(a)).collect()
+    }
+
+    /// Count each cell of an element-wise array result against the budget.
+    fn charged(&mut self, v: Value) -> Result<ArgValue, EvalError> {
+        if let Value::Array(a) = &v {
+            self.steps = self.steps.saturating_add(a.len());
+            if self.steps > self.max_steps {
+                return Err(EvalError::StepBudgetExceeded);
+            }
+        }
+        Ok(ArgValue::Scalar(v))
     }
 
     /// Count one unit of work against the budget.

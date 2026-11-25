@@ -742,6 +742,31 @@ fn step_budget_counts_range_cells() {
 }
 
 #[test]
+fn step_budget_counts_array_operation_cells() {
+    let mut wb = Workbook::new();
+    wb.add_sheet("Sheet1").unwrap();
+    let values = HashMap::new();
+    let clock = FixedClock(0);
+    let rng = calc_core::SplitMix64::new(0);
+    let registry = calc_core::EmptyRegistry;
+    let mut ctx = EvalContext::new(
+        &wb,
+        &values,
+        &clock,
+        &rng,
+        &registry,
+        calc_core::CellId {
+            sheet_id: 0,
+            row: 0,
+            col: 0,
+        },
+    );
+    ctx.set_max_steps(20);
+    let expr = parse("{1,2,3,4,5}*{1;2;3;4;5}").unwrap();
+    assert_eq!(ctx.eval(&expr), Err(EvalError::StepBudgetExceeded));
+}
+
+#[test]
 fn deep_recursion_bounded() {
     // The parser caps depth, but a manually-built AST can exceed it; eval
     // must return a structured error instead of overflowing the stack.
