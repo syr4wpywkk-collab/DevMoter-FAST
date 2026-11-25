@@ -379,3 +379,14 @@ fn spilled_cells_are_not_stored_inputs() {
     assert!(e.workbook().cell_a1("Sheet1", "C3").unwrap().is_none());
     assert_eq!(num(&get(&mut e, "C3")), 4.0);
 }
+
+#[test]
+fn scalar_error_operand_broadcasts_over_array() {
+    let mut e = engine();
+    for formula in ["#N/A+{1,2}", "{1,2}+#N/A"] {
+        let a = array(eval(&mut e, formula));
+        assert_eq!((a.rows(), a.cols()), (1, 2), "{formula}");
+        assert!(a.iter().all(|v| err(v) == CalcError::NA), "{formula}");
+    }
+    assert_eq!(err(&eval(&mut e, "#N/A+1")), CalcError::NA);
+}

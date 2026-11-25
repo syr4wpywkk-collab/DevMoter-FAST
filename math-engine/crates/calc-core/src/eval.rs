@@ -431,12 +431,12 @@ impl<'a> EvalContext<'a> {
             }
             Expr::Binary { op, left, right } => {
                 let l = self.eval(left)?;
-                if let Some(e) = l.error() {
-                    return Ok(ArgValue::Scalar(Value::Error(e)));
-                }
                 let r = self.eval(right)?;
-                if let Some(e) = r.error() {
-                    return Ok(ArgValue::Scalar(Value::Error(e)));
+                let is_array = |v: &Value| matches!(v, Value::Array(_));
+                if !is_array(&l) && !is_array(&r) {
+                    if let Some(e) = l.error().or_else(|| r.error()) {
+                        return Ok(ArgValue::Scalar(Value::Error(e)));
+                    }
                 }
                 Ok(ArgValue::Scalar(lift_binary(*op, &l, &r)))
             }
