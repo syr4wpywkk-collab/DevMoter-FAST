@@ -100,6 +100,33 @@ export function duckdbInvocation(options: DuckdbAdapterOptions, sql: string, par
   return { args, input: `.changes on\n${text}\n`.replaceAll('\r\n', '\r\r\n'), explain: shape.firstKeyword === 'EXPLAIN' && shape.statements === 1 && params.length === 0 };
 }
 
+const WRITES = new Set(['insert', 'update', 'delete', 'merge']);
+
+/**
+ * Whether the sql is one statement that writes and returns rows (RETURNING): the shell leaves those
+ * rows out of total_changes, so they are counted from the result. With several statements the shell
+ * does not tell which result came from which, and such rows are not counted.
+ */
+export function isReturningWrite(sql: string): boolean {
+  let first: string | undefined;
+  let returning = false;
+  let statements = 0;
+  let open = false;
+  sqlShape(sql, DUCKDB_SQL, (token) => {
+    if (token === ';') {
+      open = false;
+      return;
+    }
+    if (/^\s+$/.test(token)) return;
+    if (!open) statements += 1;
+    open = true;
+    const word = /^[A-Za-z_]/.test(token) ? token.toLowerCase() : token;
+    first ??= word;
+    if (word === 'returning') returning = true;
+  });
+  return statements === 1 && first !== undefined && WRITES.has(first) && returning;
+}
+
 /** Turns the shell's error output into a message about the caller's SQL. */
 export function duckdbErrorMessage(stderr: string): string {
   const text = stderr
@@ -143,10 +170,11 @@ export function createDuckdbAdapter(options: DuckdbAdapterOptions): SqlAdapter {
       if (run.code !== 0 || run.stderr.trim() !== '') throw new EngineError('query_failed', duckdbErrorMessage(run.stderr));
       const durationMs = () => Math.round(performance.now() - started);
       const { text, total } = takeChanges(run.stdout);
-      const changes = total ?? 0;
-      if (explain) return { results: [{ columns: ['plan'], rows: [{ plan: text.trimEnd() }], rowCount: 1 }], changes, durationMs: durationMs() };
+      if (explain) return { results: [{ columns: ['plan'], rows: [{ plan: text.trimEnd() }], rowCount: 1 }], changes: total ?? 0, durationMs: durationMs() };
       try {
-        return { results: parseResultSets(text, { nonFinite: true }), changes, durationMs: durationMs() };
+        const results = parseResultSets(text, { nonFinite: true });
+        const returned = isReturningWrite(sql) ? results.reduce((rows, result) => rows + result.rowCount, 0) : 0;
+        return { results, changes: (total ?? 0) + returned, durationMs: durationMs() };
       } catch (error) {
         throw new EngineError('query_failed', 'the engine returned output that could not be read', { cause: error });
       }

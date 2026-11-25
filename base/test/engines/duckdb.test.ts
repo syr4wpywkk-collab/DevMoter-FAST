@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 
-import { MAX_PARAMS, MAX_SQL_BYTES, createDuckdbAdapter, duckdbErrorMessage, duckdbInvocation, encodeDuckdbLiteral } from '../../src/engines/duckdb.ts';
+import { MAX_PARAMS, MAX_SQL_BYTES, createDuckdbAdapter, duckdbErrorMessage, duckdbInvocation, encodeDuckdbLiteral, isReturningWrite } from '../../src/engines/duckdb.ts';
 import { createSqliteAdapter } from '../../src/engines/sqlite.ts';
 import { EngineError, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine } from './helpers.ts';
@@ -217,6 +217,8 @@ describe('DuckDB adapter against the built engine', { skip: duckdb.skip }, () =>
     assert.equal(both.changes, 3);
     assert.deepEqual(both.results, [{ columns: ['c'], rows: [{ c: 2 }], rowCount: 1 }]);
     assert.equal((await adapter.query('SELECT 1 AS x', [])).changes, 0);
+    assert.equal((await adapter.query('INSERT INTO changes_probe VALUES (7), (8) RETURNING a', [])).changes, 2);
+    assert.equal((await adapter.query('INSERT INTO changes_probe VALUES (?) RETURNING a', [9])).changes, 1);
   });
 
   test('a read-only database refuses writes', async () => {
@@ -272,4 +274,12 @@ describe('SQLite health check against the built engine', { skip: sqlite.skip }, 
       await rm(dir, { recursive: true, force: true });
     }
   });
+});
+
+test('isReturningWrite finds a single write with RETURNING', () => {
+  assert.equal(isReturningWrite('INSERT INTO t VALUES (1) RETURNING a;'), true);
+  assert.equal(isReturningWrite('delete from t returning *'), true);
+  assert.equal(isReturningWrite("SELECT 'returning' AS returning"), false);
+  assert.equal(isReturningWrite('UPDATE t SET a = 1 -- returning'), false);
+  assert.equal(isReturningWrite('INSERT INTO t VALUES (1) RETURNING a; SELECT 1'), false);
 });
