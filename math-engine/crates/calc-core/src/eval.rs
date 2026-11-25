@@ -697,7 +697,7 @@ fn lift_binary(op: BinaryOp, l: &Value, r: &Value) -> Value {
     let (lr, lc) = dims(l);
     let (rr, rc) = dims(r);
     let (rows, cols) = (lr.max(rr), lc.max(rc));
-    if rows as usize * cols as usize > crate::array::MAX_ARRAY_CELLS {
+    if u64::from(rows) * u64::from(cols) > crate::array::MAX_ARRAY_CELLS as u64 {
         return Value::Error(CalcError::Value);
     }
     let at = |v: &Value, (vr, vc): (u32, u32), row: u32, col: u32| -> Option<Value> {
