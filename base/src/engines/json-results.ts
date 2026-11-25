@@ -125,7 +125,8 @@ export function quoteNonFinite(source: string): string {
   return parts.join('');
 }
 
-const CHANGES_LINE = /^changes: +\d+ +total_changes: +(\d+)\n?/gm;
+// Anchored to a line feed only: a JSON string may hold a raw U+2028, which a /m "^" would also match after.
+const CHANGES_LINE = /(?<![^\n])changes: +\d+ +total_changes: +(\d+)\n?/g;
 
 /**
  * Takes out the lines the shell prints after each statement with ".changes on". They cannot be

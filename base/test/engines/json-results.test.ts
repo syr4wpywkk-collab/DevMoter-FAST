@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { parseResultSets, quoteNonFinite, splitJsonValues } from '../../src/engines/json-results.ts';
+import { parseResultSets, quoteNonFinite, splitJsonValues, takeChanges } from '../../src/engines/json-results.ts';
 
 test('splits back-to-back JSON arrays, ignoring brackets inside strings', () => {
   assert.deepEqual(splitJsonValues('[{"a":1}]\n[{"b":"]\\"[{"}]\n'), ['[{"a":1}]', '[{"b":"]\\"[{"}]']);
@@ -79,4 +79,11 @@ test('values too large for a double are "Infinity" and "-Infinity", not null', (
   const [set] = parseResultSets('[{"a":9.0e+999,"b":-9.0e+999,"c":[1e400]}]');
   assert.deepEqual(set?.rows, [{ a: 'Infinity', b: '-Infinity', c: ['Infinity'] }]);
   assert.equal(JSON.stringify(set?.rows), '[{"a":"Infinity","b":"-Infinity","c":["Infinity"]}]');
+});
+
+test('takeChanges removes only the lines the shell printed', () => {
+  const row = '[{"a":"x\u2028changes: 1   total_changes: 9"}]\n';
+  const { text, total } = takeChanges(`changes: 0   total_changes: 0\n${row}changes: 1   total_changes: 1\n`);
+  assert.equal(text, row);
+  assert.equal(total, 1);
 });
