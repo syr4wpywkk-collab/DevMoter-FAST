@@ -1,0 +1,46 @@
+# contrib/test_decoding/Makefile
+
+MODULES = test_decoding
+PGFILEDESC = "test_decoding - example of a logical decoding output plugin"
+
+REGRESS = ddl xact rewrite toast permissions decoding_in_xact \
+	decoding_into_rel binary prepared replorigin time messages \
+	repack spill slot truncate stream stats twophase twophase_stream \
+	rowtypes_alter
+
+# slot_creation_error terminates another backend, whose FATAL message can be
+# lost on Windows, making the test unstable there.
+# See https://postgr.es/m/088AB35D-0860-494A-A9CF-8B301543AA51@yandex-team.ru
+SLOT_CREATION_TST = $(if $(filter win32,$(PORTNAME)),,slot_creation_error)
+
+ISOLATION = mxact delayed_startup ondisk_startup concurrent_ddl_dml \
+	oldest_xmin snapshot_transfer subxact_without_top concurrent_stream \
+	twophase_snapshot $(SLOT_CREATION_TST) catalog_change_snapshot \
+	skip_snapshot_restore invalidation_distribution parallel_session_origin \
+	tuplecid_restart tuplecid_nested
+
+REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/test_decoding/logical.conf
+ISOLATION_OPTS = --temp-config $(top_srcdir)/contrib/test_decoding/logical.conf
+
+# Disabled because these tests require "wal_level=logical", which
+# typical installcheck users do not have (e.g. buildfarm clients).
+NO_INSTALLCHECK = 1
+
+TAP_TESTS = 1
+
+ifdef USE_PGXS
+PG_CONFIG = pg_config
+PGXS := $(shell $(PG_CONFIG) --pgxs)
+include $(PGXS)
+else
+subdir = contrib/test_decoding
+top_builddir = ../..
+include $(top_builddir)/src/Makefile.global
+include $(top_srcdir)/contrib/contrib-global.mk
+endif
+
+# But it can nonetheless be very helpful to run tests on preexisting
+# installation, allow to do so, but only if requested explicitly.
+installcheck-force:
+	$(pg_regress_installcheck) $(REGRESS)
+	$(pg_isolation_regress_installcheck) $(ISOLATION)

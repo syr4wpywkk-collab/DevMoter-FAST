@@ -1,0 +1,401 @@
+# name: test/sql/aggregate/aggregates/test_binned_histogram.test
+# description: Test binned histograms
+# group: [aggregates]
+
+statement ok
+CREATE TABLE obs(n BIGINT);
+
+statement ok
+INSERT INTO obs VALUES (0), (5), (7), (12), (20), (23), (24), (25), (26), (28), (31), (34), (36), (41), (47)
+
+query I
+SELECT histogram(n, [10, 20, 30, 40, 50]) FROM obs
+----
+{10=3, 20=2, 30=5, 40=3, 50=2}
+
+# other values are placed into the other bin
+query I
+SELECT histogram(n, [10, 20, 30, 40]) FROM obs
+----
+{10=3, 20=2, 30=5, 40=3, 9223372036854775807=2}
+
+query I
+SELECT histogram(n::double, [10, 20, 30, 40]) FROM obs
+----
+{10.0=3, 20.0=2, 30.0=5, 40.0=3, inf=2}
+
+# empty bins
+query I
+SELECT histogram(n, []) FROM obs
+----
+{9223372036854775807=15}
+
+# bounds that are not sorted
+query I
+SELECT histogram(n, [10, 40, 50, 30, 20]) FROM obs
+----
+{10=3, 20=2, 30=5, 40=3, 50=2}
+
+# grouped aggregation
+# uneven: 5, 7, 23, 25, 31, 41, 47
+# even: 0, 12, 20, 24, 26, 28, 34, 36
+query II
+SELECT n%2=0 is_even, histogram(n, [10, 20, 30, 40, 50]) FROM obs GROUP BY is_even ORDER BY is_even
+----
+false	{10=2, 20=0, 30=2, 40=1, 50=2}
+true	{10=1, 20=2, 30=3, 40=2, 50=0}
+
+# different bounds per group
+query II
+SELECT n%2=0 is_even, histogram(n, case when n%2=0 then [10, 20, 30, 40, 50] else [11, 21, 31, 41, 51] end) FROM obs GROUP BY is_even ORDER BY is_even
+----
+0	{11=2, 21=0, 31=3, 41=1, 51=1}
+1	{10=1, 20=2, 30=3, 40=2, 50=0}
+
+# values bigger than the max bin are ignored
+query I
+SELECT histogram(n, [10, 20, 30, 40, 50]) FROM obs
+----
+{10=3, 20=2, 30=5, 40=3, 50=2}
+
+# larger bins
+query I
+SELECT histogram(i, range(999, 10000, 1000)) FROM range(10000) t(i)
+----
+{999=1000, 1999=1000, 2999=1000, 3999=1000, 4999=1000, 5999=1000, 6999=1000, 7999=1000, 8999=1000, 9999=1000}
+
+# extreme values
+query I
+SELECT histogram(v, [-9223372036854775808, -9223372036854775807, 9223372036854775807]) FROM
+(VALUES (-9223372036854775808), (-9223372036854775807), (0), (9223372036854775807)) t(v)
+----
+{-9223372036854775808=1, -9223372036854775807=1, 9223372036854775807=2}
+
+# extreme doubles/negative values
+query I
+SELECT histogram(v, ['-infinity'::double, -10, 0, 10, 'infinity']) FROM
+(VALUES (-1e308), (-0.5), (0), ('inf'), ('-inf'), (0.5)) t(v)
+----
+{-inf=1, -10.0=1, 0.0=2, 10.0=1, inf=1}
+
+# timestamps
+query I
+SELECT histogram(v, range(timestamp '2000-01-01', timestamp '2005-01-01', interval '1 year')) FROM
+(VALUES (timestamp '2000-01-01'), (timestamp '2003-01-01')) t(v)
+----
+{'2000-01-01 00:00:00'=1, '2001-01-01 00:00:00'=0, '2002-01-01 00:00:00'=0, '2003-01-01 00:00:00'=1, '2004-01-01 00:00:00'=0}
+
+# strings
+query I
+SELECT histogram(v, ['a', 'b', 'c', 'z']) FROM
+(VALUES ('a'), ('aaaa'), ('b'), ('c'), ('d')) t(v)
+----
+{a=1, b=2, c=1, z=1}
+
+# non-inlined strings
+query I
+SELECT histogram(concat('thisisalongprefix_', v), ['thisisalongprefix_'||x for x in ['a', 'b', 'c', 'z']]) FROM
+(VALUES ('a'), ('aaaa'), ('b'), ('c'), ('d')) t(v)
+----
+{thisisalongprefix_a=1, thisisalongprefix_b=2, thisisalongprefix_c=1, thisisalongprefix_z=1}
+
+# structs
+query I
+SELECT histogram({'i': n}, [{'i': x} for x in [10, 20, 30, 40, 50]]) FROM obs
+----
+{{'i': 10}=3, {'i': 20}=2, {'i': 30}=5, {'i': 40}=3, {'i': 50}=2}
+
+# lists
+query I
+SELECT histogram([n], [[x] for x in [10, 20, 30, 40, 50]]) FROM obs
+----
+{[10]=3, [20]=2, [30]=5, [40]=3, [50]=2}
+
+# duplicate bounds in bins
+query I
+SELECT histogram(n, [10, 10, 10, 10]) FROM obs
+----
+{10=3, 9223372036854775807=12}
+
+query I
+SELECT list_aggregate(map_values(histogram(n, [10, 10, 10, 10])), 'sum') FROM obs
+----
+15
+
+# null WITHIN bins
+statement error
+SELECT histogram(n, [10, 20, NULL]) FROM obs
+----
+Histogram bin entry cannot be NULL
+
+# NULL bins
+statement error
+SELECT histogram(n, NULL::BIGINT[]) FROM obs
+----
+Histogram bin list cannot be NULL
+
+# the template signature (T, T[]) rejects bins whose element type does not unify with the argument
+statement error
+SELECT histogram(l, b) FROM (VALUES ([1], [1]), ([2], [1])) t(l, b)
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*'INTEGER\[\]', from first occurrence.*'INTEGER', which is incompatible.*
+
+# the deduction recurses into nested lists
+statement error
+SELECT histogram(l, b) FROM (VALUES ([[1]], [[1]])) t(l, b)
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*'INTEGER\[\]\[\]', from first occurrence.*
+
+statement error
+SELECT histogram(s, b) FROM (VALUES ({'a': 1}, [1])) t(s, b)
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+# the bind error also surfaces in the window form
+statement error
+SELECT histogram(l, b) OVER (ROWS BETWEEN CURRENT ROW AND CURRENT ROW) FROM (VALUES ([1], [1])) t(l, b)
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+# the rejection happens at bind time - PREPARE itself fails
+statement error
+PREPARE invalid_bins AS SELECT histogram(l, b) FROM (VALUES ([1], [1])) t(l, b)
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+# the type check does not depend on the bins values - empty mismatched bins are rejected too
+statement error
+SELECT histogram(1, []::DATE[])
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+# incompatible member types inside struct bins are rejected at bind time as well
+statement error
+SELECT histogram(s, b) FROM (VALUES ({'a': [1]}, [{'a': 1}])) t(s, b)
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+# the same holds for unnamed structs
+statement error
+SELECT histogram(s, b) FROM (VALUES (row([1]), [row(1)])) t(s, b)
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+# map bins with an incompatible value type are rejected at bind time
+statement error
+SELECT histogram(m, b) FROM (VALUES (MAP([1], [[1]]), [MAP([1], [1])])) t(m, b)
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+# map bins with compatible key and value types keep working
+query I
+SELECT histogram(m, b) FROM (VALUES (MAP([1::BIGINT], [1::BIGINT]), [MAP([1], [1])])) t(m, b)
+----
+{{1=1}=1}
+
+# the bins take part in unification - the argument promotes to the wider bin element type
+query I
+SELECT histogram(1, [0.5, 1.5, 2.5])
+----
+{0.5=0, 1.5=1, 2.5=0}
+
+# the promotion also shows in the result type
+query I
+SELECT typeof(histogram(1::INTEGER, [1::BIGINT]))
+----
+MAP(BIGINT, UBIGINT)
+
+# key types for argument and bin pairs that unify to a wider type
+query IIII
+SELECT typeof(histogram(true, [0, 1])), typeof(histogram(1::SMALLINT, [10, 20])), typeof(histogram(1::UBIGINT, [10, 20])), typeof(histogram(1::UHUGEINT, [10, 20]))
+----
+MAP(INTEGER, UBIGINT)	MAP(INTEGER, UBIGINT)	MAP(HUGEINT, UBIGINT)	MAP(BIGINT, UBIGINT)
+
+# bin values outside the argument type's range work through promotion instead of failing in a forced cast
+query I
+SELECT histogram(v, [100000]) FROM (VALUES (1::SMALLINT)) t(v)
+----
+{100000=1}
+
+# the UHUGEINT and INTEGER combination narrows to BIGINT, so an argument beyond the signed range
+# fails its cast at runtime, like the corresponding explicit cast - the combine rule is discussed separately
+statement error
+SELECT histogram(v, [10, 20]) FROM (VALUES (170141183460469231731687303715884105728::UHUGEINT)) t(v)
+----
+<REGEX>:.*Conversion Error.*out of range.*
+
+# TIMESTAMP bins promote a DATE argument
+query I
+SELECT histogram(d, [TIMESTAMP '2020-06-01']) FROM (VALUES (DATE '2020-01-01')) t(d)
+----
+{'2020-06-01 00:00:00'=1}
+
+# bins may omit struct members that the cast fills with NULL
+query I
+SELECT histogram(s, b) FROM (VALUES ({'a': 1, 'b': NULL::INTEGER[]}, [{'a': 1}])) t(s, b)
+----
+{{'a': 1, 'b': NULL}=1}
+
+# a NULL argument takes its type from the bins
+query I
+SELECT histogram(NULL, [1, 2])
+----
+NULL
+
+# VARCHAR bins for a DATE argument are rejected like in any templated function
+statement error
+SELECT histogram(d, b) FROM (VALUES (DATE '2020-01-01', ['2020-06-01'])) t(d, b)
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+# bare string-literal bins are a VARCHAR list by the time histogram binds, so they are rejected too
+statement error
+SELECT histogram(DATE '2020-01-01', ['2020-06-01'])
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+statement error
+SELECT list_contains(b, d) FROM (VALUES (DATE '2020-01-01', ['2020-06-01'])) t(d, b)
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+# an explicit cast re-enables them
+query I
+SELECT histogram(d, b::DATE[]) FROM (VALUES (DATE '2020-01-01', ['2020-06-01'])) t(d, b)
+----
+{2020-06-01=1}
+
+# bin casts the unified type allows keep failing at runtime, like the corresponding explicit cast
+statement error
+SELECT histogram(ts, b) FROM (VALUES (TIMESTAMP '2020-01-01', [DATE '5874897-12-31'])) t(ts, b)
+----
+<REGEX>:.*Conversion Error.*can't be cast.*
+
+# the same conversion with a representable value keeps working
+query I
+SELECT histogram(ts, b) FROM (VALUES (TIMESTAMP '2020-01-01', [DATE '2020-06-01'])) t(ts, b)
+----
+{'2020-06-01 00:00:00'=1}
+
+statement ok
+CREATE TYPE small_enum AS ENUM ('a', 'b')
+
+# enum bins unify with a VARCHAR argument
+query I
+SELECT histogram(v, ['a'::small_enum, 'b'::small_enum]) FROM (VALUES ('a'), ('b')) t(v)
+----
+{a=1, b=1}
+
+# an ENUM argument with VARCHAR bins unifies to VARCHAR
+query I
+SELECT typeof(histogram(v, ['a', 'b'])) FROM (VALUES ('a'::small_enum)) t(v)
+----
+MAP(VARCHAR, UBIGINT)
+
+# enum bins for an integer argument are rejected at bind time
+statement error
+SELECT histogram(1, ['1'::ENUM('1')])
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+statement error
+SELECT histogram(get_type(1), ['INTEGER'::ENUM('INTEGER')])
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+# member-typed bins for a union argument no longer bind - the member does not unify with the union
+statement error
+SELECT histogram(union_value(e := 'a'::small_enum)::UNION(e small_enum, n INTEGER), ['a'::small_enum])
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+# union bins unify with a union argument by merging the members
+query I
+SELECT histogram(union_value(a := 1), [union_value(b := 1)])
+----
+{1=1}
+
+# a member type that unifies into the union keeps its runtime member-selection errors
+statement error
+SELECT histogram(union_value(a := 1)::UNION(a INTEGER, b INTEGER), [1])
+----
+<REGEX>:.*Conversion Error.*ambiguous.*
+
+# union-to-union bins keep their runtime member semantics
+query I
+WITH v AS (SELECT union_value(b := 1)::UNION(a INTEGER, b INTEGER) AS s)
+SELECT list_aggregate(map_values(histogram(union_value(wrapped := s)::UNION(a INTEGER[], wrapped UNION(a INTEGER, b INTEGER)), [s])), 'sum') FROM v
+----
+1
+
+query I
+WITH v AS (SELECT union_value(b := 1)::UNION(a INTEGER, b INTEGER) AS s)
+SELECT list_aggregate(map_values(histogram(union_value(b := 1)::UNION(a INTEGER[], b INTEGER), [s])), 'sum') FROM v
+----
+1
+
+# a union-to-union cast with no executable member keeps failing at runtime
+statement error
+SELECT histogram(union_value(a := [1])::UNION(a INTEGER[], b DATE), b) FROM (VALUES ([union_value(a := 1)::UNION(a INTEGER, b INTEGER)])) t(b)
+----
+<REGEX>:.*Conversion Error.*Unimplemented type for cast.*
+
+# the union-to-union bins cast converts inactive members as all-NULL vectors - a member with
+# mismatched array sizes still raises its runtime error for them
+statement error
+SELECT list_aggregate(map_values(histogram(union_value(b := 1)::UNION(a INTEGER[3], b INTEGER), b)), 'sum') FROM (VALUES ([union_value(b := 1)::UNION(a INTEGER[2], b INTEGER)])) t(b)
+----
+<REGEX>:.*Cannot cast array of size 2 to array of size 3.*
+
+# the struct representation of a union does not unify with the union argument
+statement error
+SELECT histogram(union_value(a := 1), [{'tag': 0::UTINYINT, 'a': 1}])
+----
+<REGEX>:Binder Error.*Cannot deduce template type 'T'.*
+
+# an integer argument unifies with VARIANT bins
+query I
+SELECT histogram(1, [1::VARIANT])
+----
+{1=1}
+
+# conversions the unified VARIANT type does not support keep failing at runtime
+statement error
+SELECT histogram(get_type(1), [1::VARIANT])
+----
+<REGEX>:.*Conversion Error.*TYPE -> VARIANT.*
+
+statement error
+SELECT histogram(v, b) FROM (VALUES (1::VARIANT, [get_type(1)])) t(v, b)
+----
+<REGEX>:.*Conversion Error.*TYPE -> VARIANT.*
+
+# array bins of the matching size still work
+query I
+SELECT histogram(n, [10, 20, 30, 40, 50]::BIGINT[5]) FROM obs
+----
+{10=3, 20=2, 30=5, 40=3, 50=2}
+
+# array bins of a mismatched size keep failing at runtime, like the corresponding explicit cast
+statement error
+SELECT histogram(a, b) FROM (VALUES ([1,2,3]::INT[3], [[1,2]::INT[2]])) t(a, b)
+----
+<REGEX>:.*Cannot cast array of size 2 to array of size 3.*
+
+# prepared statement parameter as bins
+statement ok
+PREPARE binned AS SELECT histogram(n, ?) FROM obs
+
+query I
+EXECUTE binned([10, 20, 30, 40, 50])
+----
+{10=3, 20=2, 30=5, 40=3, 50=2}
+
+# prepared statement parameter as the argument
+statement ok
+PREPARE binned_arg AS SELECT histogram(?, [10, 20, 30, 40, 50]) FROM obs
+
+query I
+EXECUTE binned_arg(25)
+----
+{10=0, 20=0, 30=15, 40=0, 50=0}

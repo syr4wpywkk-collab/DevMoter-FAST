@@ -1,0 +1,701 @@
+/*-------------------------------------------------------------------------
+ *
+ * nodeIndexonlyscan.c
+ *	  Routines to support index-only scans
+ *
+ * Portions Copyright (c) 1996-2026, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1994, Regents of the University of California
+ *
+ *
+ * IDENTIFICATION
+ *	  src/backend/executor/nodeIndexonlyscan.c
+ *
+ *-------------------------------------------------------------------------
+ */
+/*
+ * INTERFACE ROUTINES
+ *		ExecIndexOnlyScan			scans an index
+ *		IndexOnlyNext				retrieve next tuple
+ *		ExecInitIndexOnlyScan		creates and initializes state info.
+ *		ExecReScanIndexOnlyScan		rescans the indexed relation.
+ *		ExecEndIndexOnlyScan		releases all storage.
+ *		ExecIndexOnlyMarkPos		marks scan position.
+ *		ExecIndexOnlyRestrPos		restores scan position.
+ *		ExecIndexOnlyScanEstimate	estimates DSM space needed for
+ *						parallel index-only scan
+ *		ExecIndexOnlyScanInitializeDSM	initialize DSM for parallel
+ *						index-only scan
+ *		ExecIndexOnlyScanReInitializeDSM	reinitialize DSM for fresh scan
+ *		ExecIndexOnlyScanInitializeWorker attach to DSM info in parallel worker
+ */
+#include "postgres.h"
+
+#include "access/genam.h"
+#include "access/relscan.h"
+#include "access/tableam.h"
+#include "executor/executor.h"
+#include "executor/instrument.h"
+#include "executor/nodeIndexonlyscan.h"
+#include "executor/nodeIndexscan.h"
+#include "miscadmin.h"
+#include "utils/rel.h"
+
+
+static TupleTableSlot *IndexOnlyNext(IndexOnlyScanState *node);
+
+
+/* ----------------------------------------------------------------
+ *		IndexOnlyNext
+ *
+ *		Retrieve a tuple from the IndexOnlyScan node's index.
+ * ----------------------------------------------------------------
+ */
+static TupleTableSlot *
+IndexOnlyNext(IndexOnlyScanState *node)
+{
+	EState	   *estate;
+	ExprContext *econtext;
+	ScanDirection direction;
+	IndexScanDesc scandesc;
+	TupleTableSlot *slot;
+
+	/*
+	 * extract necessary information from index scan node
+	 */
+	estate = node->ss.ps.state;
+
+	/*
+	 * Determine which direction to scan the index in based on the plan's scan
+	 * direction and the current direction of execution.
+	 */
+	direction = ScanDirectionCombine(estate->es_direction,
+									 ((IndexOnlyScan *) node->ss.ps.plan)->indexorderdir);
+	scandesc = node->ioss_ScanDesc;
+	econtext = node->ss.ps.ps_ExprContext;
+	slot = node->ss.ss_ScanTupleSlot;
+
+	if (scandesc == NULL)
+	{
+		/*
+		 * We reach here if the index only scan is not parallel, or if we're
+		 * serially executing an index only scan that was planned to be
+		 * parallel.
+		 */
+		scandesc = index_beginscan(node->ss.ss_currentRelation,
+								   node->ioss_RelationDesc,
+								   true,
+								   estate->es_snapshot,
+								   node->ioss_Instrument,
+								   node->ioss_NumScanKeys,
+								   node->ioss_NumOrderByKeys,
+								   ScanRelIsReadOnly(&node->ss) ?
+								   SO_HINT_REL_READ_ONLY : SO_NONE);
+
+		node->ioss_ScanDesc = scandesc;
+		Assert(node->ioss_ScanDesc->xs_want_itup);
+
+		/*
+		 * If no run-time keys to calculate or they are ready, go ahead and
+		 * pass the scankeys to the index AM.
+		 */
+		if (node->ioss_NumRuntimeKeys == 0 || node->ioss_RuntimeKeysReady)
+			index_rescan(scandesc,
+						 node->ioss_ScanKeys,
+						 node->ioss_NumScanKeys,
+						 node->ioss_OrderByKeys,
+						 node->ioss_NumOrderByKeys);
+	}
+
+	/*
+	 * OK, now that we have what we need, fetch the next tuple.
+	 */
+	while (table_index_getnext_slot(scandesc, direction, slot))
+	{
+		CHECK_FOR_INTERRUPTS();
+
+		/*
+		 * If the index was lossy, we have to recheck the index quals.
+		 */
+		if (scandesc->xs_recheck)
+		{
+			econtext->ecxt_scantuple = slot;
+			if (!ExecQualAndReset(node->recheckqual, econtext))
+			{
+				/* Fails recheck, so drop it and loop back for another */
+				InstrCountFiltered2(node, 1);
+				continue;
+			}
+		}
+
+		/*
+		 * We don't currently support rechecking ORDER BY distances.  (In
+		 * principle, if the index can support retrieval of the originally
+		 * indexed value, it should be able to produce an exact distance
+		 * calculation too.  So it's not clear that adding code here for
+		 * recheck/re-sort would be worth the trouble.  But we should at least
+		 * throw an error if someone tries it.)
+		 */
+		if (scandesc->numberOfOrderBys > 0 && scandesc->xs_recheckorderby)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("lossy distance functions are not supported in index-only scans")));
+		return slot;
+	}
+
+	/*
+	 * if we get here it means the index scan failed so we are at the end of
+	 * the scan..
+	 */
+	return ExecClearTuple(slot);
+}
+
+/*
+ * IndexOnlyRecheck -- access method routine to recheck a tuple in EvalPlanQual
+ *
+ * This can't really happen, since an index can't supply CTID which would
+ * be necessary data for any potential EvalPlanQual target relation.  If it
+ * did happen, the EPQ code would pass us the wrong data, namely a heap
+ * tuple not an index tuple.  So throw an error.
+ */
+static bool
+IndexOnlyRecheck(IndexOnlyScanState *node, TupleTableSlot *slot)
+{
+	elog(ERROR, "EvalPlanQual recheck is not supported in index-only scans");
+	return false;				/* keep compiler quiet */
+}
+
+/* ----------------------------------------------------------------
+ *		ExecIndexOnlyScan(node)
+ * ----------------------------------------------------------------
+ */
+static TupleTableSlot *
+ExecIndexOnlyScan(PlanState *pstate)
+{
+	IndexOnlyScanState *node = castNode(IndexOnlyScanState, pstate);
+
+	/*
+	 * If we have runtime keys and they've not already been set up, do it now.
+	 */
+	if (node->ioss_NumRuntimeKeys != 0 && !node->ioss_RuntimeKeysReady)
+		ExecReScan((PlanState *) node);
+
+	return ExecScan(&node->ss,
+					(ExecScanAccessMtd) IndexOnlyNext,
+					(ExecScanRecheckMtd) IndexOnlyRecheck);
+}
+
+/* ----------------------------------------------------------------
+ *		ExecReScanIndexOnlyScan(node)
+ *
+ *		Recalculates the values of any scan keys whose value depends on
+ *		information known at runtime, then rescans the indexed relation.
+ *
+ *		Updating the scan key was formerly done separately in
+ *		ExecUpdateIndexScanKeys. Integrating it into ReScan makes
+ *		rescans of indices and relations/general streams more uniform.
+ * ----------------------------------------------------------------
+ */
+void
+ExecReScanIndexOnlyScan(IndexOnlyScanState *node)
+{
+	/*
+	 * If we are doing runtime key calculations (ie, any of the index key
+	 * values weren't simple Consts), compute the new key values.  But first,
+	 * reset the context so we don't leak memory as each outer tuple is
+	 * scanned.  Note this assumes that we will recalculate *all* runtime keys
+	 * on each call.
+	 */
+	if (node->ioss_NumRuntimeKeys != 0)
+	{
+		ExprContext *econtext = node->ioss_RuntimeContext;
+
+		ResetExprContext(econtext);
+		ExecIndexEvalRuntimeKeys(econtext,
+								 node->ioss_RuntimeKeys,
+								 node->ioss_NumRuntimeKeys);
+	}
+	node->ioss_RuntimeKeysReady = true;
+
+	/* reset index scan */
+	if (node->ioss_ScanDesc)
+		index_rescan(node->ioss_ScanDesc,
+					 node->ioss_ScanKeys, node->ioss_NumScanKeys,
+					 node->ioss_OrderByKeys, node->ioss_NumOrderByKeys);
+
+	ExecScanReScan(&node->ss);
+}
+
+
+/* ----------------------------------------------------------------
+ *		ExecEndIndexOnlyScan
+ * ----------------------------------------------------------------
+ */
+void
+ExecEndIndexOnlyScan(IndexOnlyScanState *node)
+{
+	Relation	indexRelationDesc;
+	IndexScanDesc indexScanDesc;
+
+	/*
+	 * extract information from the node
+	 */
+	indexRelationDesc = node->ioss_RelationDesc;
+	indexScanDesc = node->ioss_ScanDesc;
+
+	/*
+	 * When ending a parallel worker, copy the statistics gathered by the
+	 * worker back into shared memory so that it can be picked up by the main
+	 * process to report in EXPLAIN ANALYZE
+	 */
+	if (node->ioss_SharedInfo != NULL && IsParallelWorker())
+	{
+		IndexScanInstrumentation *winstrument;
+
+		Assert(ParallelWorkerNumber < node->ioss_SharedInfo->num_workers);
+		winstrument = &node->ioss_SharedInfo->winstrument[ParallelWorkerNumber];
+
+		/*
+		 * We have to accumulate the stats rather than performing a memcpy.
+		 * When a Gather/GatherMerge node finishes it will perform planner
+		 * shutdown on the workers.  On rescan it will spin up new workers
+		 * which will have a new IndexOnlyScanState and zeroed stats.
+		 */
+		winstrument->nsearches += node->ioss_Instrument->nsearches;
+		winstrument->ntabletuplefetches += node->ioss_Instrument->ntabletuplefetches;
+	}
+
+	/*
+	 * close the index relation (no-op if we didn't open it)
+	 */
+	if (indexScanDesc)
+		index_endscan(indexScanDesc);
+	if (indexRelationDesc)
+		index_close(indexRelationDesc, NoLock);
+}
+
+/* ----------------------------------------------------------------
+ *		ExecIndexOnlyMarkPos
+ *
+ * Note: we assume that no caller attempts to set a mark before having read
+ * at least one tuple.  Otherwise, ioss_ScanDesc might still be NULL.
+ * ----------------------------------------------------------------
+ */
+void
+ExecIndexOnlyMarkPos(IndexOnlyScanState *node)
+{
+	EState	   *estate = node->ss.ps.state;
+	EPQState   *epqstate = estate->es_epq_active;
+
+	if (epqstate != NULL)
+	{
+		/*
+		 * We are inside an EvalPlanQual recheck.  If a test tuple exists for
+		 * this relation, then we shouldn't access the index at all.  We would
+		 * instead need to save, and later restore, the state of the
+		 * relsubs_done flag, so that re-fetching the test tuple is possible.
+		 * However, given the assumption that no caller sets a mark at the
+		 * start of the scan, we can only get here with relsubs_done[i]
+		 * already set, and so no state need be saved.
+		 */
+		Index		scanrelid = ((Scan *) node->ss.ps.plan)->scanrelid;
+
+		Assert(scanrelid > 0);
+		if (epqstate->relsubs_slot[scanrelid - 1] != NULL ||
+			epqstate->relsubs_rowmark[scanrelid - 1] != NULL)
+		{
+			/* Verify the claim above */
+			if (!epqstate->relsubs_done[scanrelid - 1])
+				elog(ERROR, "unexpected ExecIndexOnlyMarkPos call in EPQ recheck");
+			return;
+		}
+	}
+
+	index_markpos(node->ioss_ScanDesc);
+}
+
+/* ----------------------------------------------------------------
+ *		ExecIndexOnlyRestrPos
+ * ----------------------------------------------------------------
+ */
+void
+ExecIndexOnlyRestrPos(IndexOnlyScanState *node)
+{
+	EState	   *estate = node->ss.ps.state;
+	EPQState   *epqstate = estate->es_epq_active;
+
+	if (estate->es_epq_active != NULL)
+	{
+		/* See comments in ExecIndexMarkPos */
+		Index		scanrelid = ((Scan *) node->ss.ps.plan)->scanrelid;
+
+		Assert(scanrelid > 0);
+		if (epqstate->relsubs_slot[scanrelid - 1] != NULL ||
+			epqstate->relsubs_rowmark[scanrelid - 1] != NULL)
+		{
+			/* Verify the claim above */
+			if (!epqstate->relsubs_done[scanrelid - 1])
+				elog(ERROR, "unexpected ExecIndexOnlyRestrPos call in EPQ recheck");
+			return;
+		}
+	}
+
+	index_restrpos(node->ioss_ScanDesc);
+}
+
+/* ----------------------------------------------------------------
+ *		ExecInitIndexOnlyScan
+ *
+ *		Initializes the index scan's state information, creates
+ *		scan keys, and opens the base and index relations.
+ *
+ *		Note: index scans have 2 sets of state information because
+ *			  we have to keep track of the base relation and the
+ *			  index relation.
+ * ----------------------------------------------------------------
+ */
+IndexOnlyScanState *
+ExecInitIndexOnlyScan(IndexOnlyScan *node, EState *estate, int eflags)
+{
+	IndexOnlyScanState *indexstate;
+	Relation	currentRelation;
+	Relation	indexRelation;
+	LOCKMODE	lockmode;
+	TupleDesc	tupDesc;
+
+	/*
+	 * create state structure
+	 */
+	indexstate = makeNode(IndexOnlyScanState);
+	indexstate->ss.ps.plan = (Plan *) node;
+	indexstate->ss.ps.state = estate;
+	indexstate->ss.ps.ExecProcNode = ExecIndexOnlyScan;
+
+	/*
+	 * Miscellaneous initialization
+	 *
+	 * create expression context for node
+	 */
+	ExecAssignExprContext(estate, &indexstate->ss.ps);
+
+	/*
+	 * open the scan relation
+	 */
+	currentRelation = ExecOpenScanRelation(estate, node->scan.scanrelid, eflags);
+
+	indexstate->ss.ss_currentRelation = currentRelation;
+	indexstate->ss.ss_currentScanDesc = NULL;	/* no heap scan here */
+
+	/*
+	 * Build the scan tuple type using the indextlist generated by the
+	 * planner.  We use this, rather than the index's physical tuple
+	 * descriptor, because the latter contains storage column types not the
+	 * types of the original datums.  (It's the index AM's responsibility to
+	 * return suitable data anyway.  The table AM fills our slot with that
+	 * returned data.)
+	 */
+	tupDesc = ExecTypeFromTL(node->indextlist);
+	ExecInitScanTupleSlot(estate, &indexstate->ss, tupDesc,
+						  &TTSOpsVirtual,
+						  0);
+
+	/*
+	 * Initialize result type and projection info.  The node's targetlist will
+	 * contain Vars with varno = INDEX_VAR, referencing the scan tuple.
+	 */
+	ExecInitResultTypeTL(&indexstate->ss.ps);
+	ExecAssignScanProjectionInfoWithVarno(&indexstate->ss, INDEX_VAR);
+
+	/*
+	 * initialize child expressions
+	 *
+	 * Note: we don't initialize all of the indexorderby expression, only the
+	 * sub-parts corresponding to runtime keys (see below).
+	 */
+	indexstate->ss.ps.qual =
+		ExecInitQual(node->scan.plan.qual, (PlanState *) indexstate);
+	indexstate->recheckqual =
+		ExecInitQual(node->recheckqual, (PlanState *) indexstate);
+
+	/*
+	 * If we are just doing EXPLAIN (ie, aren't going to run the plan), stop
+	 * here.  This allows an index-advisor plugin to EXPLAIN a plan containing
+	 * references to nonexistent indexes.
+	 */
+	if (eflags & EXEC_FLAG_EXPLAIN_ONLY)
+		return indexstate;
+
+	/* Set up instrumentation of index-only scans if requested */
+	if (estate->es_instrument)
+		indexstate->ioss_Instrument = palloc0_object(IndexScanInstrumentation);
+
+	/* Open the index relation. */
+	lockmode = exec_rt_fetch(node->scan.scanrelid, estate)->rellockmode;
+	indexRelation = index_open(node->indexid, lockmode);
+	indexstate->ioss_RelationDesc = indexRelation;
+
+	/*
+	 * Initialize index-specific scan state
+	 */
+	indexstate->ioss_RuntimeKeysReady = false;
+	indexstate->ioss_RuntimeKeys = NULL;
+	indexstate->ioss_NumRuntimeKeys = 0;
+
+	/*
+	 * build the index scan keys from the index qualification
+	 */
+	ExecIndexBuildScanKeys((PlanState *) indexstate,
+						   indexRelation,
+						   node->indexqual,
+						   false,
+						   &indexstate->ioss_ScanKeys,
+						   &indexstate->ioss_NumScanKeys,
+						   &indexstate->ioss_RuntimeKeys,
+						   &indexstate->ioss_NumRuntimeKeys,
+						   NULL,	/* no ArrayKeys */
+						   NULL);
+
+	/*
+	 * any ORDER BY exprs have to be turned into scankeys in the same way
+	 */
+	ExecIndexBuildScanKeys((PlanState *) indexstate,
+						   indexRelation,
+						   node->indexorderby,
+						   true,
+						   &indexstate->ioss_OrderByKeys,
+						   &indexstate->ioss_NumOrderByKeys,
+						   &indexstate->ioss_RuntimeKeys,
+						   &indexstate->ioss_NumRuntimeKeys,
+						   NULL,	/* no ArrayKeys */
+						   NULL);
+
+	/*
+	 * If we have runtime keys, we need an ExprContext to evaluate them. The
+	 * node's standard context won't do because we want to reset that context
+	 * for every tuple.  So, build another context just like the other one...
+	 * -tgl 7/11/00
+	 */
+	if (indexstate->ioss_NumRuntimeKeys != 0)
+	{
+		ExprContext *stdecontext = indexstate->ss.ps.ps_ExprContext;
+
+		ExecAssignExprContext(estate, &indexstate->ss.ps);
+		indexstate->ioss_RuntimeContext = indexstate->ss.ps.ps_ExprContext;
+		indexstate->ss.ps.ps_ExprContext = stdecontext;
+	}
+	else
+	{
+		indexstate->ioss_RuntimeContext = NULL;
+	}
+
+	/*
+	 * all done.
+	 */
+	return indexstate;
+}
+
+/* ----------------------------------------------------------------
+ *		Parallel Index-only Scan Support
+ * ----------------------------------------------------------------
+ */
+
+/* ----------------------------------------------------------------
+ *		ExecIndexOnlyScanEstimate
+ *
+ *		Compute the amount of space we'll need in the parallel
+ *		query DSM, and inform pcxt->estimator about our needs.
+ * ----------------------------------------------------------------
+ */
+void
+ExecIndexOnlyScanEstimate(IndexOnlyScanState *node,
+						  ParallelContext *pcxt)
+{
+	EState	   *estate = node->ss.ps.state;
+
+	node->ioss_PscanLen = index_parallelscan_estimate(node->ioss_RelationDesc,
+													  node->ioss_NumScanKeys,
+													  node->ioss_NumOrderByKeys,
+													  estate->es_snapshot);
+	shm_toc_estimate_chunk(&pcxt->estimator, node->ioss_PscanLen);
+	shm_toc_estimate_keys(&pcxt->estimator, 1);
+}
+
+/* ----------------------------------------------------------------
+ *		ExecIndexOnlyScanInitializeDSM
+ *
+ *		Set up a parallel index-only scan descriptor.
+ * ----------------------------------------------------------------
+ */
+void
+ExecIndexOnlyScanInitializeDSM(IndexOnlyScanState *node,
+							   ParallelContext *pcxt)
+{
+	EState	   *estate = node->ss.ps.state;
+	ParallelIndexScanDesc piscan;
+
+	piscan = shm_toc_allocate(pcxt->toc, node->ioss_PscanLen);
+	index_parallelscan_initialize(node->ss.ss_currentRelation,
+								  node->ioss_RelationDesc,
+								  estate->es_snapshot,
+								  piscan);
+	shm_toc_insert(pcxt->toc, node->ss.ps.plan->plan_node_id, piscan);
+
+	node->ioss_ScanDesc =
+		index_beginscan_parallel(node->ss.ss_currentRelation,
+								 node->ioss_RelationDesc,
+								 true,
+								 node->ioss_Instrument,
+								 node->ioss_NumScanKeys,
+								 node->ioss_NumOrderByKeys,
+								 piscan,
+								 ScanRelIsReadOnly(&node->ss) ?
+								 SO_HINT_REL_READ_ONLY : SO_NONE);
+	Assert(node->ioss_ScanDesc->xs_want_itup);
+
+	/*
+	 * If no run-time keys to calculate or they are ready, go ahead and pass
+	 * the scankeys to the index AM.
+	 */
+	if (node->ioss_NumRuntimeKeys == 0 || node->ioss_RuntimeKeysReady)
+		index_rescan(node->ioss_ScanDesc,
+					 node->ioss_ScanKeys, node->ioss_NumScanKeys,
+					 node->ioss_OrderByKeys, node->ioss_NumOrderByKeys);
+}
+
+/* ----------------------------------------------------------------
+ *		ExecIndexOnlyScanReInitializeDSM
+ *
+ *		Reset shared state before beginning a fresh scan.
+ * ----------------------------------------------------------------
+ */
+void
+ExecIndexOnlyScanReInitializeDSM(IndexOnlyScanState *node,
+								 ParallelContext *pcxt)
+{
+	Assert(node->ss.ps.plan->parallel_aware);
+	index_parallelrescan(node->ioss_ScanDesc);
+}
+
+/* ----------------------------------------------------------------
+ *		ExecIndexOnlyScanInitializeWorker
+ *
+ *		Copy relevant information from TOC into planstate.
+ * ----------------------------------------------------------------
+ */
+void
+ExecIndexOnlyScanInitializeWorker(IndexOnlyScanState *node,
+								  ParallelWorkerContext *pwcxt)
+{
+	ParallelIndexScanDesc piscan;
+
+	piscan = shm_toc_lookup(pwcxt->toc, node->ss.ps.plan->plan_node_id, false);
+
+	node->ioss_ScanDesc =
+		index_beginscan_parallel(node->ss.ss_currentRelation,
+								 node->ioss_RelationDesc,
+								 true,
+								 node->ioss_Instrument,
+								 node->ioss_NumScanKeys,
+								 node->ioss_NumOrderByKeys,
+								 piscan,
+								 ScanRelIsReadOnly(&node->ss) ?
+								 SO_HINT_REL_READ_ONLY : SO_NONE);
+	Assert(node->ioss_ScanDesc->xs_want_itup);
+
+	/*
+	 * If no run-time keys to calculate or they are ready, go ahead and pass
+	 * the scankeys to the index AM.
+	 */
+	if (node->ioss_NumRuntimeKeys == 0 || node->ioss_RuntimeKeysReady)
+		index_rescan(node->ioss_ScanDesc,
+					 node->ioss_ScanKeys, node->ioss_NumScanKeys,
+					 node->ioss_OrderByKeys, node->ioss_NumOrderByKeys);
+}
+
+/*
+ * Compute the amount of space we'll need for the shared instrumentation and
+ * inform pcxt->estimator.
+ */
+void
+ExecIndexOnlyScanInstrumentEstimate(IndexOnlyScanState *node,
+									ParallelContext *pcxt)
+{
+	Size		size;
+
+	if (!node->ss.ps.instrument || pcxt->nworkers == 0)
+		return;
+
+	/*
+	 * This size calculation is trivial enough that we don't bother saving it
+	 * in the IndexOnlyScanState. We'll recalculate the needed size in
+	 * ExecIndexOnlyScanInstrumentInitDSM().
+	 */
+	size = add_size(offsetof(SharedIndexScanInstrumentation, winstrument),
+					mul_size(pcxt->nworkers, sizeof(IndexScanInstrumentation)));
+	shm_toc_estimate_chunk(&pcxt->estimator, size);
+	shm_toc_estimate_keys(&pcxt->estimator, 1);
+}
+
+/*
+ * Set up parallel index-only scan instrumentation.
+ */
+void
+ExecIndexOnlyScanInstrumentInitDSM(IndexOnlyScanState *node,
+								   ParallelContext *pcxt)
+{
+	Size		size;
+
+	if (!node->ss.ps.instrument || pcxt->nworkers == 0)
+		return;
+
+	size = add_size(offsetof(SharedIndexScanInstrumentation, winstrument),
+					mul_size(pcxt->nworkers, sizeof(IndexScanInstrumentation)));
+	node->ioss_SharedInfo =
+		(SharedIndexScanInstrumentation *) shm_toc_allocate(pcxt->toc, size);
+
+	/* Each per-worker area must start out as zeroes */
+	memset(node->ioss_SharedInfo, 0, size);
+	node->ioss_SharedInfo->num_workers = pcxt->nworkers;
+	shm_toc_insert(pcxt->toc,
+				   node->ss.ps.plan->plan_node_id +
+				   PARALLEL_KEY_SCAN_INSTRUMENT_OFFSET,
+				   node->ioss_SharedInfo);
+}
+
+/*
+ * Look up and save the location of the shared instrumentation.
+ */
+void
+ExecIndexOnlyScanInstrumentInitWorker(IndexOnlyScanState *node,
+									  ParallelWorkerContext *pwcxt)
+{
+	if (!node->ss.ps.instrument)
+		return;
+
+	node->ioss_SharedInfo = (SharedIndexScanInstrumentation *)
+		shm_toc_lookup(pwcxt->toc,
+					   node->ss.ps.plan->plan_node_id +
+					   PARALLEL_KEY_SCAN_INSTRUMENT_OFFSET,
+					   false);
+}
+
+/* ----------------------------------------------------------------
+ *		ExecIndexOnlyScanRetrieveInstrumentation
+ *
+ *		Transfer index-only scan statistics from DSM to private memory.
+ * ----------------------------------------------------------------
+ */
+void
+ExecIndexOnlyScanRetrieveInstrumentation(IndexOnlyScanState *node)
+{
+	SharedIndexScanInstrumentation *SharedInfo = node->ioss_SharedInfo;
+	size_t		size;
+
+	if (SharedInfo == NULL)
+		return;
+
+	/* Create a copy of SharedInfo in backend-local memory */
+	size = offsetof(SharedIndexScanInstrumentation, winstrument) +
+		SharedInfo->num_workers * sizeof(IndexScanInstrumentation);
+	node->ioss_SharedInfo = palloc(size);
+	memcpy(node->ioss_SharedInfo, SharedInfo, size);
+}

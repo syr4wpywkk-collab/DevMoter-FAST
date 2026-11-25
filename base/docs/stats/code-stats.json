@@ -1,0 +1,724 @@
+{
+  "schemaVersion": 1,
+  "summary": {
+    "own": {
+      "files": 30,
+      "lines": 4313,
+      "blank": 376,
+      "comment": 530,
+      "code": 3407
+    },
+    "tests": {
+      "files": 22,
+      "lines": 3324,
+      "blank": 349,
+      "comment": 50,
+      "code": 2925
+    },
+    "docs": {
+      "files": 7,
+      "lines": 615,
+      "blank": 147,
+      "comment": 0,
+      "code": 468
+    },
+    "config": {
+      "files": 10,
+      "lines": 240,
+      "blank": 8,
+      "comment": 4,
+      "code": 228
+    },
+    "vendored": {
+      "files": 30721,
+      "lines": 9874348,
+      "blank": 1123955,
+      "comment": 1087412,
+      "code": 7662981
+    },
+    "total": {
+      "files": 30790,
+      "lines": 9882840,
+      "blank": 1124835,
+      "comment": 1087996,
+      "code": 7670009
+    }
+  },
+  "categories": {
+    "own": {
+      "total": {
+        "files": 30,
+        "lines": 4313,
+        "blank": 376,
+        "comment": 530,
+        "code": 3407
+      },
+      "languages": {
+        "TypeScript": {
+          "files": 24,
+          "lines": 4127,
+          "blank": 365,
+          "comment": 489,
+          "code": 3273
+        },
+        "Shell": {
+          "files": 5,
+          "lines": 167,
+          "blank": 8,
+          "comment": 35,
+          "code": 124
+        },
+        "Build system": {
+          "files": 1,
+          "lines": 19,
+          "blank": 3,
+          "comment": 6,
+          "code": 10
+        }
+      }
+    },
+    "tests": {
+      "total": {
+        "files": 22,
+        "lines": 3324,
+        "blank": 349,
+        "comment": 50,
+        "code": 2925
+      },
+      "languages": {
+        "TypeScript": {
+          "files": 22,
+          "lines": 3324,
+          "blank": 349,
+          "comment": 50,
+          "code": 2925
+        }
+      }
+    },
+    "docs": {
+      "total": {
+        "files": 7,
+        "lines": 615,
+        "blank": 147,
+        "comment": 0,
+        "code": 468
+      },
+      "languages": {
+        "Markdown": {
+          "files": 7,
+          "lines": 615,
+          "blank": 147,
+          "comment": 0,
+          "code": 468
+        }
+      }
+    },
+    "config": {
+      "total": {
+        "files": 10,
+        "lines": 240,
+        "blank": 8,
+        "comment": 4,
+        "code": 228
+      },
+      "languages": {
+        "JSON": {
+          "files": 4,
+          "lines": 116,
+          "blank": 0,
+          "comment": 0,
+          "code": 116
+        },
+        "YAML": {
+          "files": 3,
+          "lines": 115,
+          "blank": 8,
+          "comment": 4,
+          "code": 103
+        },
+        "Other": {
+          "files": 3,
+          "lines": 9,
+          "blank": 0,
+          "comment": 0,
+          "code": 9
+        }
+      }
+    }
+  },
+  "engines": {
+    "duckdb": {
+      "tree": "17462981ad211b68c0344b11da2610c66327348c",
+      "total": {
+        "files": 18578,
+        "lines": 3548039,
+        "blank": 378163,
+        "comment": 254271,
+        "code": 2915605
+      },
+      "languages": {
+        "C++": {
+          "files": 2552,
+          "lines": 1008355,
+          "blank": 100876,
+          "comment": 72069,
+          "code": 835410
+        },
+        "Text": {
+          "files": 1640,
+          "lines": 860845,
+          "blank": 40207,
+          "comment": 0,
+          "code": 820638
+        },
+        "Engine test script": {
+          "files": 8948,
+          "lines": 894569,
+          "blank": 148827,
+          "comment": 65749,
+          "code": 679993
+        },
+        "C/C++ header": {
+          "files": 2351,
+          "lines": 505086,
+          "blank": 57637,
+          "comment": 105312,
+          "code": 342137
+        },
+        "Other": {
+          "files": 388,
+          "lines": 59414,
+          "blank": 12078,
+          "comment": 0,
+          "code": 47336
+        },
+        "SQL": {
+          "files": 609,
+          "lines": 44837,
+          "blank": 1341,
+          "comment": 232,
+          "code": 43264
+        },
+        "Python": {
+          "files": 205,
+          "lines": 50279,
+          "blank": 6921,
+          "comment": 1532,
+          "code": 41826
+        },
+        "YAML": {
+          "files": 119,
+          "lines": 41576,
+          "blank": 2600,
+          "comment": 1725,
+          "code": 37251
+        },
+        "C": {
+          "files": 68,
+          "lines": 34687,
+          "blank": 4055,
+          "comment": 4432,
+          "code": 26200
+        },
+        "JSON": {
+          "files": 179,
+          "lines": 21218,
+          "blank": 28,
+          "comment": 0,
+          "code": 21190
+        },
+        "Build system": {
+          "files": 347,
+          "lines": 10923,
+          "blank": 1086,
+          "comment": 756,
+          "code": 9081
+        },
+        "Swift": {
+          "files": 45,
+          "lines": 8209,
+          "blank": 1015,
+          "comment": 2282,
+          "code": 4912
+        },
+        "Markdown": {
+          "files": 54,
+          "lines": 4889,
+          "blank": 1119,
+          "comment": 0,
+          "code": 3770
+        },
+        "HTML": {
+          "files": 1,
+          "lines": 1364,
+          "blank": 82,
+          "comment": 0,
+          "code": 1282
+        },
+        "Shell": {
+          "files": 20,
+          "lines": 1319,
+          "blank": 229,
+          "comment": 173,
+          "code": 917
+        },
+        "CSS": {
+          "files": 1,
+          "lines": 392,
+          "blank": 56,
+          "comment": 1,
+          "code": 335
+        },
+        "TOML": {
+          "files": 2,
+          "lines": 73,
+          "blank": 6,
+          "comment": 8,
+          "code": 59
+        },
+        "XML/SGML": {
+          "files": 4,
+          "lines": 4,
+          "blank": 0,
+          "comment": 0,
+          "code": 4
+        },
+        "Binary": {
+          "files": 1045,
+          "lines": 0,
+          "blank": 0,
+          "comment": 0,
+          "code": 0
+        }
+      }
+    },
+    "postgresql": {
+      "tree": "04acaad233683961f5432a4d8c3bfe87d2791ef7",
+      "total": {
+        "files": 7759,
+        "lines": 4418075,
+        "blank": 578503,
+        "comment": 547550,
+        "code": 3292022
+      },
+      "languages": {
+        "Other": {
+          "files": 1548,
+          "lines": 1235812,
+          "blank": 212999,
+          "comment": 0,
+          "code": 1022813
+        },
+        "C": {
+          "files": 1547,
+          "lines": 1605750,
+          "blank": 197408,
+          "comment": 420893,
+          "code": 987449
+        },
+        "Engine test script": {
+          "files": 1141,
+          "lines": 611882,
+          "blank": 50817,
+          "comment": 2530,
+          "code": 558535
+        },
+        "XML/SGML": {
+          "files": 446,
+          "lines": 335981,
+          "blank": 35504,
+          "comment": 0,
+          "code": 300477
+        },
+        "SQL": {
+          "files": 861,
+          "lines": 203316,
+          "blank": 33546,
+          "comment": 27700,
+          "code": 142070
+        },
+        "C/C++ header": {
+          "files": 1015,
+          "lines": 207205,
+          "blank": 20098,
+          "comment": 68107,
+          "code": 119000
+        },
+        "Perl": {
+          "files": 413,
+          "lines": 108460,
+          "blank": 16934,
+          "comment": 15825,
+          "code": 75701
+        },
+        "Text": {
+          "files": 49,
+          "lines": 28499,
+          "blank": 223,
+          "comment": 0,
+          "code": 28276
+        },
+        "Yacc/Lex": {
+          "files": 25,
+          "lines": 37244,
+          "blank": 4171,
+          "comment": 5556,
+          "code": 27517
+        },
+        "Build system": {
+          "files": 684,
+          "lines": 38046,
+          "blank": 5819,
+          "comment": 5879,
+          "code": 26348
+        },
+        "C++": {
+          "files": 5,
+          "lines": 1557,
+          "blank": 233,
+          "comment": 367,
+          "code": 957
+        },
+        "Python": {
+          "files": 6,
+          "lines": 1459,
+          "blank": 297,
+          "comment": 239,
+          "code": 923
+        },
+        "YAML": {
+          "files": 1,
+          "lines": 1325,
+          "blank": 166,
+          "comment": 326,
+          "code": 833
+        },
+        "Markdown": {
+          "files": 6,
+          "lines": 741,
+          "blank": 196,
+          "comment": 0,
+          "code": 545
+        },
+        "Shell": {
+          "files": 6,
+          "lines": 472,
+          "blank": 55,
+          "comment": 114,
+          "code": 303
+        },
+        "JSON": {
+          "files": 1,
+          "lines": 144,
+          "blank": 0,
+          "comment": 0,
+          "code": 144
+        },
+        "CSS": {
+          "files": 1,
+          "lines": 182,
+          "blank": 37,
+          "comment": 14,
+          "code": 131
+        },
+        "Binary": {
+          "files": 4,
+          "lines": 0,
+          "blank": 0,
+          "comment": 0,
+          "code": 0
+        }
+      }
+    },
+    "sqlite": {
+      "tree": "2b3abd555493070afa07b98c66cab065c3422fb8",
+      "total": {
+        "files": 2323,
+        "lines": 1255705,
+        "blank": 86537,
+        "comment": 194931,
+        "code": 974237
+      },
+      "languages": {
+        "Engine test script": {
+          "files": 1559,
+          "lines": 599515,
+          "blank": 38791,
+          "comment": 57710,
+          "code": 503014
+        },
+        "C": {
+          "files": 318,
+          "lines": 444411,
+          "blank": 33367,
+          "comment": 100767,
+          "code": 310277
+        },
+        "Build system": {
+          "files": 18,
+          "lines": 34012,
+          "blank": 1523,
+          "comment": 3889,
+          "code": 28600
+        },
+        "Text": {
+          "files": 18,
+          "lines": 28549,
+          "blank": 229,
+          "comment": 0,
+          "code": 28320
+        },
+        "Tcl": {
+          "files": 110,
+          "lines": 38962,
+          "blank": 3151,
+          "comment": 7883,
+          "code": 27928
+        },
+        "Other": {
+          "files": 49,
+          "lines": 23097,
+          "blank": 1596,
+          "comment": 0,
+          "code": 21501
+        },
+        "JavaScript": {
+          "files": 41,
+          "lines": 29823,
+          "blank": 2460,
+          "comment": 9839,
+          "code": 17524
+        },
+        "C/C++ header": {
+          "files": 42,
+          "lines": 21279,
+          "blank": 1461,
+          "comment": 10236,
+          "code": 9582
+        },
+        "Java": {
+          "files": 58,
+          "lines": 13480,
+          "blank": 1384,
+          "comment": 3939,
+          "code": 8157
+        },
+        "SQL": {
+          "files": 25,
+          "lines": 8288,
+          "blank": 615,
+          "comment": 76,
+          "code": 7597
+        },
+        "Markdown": {
+          "files": 28,
+          "lines": 6751,
+          "blank": 1376,
+          "comment": 0,
+          "code": 5375
+        },
+        "HTML": {
+          "files": 21,
+          "lines": 4004,
+          "blank": 266,
+          "comment": 0,
+          "code": 3738
+        },
+        "Yacc/Lex": {
+          "files": 3,
+          "lines": 2453,
+          "blank": 223,
+          "comment": 421,
+          "code": 1809
+        },
+        "Shell": {
+          "files": 14,
+          "lines": 760,
+          "blank": 70,
+          "comment": 163,
+          "code": 527
+        },
+        "CSS": {
+          "files": 2,
+          "lines": 126,
+          "blank": 1,
+          "comment": 3,
+          "code": 122
+        },
+        "XML/SGML": {
+          "files": 1,
+          "lines": 104,
+          "blank": 1,
+          "comment": 0,
+          "code": 103
+        },
+        "Python": {
+          "files": 1,
+          "lines": 91,
+          "blank": 23,
+          "comment": 5,
+          "code": 63
+        },
+        "Binary": {
+          "files": 15,
+          "lines": 0,
+          "blank": 0,
+          "comment": 0,
+          "code": 0
+        }
+      }
+    },
+    "valkey": {
+      "tree": "8529856daee8252a68478e1e2534bedf30c7efb6",
+      "total": {
+        "files": 2061,
+        "lines": 652529,
+        "blank": 80752,
+        "comment": 90660,
+        "code": 481117
+      },
+      "languages": {
+        "C": {
+          "files": 512,
+          "lines": 320414,
+          "blank": 37690,
+          "comment": 56722,
+          "code": 226002
+        },
+        "Tcl": {
+          "files": 281,
+          "lines": 113927,
+          "blank": 16151,
+          "comment": 10990,
+          "code": 86786
+        },
+        "Other": {
+          "files": 109,
+          "lines": 43651,
+          "blank": 6180,
+          "comment": 0,
+          "code": 37471
+        },
+        "C/C++ header": {
+          "files": 345,
+          "lines": 58550,
+          "blank": 7020,
+          "comment": 15426,
+          "code": 36104
+        },
+        "JSON": {
+          "files": 453,
+          "lines": 29457,
+          "blank": 3,
+          "comment": 0,
+          "code": 29454
+        },
+        "C++": {
+          "files": 57,
+          "lines": 35139,
+          "blank": 5464,
+          "comment": 4071,
+          "code": 25604
+        },
+        "Build system": {
+          "files": 66,
+          "lines": 20476,
+          "blank": 2226,
+          "comment": 2056,
+          "code": 16194
+        },
+        "HTML": {
+          "files": 5,
+          "lines": 9658,
+          "blank": 2928,
+          "comment": 0,
+          "code": 6730
+        },
+        "YAML": {
+          "files": 39,
+          "lines": 6031,
+          "blank": 296,
+          "comment": 132,
+          "code": 5603
+        },
+        "Python": {
+          "files": 17,
+          "lines": 4766,
+          "blank": 836,
+          "comment": 345,
+          "code": 3585
+        },
+        "Markdown": {
+          "files": 38,
+          "lines": 4579,
+          "blank": 1144,
+          "comment": 0,
+          "code": 3435
+        },
+        "Shell": {
+          "files": 89,
+          "lines": 3423,
+          "blank": 546,
+          "comment": 782,
+          "code": 2095
+        },
+        "Ruby": {
+          "files": 9,
+          "lines": 1120,
+          "blank": 79,
+          "comment": 106,
+          "code": 935
+        },
+        "Text": {
+          "files": 15,
+          "lines": 694,
+          "blank": 117,
+          "comment": 0,
+          "code": 577
+        },
+        "Perl": {
+          "files": 1,
+          "lines": 259,
+          "blank": 16,
+          "comment": 21,
+          "code": 222
+        },
+        "TOML": {
+          "files": 3,
+          "lines": 236,
+          "blank": 39,
+          "comment": 9,
+          "code": 188
+        },
+        "CSS": {
+          "files": 2,
+          "lines": 107,
+          "blank": 16,
+          "comment": 0,
+          "code": 91
+        },
+        "JavaScript": {
+          "files": 1,
+          "lines": 31,
+          "blank": 1,
+          "comment": 0,
+          "code": 30
+        },
+        "XML/SGML": {
+          "files": 2,
+          "lines": 11,
+          "blank": 0,
+          "comment": 0,
+          "code": 11
+        },
+        "Binary": {
+          "files": 17,
+          "lines": 0,
+          "blank": 0,
+          "comment": 0,
+          "code": 0
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+name: 'Setup Ccache'
+description: 'Configure ccache for workflow jobs'
+inputs:
+  key:
+    description: 'Override the ccache key prefix; defaults to github.job'
+    required: false
+    default: ${{ github.job }}
+  save:
+    description: 'Whether to save cache after the job'
+    required: false
+    default: ${{ github.repository != 'duckdb/duckdb' || github.event_name == 'workflow_dispatch' }}
+runs:
+  using: "composite"
+  steps:
+     - name: Resolve Ccache key
+       id: cache-key
+       shell: bash
+       env:
+         CACHE_KEY: ${{ inputs.key }}
+         DUCKDB_VERSION: ${{ env.DUCKDB_VERSION }}
+       run: |
+         set -euo pipefail
+         if [[ "$DUCKDB_VERSION" =~ ^v([0-9]+\.[0-9]+)\. ]]; then
+           release_line="${BASH_REMATCH[1]}"
+         else
+           release_line="unversioned"
+         fi
+         echo "key=duckdb-${release_line}-${CACHE_KEY}" >> "$GITHUB_OUTPUT"
+
+     - name: Setup Ccache
+       if: ${{ github.workflow != 'NightlyTests' }}
+       uses: hendrikmuhs/ccache-action@v1.2.22
+       with:
+         key: ${{ steps.cache-key.outputs.key }}
+         restore-keys: ${{ steps.cache-key.outputs.key }}
+         save: ${{ inputs.save }}
+         # Dump verbose ccache statistics report at end of CI job.
+         verbose: 1
+         # Increase per-directory limit: 5*1024 MB / 16 = 320 MB.
+         # Note: `layout=subdirs` computes the size limit divided by 16 dirs.
+         # See also: https://ccache.dev/manual/4.9.html#_cache_size_management
+         max-size: 5GB
+         # Evicts all cache files that were not touched during the job run.
+         # Removing cache files from previous runs avoids creating huge caches.
+         evict-old-files: 'job'

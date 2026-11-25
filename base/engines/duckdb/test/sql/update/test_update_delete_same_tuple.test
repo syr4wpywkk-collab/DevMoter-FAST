@@ -1,0 +1,48 @@
+# name: test/sql/update/test_update_delete_same_tuple.test
+# description: Test update and delete of the same tuple
+# group: [update]
+
+# an update and a delete of the same tuple by concurrent transactions conflict
+statement ok con1
+CREATE TABLE test (a INTEGER);
+
+statement ok con1
+INSERT INTO test VALUES (1), (2), (3);
+
+statement ok con1
+BEGIN TRANSACTION;
+
+statement ok con2
+BEGIN TRANSACTION;
+
+statement ok con1
+UPDATE test SET a=a+1;
+
+statement error con2
+DELETE FROM test
+----
+Conflict on tuple deletion
+
+query I con1
+SELECT * FROM test ORDER BY a
+----
+2
+3
+4
+
+statement ok con2
+ROLLBACK;
+
+statement ok con1
+COMMIT;
+
+query I con2
+SELECT * FROM test ORDER BY a
+----
+2
+3
+4
+
+statement ok con1
+DROP TABLE test;
+

@@ -1,0 +1,65 @@
+# name: test/sql/types/uhugeint/test_uhugeint_aggregates.test
+# description: Test uhugeint aggregates
+# group: [uhugeint]
+
+statement ok
+CREATE TABLE hugeints(g INTEGER, h UHUGEINT);
+
+statement ok
+INSERT INTO hugeints VALUES (1, 42), (2, 1267650600228229401496703205376), (2, 0), (1, '8');
+
+# min, max, first, sum
+# ungrouped aggregate
+query IIIII
+SELECT MIN(h), MAX(h), SUM(h), FIRST(h), LAST(h) FROM hugeints;
+----
+0	1267650600228229401496703205376	1267650600228229401496703205426	42	8
+
+# grouped aggregate
+query IIIIII
+SELECT g, MIN(h), MAX(h), SUM(h), FIRST(h), LAST(h) FROM hugeints GROUP BY g ORDER BY 1;
+----
+1	8	42	50	42	8
+2	0	1267650600228229401496703205376	1267650600228229401496703205376	1267650600228229401496703205376	0
+
+# first aggr gets confused otherwise
+statement ok
+SET threads=1
+
+# ungrouped aggregate
+query II
+SELECT FIRST(h), LAST(h) FROM hugeints;
+----
+42	8
+
+# grouped aggregate
+query III
+SELECT g, FIRST(h), LAST(h) FROM hugeints GROUP BY g ORDER BY 1;
+----
+1	42	8
+2	1267650600228229401496703205376	0
+
+# Constant-vector sums multiply the input by the row count
+query I
+SELECT SUM(113427455640312821154458202477256070485::UHUGEINT) FROM range(3)
+----
+340282366920938463463374607431768211455
+
+statement error
+SELECT SUM(113427455640312821154458202477256070486::UHUGEINT) FROM range(3)
+----
+Out of Range Error
+
+# Repeated aggregate states can have a multiplier larger than one vector
+query I
+SELECT finalize(combine_aggr(s, 4294967296))
+FROM (SELECT SUM(79228162514264337593543950335::UHUGEINT) EXPORT_STATE s)
+----
+340282366920938463463374607427473244160
+
+statement error
+SELECT finalize(combine_aggr(s, 4294967296))
+FROM (SELECT SUM(79228162514264337593543950336::UHUGEINT) EXPORT_STATE s)
+----
+Out of Range Error
+

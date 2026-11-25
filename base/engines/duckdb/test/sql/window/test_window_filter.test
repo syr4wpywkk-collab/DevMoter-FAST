@@ -1,0 +1,243 @@
+# name: test/sql/window/test_window_filter.test
+# description: FILTER clause for WINDOW functions
+# group: [window]
+
+statement ok
+CREATE TABLE testing AS
+	SELECT
+		 x
+		,round(x * 0.333,0) % 3 AS y
+		,round(x * 0.333,0) % 3 AS z
+	FROM generate_series(0,10) tbl(x);
+
+# The x_filtered_window and z_filtered_window columns should return a different output than plain_window
+query IIIIII
+SELECT
+	 x
+	,y
+	,z
+	,avg(x) OVER (PARTITION BY y) AS plain_window
+	,avg(x) FILTER (WHERE x = 1) OVER (PARTITION BY y) AS x_filtered_window
+	,avg(x) FILTER (WHERE z = 0) OVER (PARTITION BY y) AS z_filtered_window
+FROM testing
+ORDER BY y, x;
+----
+0	0.000000	0.000000	5.600000	1.000000	5.600000
+1	0.000000	0.000000	5.600000	1.000000	5.600000
+8	0.000000	0.000000	5.600000	1.000000	5.600000
+9	0.000000	0.000000	5.600000	1.000000	5.600000
+10	0.000000	0.000000	5.600000	1.000000	5.600000
+2	1.000000	1.000000	3.000000	NULL	NULL
+3	1.000000	1.000000	3.000000	NULL	NULL
+4	1.000000	1.000000	3.000000	NULL	NULL
+5	2.000000	2.000000	6.000000	NULL	NULL
+6	2.000000	2.000000	6.000000	NULL	NULL
+7	2.000000	2.000000	6.000000	NULL	NULL
+
+# COUNT(*) coverage
+query IIIIII
+SELECT
+	 x
+	,y
+	,z
+	,count(*) OVER (PARTITION BY y) AS plain_window
+	,count(*) FILTER (WHERE x = 1) OVER (PARTITION BY y) AS x_filtered_window
+	,count(*) FILTER (WHERE z = 0) OVER (PARTITION BY y) AS z_filtered_window
+FROM testing
+ORDER BY y, x;
+----
+0	0.000000	0.000000	5	1	5
+1	0.000000	0.000000	5	1	5
+8	0.000000	0.000000	5	1	5
+9	0.000000	0.000000	5	1	5
+10	0.000000	0.000000	5	1	5
+2	1.000000	1.000000	3	0	0
+3	1.000000	1.000000	3	0	0
+4	1.000000	1.000000	3	0	0
+5	2.000000	2.000000	3	0	0
+6	2.000000	2.000000	3	0	0
+7	2.000000	2.000000	3	0	0
+
+# Holistic coverage
+query IIIIII
+SELECT
+	 x
+	,y
+	,z
+	,median(x) OVER (PARTITION BY y) AS plain_window
+	,median(x) FILTER (WHERE x = 1) OVER (PARTITION BY y) AS x_filtered_window
+	,median(x) FILTER (WHERE z = 0) OVER (PARTITION BY y) AS z_filtered_window
+FROM testing
+ORDER BY y, x;
+----
+0	0.000000	0.000000	8.000000	1.000000	8.000000
+1	0.000000	0.000000	8.000000	1.000000	8.000000
+8	0.000000	0.000000	8.000000	1.000000	8.000000
+9	0.000000	0.000000	8.000000	1.000000	8.000000
+10	0.000000	0.000000	8.000000	1.000000	8.000000
+2	1.000000	1.000000	3.000000	NULL	NULL
+3	1.000000	1.000000	3.000000	NULL	NULL
+4	1.000000	1.000000	3.000000	NULL	NULL
+5	2.000000	2.000000	6.000000	NULL	NULL
+6	2.000000	2.000000	6.000000	NULL	NULL
+7	2.000000	2.000000	6.000000	NULL	NULL
+
+# Filters do not affect framing.
+query II
+SELECT x, count(x) FILTER (WHERE x % 2 = 0) OVER (ORDER BY x ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING)
+FROM generate_series(0,10) tbl(x);
+----
+0	2
+1	2
+2	3
+3	2
+4	3
+5	2
+6	3
+7	2
+8	3
+9	2
+10	2
+
+#
+# Errors
+#
+
+# Non-aggregates do not support filtering.
+
+foreach nullary rank dense_rank row_number percent_rank cume_dist
+
+statement error
+SELECT
+	 x
+	,y
+	,z
+	, {nullary}() OVER (PARTITION BY y) AS plain_window
+	, {nullary}() FILTER (WHERE x = 1) OVER (PARTITION BY y) AS x_filtered_window
+	, {nullary}() FILTER (WHERE z = 0) OVER (PARTITION BY y) AS z_filtered_window
+FROM testing
+ORDER BY y, x;
+----
+
+endloop
+
+foreach unary ntile first_value last_value lead lag
+
+statement error
+SELECT
+	 x
+	,y
+	,z
+	, {unary}(x) OVER (PARTITION BY y) AS plain_window
+	, {unary}(x) FILTER (WHERE x = 1) OVER (PARTITION BY y) AS x_filtered_window
+	, {unary}(x) FILTER (WHERE z = 0) OVER (PARTITION BY y) AS z_filtered_window
+FROM testing
+ORDER BY y, x;
+----
+
+endloop
+
+foreach binary nth_value
+
+statement error
+SELECT
+	 x
+	,y
+	,z
+	, {binary}(x, 1) OVER (PARTITION BY y) AS plain_window
+	, {binary}(x, 1) FILTER (WHERE x = 1) OVER (PARTITION BY y) AS x_filtered_window
+	, {binary}(x, 1) FILTER (WHERE z = 0) OVER (PARTITION BY y) AS z_filtered_window
+FROM testing
+ORDER BY y, x;
+----
+
+endloop
+
+# A filtered COUNT(*) is answered from a count kept per entry of the filter mask rather than by
+# walking the frame, so the rows an entry boundary falls on are what these check. Every answer is
+# compared against the same count spelled as a sum, which walks the frame the plain way.
+
+statement ok
+CREATE TABLE counted AS
+    SELECT i, i % 7 AS part, i % 3 = 0 AS keep, (i * 37) % 101 < 50 AS scattered
+    FROM range(0, 500) t(i);
+
+# a frame that grows a row at a time crosses every boundary there is
+query I
+SELECT count(*) FROM (
+    SELECT count(*) FILTER (WHERE keep) OVER w AS counted,
+           sum(CASE WHEN keep THEN 1 ELSE 0 END) OVER w AS summed
+    FROM counted WINDOW w AS (ORDER BY i ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+) WHERE counted IS DISTINCT FROM summed
+----
+0
+
+# and one that shrinks a row at a time crosses them from the other side
+query I
+SELECT count(*) FROM (
+    SELECT count(*) FILTER (WHERE scattered) OVER w AS counted,
+           sum(CASE WHEN scattered THEN 1 ELSE 0 END) OVER w AS summed
+    FROM counted WINDOW w AS (ORDER BY i ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)
+) WHERE counted IS DISTINCT FROM summed
+----
+0
+
+# frames of a fixed width start and end part way through an entry
+foreach width 1 2 63 64 65 127 200
+
+query I
+SELECT count(*) FROM (
+    SELECT count(*) FILTER (WHERE scattered) OVER w AS counted,
+           sum(CASE WHEN scattered THEN 1 ELSE 0 END) OVER w AS summed
+    FROM counted WINDOW w AS (ORDER BY i ROWS BETWEEN {width} PRECEDING AND CURRENT ROW)
+) WHERE counted IS DISTINCT FROM summed
+----
+0
+
+endloop
+
+# EXCLUDE splits the frame into several, so a row counts the pieces either side of what it leaves out
+query I
+SELECT count(*) FROM (
+    SELECT count(*) FILTER (WHERE keep) OVER wc AS c_cur, sum(CASE WHEN keep THEN 1 ELSE 0 END) OVER wc AS s_cur,
+           count(*) FILTER (WHERE keep) OVER wg AS c_grp, sum(CASE WHEN keep THEN 1 ELSE 0 END) OVER wg AS s_grp,
+           count(*) FILTER (WHERE keep) OVER wt AS c_tie, sum(CASE WHEN keep THEN 1 ELSE 0 END) OVER wt AS s_tie
+    FROM counted
+    WINDOW wc AS (PARTITION BY part ORDER BY i ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+                  EXCLUDE CURRENT ROW),
+           wg AS (PARTITION BY part ORDER BY i ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+                  EXCLUDE GROUP),
+           wt AS (PARTITION BY part ORDER BY i ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+                  EXCLUDE TIES)
+) WHERE c_cur IS DISTINCT FROM s_cur OR c_grp IS DISTINCT FROM s_grp OR c_tie IS DISTINCT FROM s_tie
+----
+0
+
+# a filter nothing passes, and one everything passes
+query II
+SELECT DISTINCT
+    count(*) FILTER (WHERE false) OVER (ORDER BY i ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+    count(*) FILTER (WHERE true) OVER (ORDER BY i ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
+FROM counted
+----
+0	500
+
+# an empty frame counts nothing whether or not a filter is there to leave rows out
+query II
+SELECT DISTINCT
+    count(*) OVER (ORDER BY i ROWS BETWEEN 2 PRECEDING AND 3 PRECEDING),
+    count(*) FILTER (WHERE keep) OVER (ORDER BY i ROWS BETWEEN 2 PRECEDING AND 3 PRECEDING)
+FROM counted
+----
+0	0
+
+# partitions that end part way through an entry of the mask
+query I
+SELECT count(*) FROM (
+    SELECT count(*) FILTER (WHERE keep) OVER w AS counted,
+           sum(CASE WHEN keep THEN 1 ELSE 0 END) OVER w AS summed
+    FROM counted
+    WINDOW w AS (PARTITION BY part ORDER BY i ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+) WHERE counted IS DISTINCT FROM summed
+----
+0

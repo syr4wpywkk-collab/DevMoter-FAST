@@ -1,0 +1,135 @@
+{
+  "description": "Run on persistent encrypted databases as storage.",
+  "on_init": "ATTACH '{TEST_DIR}/{BASE_TEST_NAME}__test__config__crypto.db' AS __test__config__crypto (ENCRYPTION_KEY 'key={BASE_TEST_NAME}');",
+  "on_new_connection": "USE __test__config__crypto;",
+  "on_load": "skip",
+  "skip_compiled": "true",
+  "inherit_skip_tests": "test/configs/force_storage.json",
+  "statically_loaded_extensions": [
+    "core_functions",
+    "httpfs"
+  ],
+  "skip_tests": [
+    {
+      "reason": "A declared RETURNS type requires storage version v2.1.0 but encrypted databases use an older default storage version",
+      "paths": [
+        "test/sql/catalog/function/macro_returns_type.test"
+      ]
+    },
+    {
+      "reason": "DECIMAL columns wider than 38 digits require storage version v2.1.0 but encrypted databases use an older default storage version",
+      "paths": [
+        "test/sql/copy/csv/csv_wide_decimal_separator.test",
+        "test/sql/types/decimal/wide_decimal_arithmetic.test",
+        "test/sql/types/decimal/wide_decimal_casts.test",
+        "test/sql/types/decimal/wide_decimal_cast_inversion.test",
+        "test/sql/types/decimal/wide_decimal_literals.test",
+        "test/sql/types/decimal/wide_decimal_statistics.test",
+        "test/sql/types/decimal/wide_decimal_unbounded_statistics.test",
+        "test/sql/types/decimal/wide_decimal_bounded_statistics.test",
+        "test/sql/types/decimal/wide_decimal_unbounded_width.test",
+        "test/sql/settings/max_decimal_width.test",
+        "test/sql/types/decimal/wide_decimal_to_float_rounding.test"
+      ]
+    },
+    {
+      "reason": "Requires in-memory storage: persistent blocks can be evicted without a temporary directory.",
+      "paths": [
+        "test/sql/storage/evict_unpinned_without_temp_directory.test",
+        "test/sql/transactions/test_commit_cleanup_oom.test",
+        "test/sql/transactions/test_commit_cleanup_oom_index_retry.test"
+      ]
+    },
+    {
+      "reason": "Checks that a fatal error on the default database invalidates the instance, but this config makes an attached database the default.",
+      "paths": [
+        "test/sql/storage/attach/attach_invalidation_commit.test"
+      ]
+    },
+    {
+      "reason": "Requires httpfs to be unloaded, but this config loads it statically.",
+      "paths": [
+        "test/extension/install_httpfs_https_repository.test",
+        "test/sql/extensions/extension_repository_from_host_no_httpfs.test"
+      ]
+    },
+    {
+      "reason": "TODO",
+      "paths": [
+        "test/extension/test_tags.test",
+        "test/extension/load_extension.test",
+        "test/extension/autoloading_types.test",
+        "test/sql/settings/drop_set_schema.test",
+        "test/extension/test_custom_type_modifier_cast.test",
+        "test/extension/test_alias_point.test",
+        "test/extension/load_test_alias.test",
+        "test/fuzzer/pedro/incomplete_checkpoint.test",
+        "test/sql/catalog/test_set_search_path.test",
+        "test/sql/storage/temp_directory/max_swap_space_error.test",
+        "test/sql/attach/attach_icu_collation.test",
+        "test/sql/function/list/lambdas/incorrect.test",
+        "test/sql/json/test_json_serialize_sql.test",
+        "test/sql/table_function/duckdb_databases.test",
+        "test/sql/logging/file_system_logging_attach.test",
+        "test/sql/logging/file_system_logging_attach_deadlock.test",
+        "test/sql/storage/read_duckdb/read_duckdb_basic.test"
+      ]
+    },
+    {
+      "reason": "Reads a table by unqualified name through json_execute_serialized_sql: its own connection uses the default catalog, not this config's attached one.",
+      "paths": [
+        "test/sql/json/test_execute_serialized_inner_statement.test"
+      ]
+    },
+    {
+      "reason": "Calls a deleter by unqualified name: the internal connection running it uses the default catalog, not this config's attached one.",
+      "paths": [
+        "test/sql/table_function/external_resource_logging.test",
+        "test/sql/table_function/external_resource_callback_recursion.test"
+      ]
+    },
+    {
+      "reason": "Attached databases have a main schema, which is not implicit.",
+      "paths": [
+        "test/fuzzer/sqlsmith/current_schemas_null.test"
+      ]
+    },
+    {
+      "reason": "Expects httpfs to not be present",
+      "paths": [
+        "test/sql/secrets/create_secret_hffs_autoload.test",
+        "test/sql/secrets/secret_autoloading_errors.test",
+        "test/sql/partitioning/hive_partitioning_autodetect.test"
+      ]
+    },
+    {
+      "reason": "Unclassified failures",
+      "paths": [
+        "test/sql/storage/encryption/wal/encrypted_wal_lazy_creation.test",
+        "test/sql/storage/encryption/temp_files/temp_directory_enable_external_access.test_slow",
+        "test/sql/copy/encryption/different_aes_engines.test"
+      ]
+    },
+    {
+      "reason": "Encrypted persistent storage packs validity into one segment, so zonemap pruning cannot skip rows.",
+      "paths": [
+        "test/sql/optimizer/nested_null_segment_pruning.test",
+        "test/sql/optimizer/false_or_null_segment_pruning.test"
+      ]
+    },
+    {
+      "reason": "Recipe callbacks reference objects by unqualified name: the internal connection running them uses the default catalog, not this config's attached one.",
+      "paths": [
+        "test/sql/attach/attach_to_external_resource.test",
+        "test/sql/attach/external_resource_option_collision.test",
+        "test/sql/attach/external_resource_attach_failure.test"
+      ]
+    },
+    {
+      "reason": "Persisting loses the sign of zero for FLOAT/DOUBLE, unrelated bug, see issue #25580",
+      "paths": [
+        "test/sql/order/order_by_negative_zero.test"
+      ]
+    }
+  ]
+}

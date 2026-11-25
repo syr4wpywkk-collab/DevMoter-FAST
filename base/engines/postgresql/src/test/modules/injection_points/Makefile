@@ -1,0 +1,71 @@
+# src/test/modules/injection_points/Makefile
+
+MODULE_big = injection_points
+OBJS = \
+	$(WIN32RES) \
+	injection_points.o \
+	regress_injection.o
+EXTENSION = injection_points
+DATA = injection_points--1.0.sql
+PGFILEDESC = "injection_points - facility for injection points"
+
+EXTRA_INSTALL = contrib/test_decoding
+
+REGRESS = injection_points hashagg portal_bind reindex_conc vacuum
+REGRESS_OPTS = --dlpath=$(top_builddir)/src/test/regress
+
+# wait_cleanup terminates another backend, whose FATAL message can be lost
+# on Windows, making the test unstable there.
+# See https://postgr.es/m/088AB35D-0860-494A-A9CF-8B301543AA51@yandex-team.ru
+WAIT_CLEANUP_TST = $(if $(filter win32,$(PORTNAME)),,wait_cleanup)
+
+ISOLATION = basic \
+	    inplace \
+	    reindex_concurrently_deferred \
+	    reindex_concurrently_toast \
+	    repack \
+	    repack_commit_race \
+	    repack_decode \
+	    repack_dropped \
+	    repack_missingval \
+	    repack_temporal \
+	    repack_temporal_multirange \
+	    repack_toast \
+	    ri_fastpath_reindex \
+	    ri_fastpath_snapshot \
+	    syscache-update-pruned \
+	    $(WAIT_CLEANUP_TST) \
+	    heap_lock_update \
+	    on_conflict_probe_window \
+	    multixact-aborted-updater
+
+# some isolation tests require wal_level=replica
+ISOLATION_OPTS = --temp-config $(top_srcdir)/src/test/modules/injection_points/extra.conf
+
+# The injection points are cluster-wide, so disable installcheck
+NO_INSTALLCHECK = 1
+
+export enable_injection_points
+
+ifdef USE_PGXS
+PG_CONFIG = pg_config
+PGXS := $(shell $(PG_CONFIG) --pgxs)
+include $(PGXS)
+else
+subdir = src/test/modules/injection_points
+top_builddir = ../../../..
+include $(top_builddir)/src/Makefile.global
+
+# XXX: This test is conditional on enable_injection_points in the
+# parent Makefile, so we should never get here in the first place if
+# injection points are not enabled. But the buildfarm 'misc-check'
+# step doesn't pay attention to the if-condition in the parent
+# Makefile. To work around that, disable running the test here too.
+ifeq ($(enable_injection_points),yes)
+include $(top_srcdir)/contrib/contrib-global.mk
+else
+check:
+	@echo "injection points are disabled in this build"
+endif
+
+endif

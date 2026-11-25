@@ -1,0 +1,46 @@
+# name: test/extension/install_extension_httpfs.test
+# description: Test extension repository routing with httpfs available
+# group: [extension]
+
+require httpfs
+
+statement ok
+LOAD httpfs
+
+statement ok
+SET http_retries=0
+
+statement ok
+SET extension_directory='{TEST_DIR}/install_extension'
+
+# A refused local proxy keeps repository-selection checks deterministic.
+statement ok
+SET http_proxy='127.0.0.1:1'
+
+statement error
+INSTALL will_never_exist;
+----
+<REGEX>:.*Failed to download extension "will_never_exist" at URL \"https://extensions.duckdb.org.*
+
+statement error
+INSTALL will_never_exist FROM core_nightly;
+----
+<REGEX>:.*Failed to download extension "will_never_exist" at URL \"https://nightly-extensions.duckdb.org.*
+
+statement error
+INSTALL will_never_exist FROM community;
+----
+<REGEX>:.*Failed to download extension "will_never_exist" at URL \"https://community-extensions.duckdb.org.*
+
+statement error
+INSTALL will_never_exist FROM core;
+----
+For more info, visit https://duckdb.org/docs/current/extensions/troubleshooting
+
+statement ok
+SET http_proxy=''
+
+statement error
+INSTALL will_never_exist FROM 'core';
+----
+IO Error: Failed to install local extension "will_never_exist", no access to the file at PATH

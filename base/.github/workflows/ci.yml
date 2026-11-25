@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: Integration layer (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86-64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The vendored engine sources (~790 MB) are not needed by this job;
+          # engines/manifest.json and the engines' git tree ids are.
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/engines/*/
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: node --version && uname -m
+      - name: Check the lockfile against policy before installing anything
+        run: node scripts/deps/check.ts --offline
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run deps:check
+      - run: npm run stats:check
+      - name: Vendored engines match their pinned upstream commits
+        run: npm run upstream:verify -- --online
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

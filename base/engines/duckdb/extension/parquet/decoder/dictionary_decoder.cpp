@@ -1,0 +1,206 @@
+#include "decoder/dictionary_decoder.hpp"
+
+#include <algorithm>
+#include <stdexcept>
+#include <utility>
+
+#include "column_reader.hpp"
+#include "parquet_reader.hpp"
+#include "duckdb/planner/filter/expression_filter.hpp"
+#include "duckdb/planner/table_filter_state.hpp"
+#include "duckdb/storage/table/column_segment.hpp"
+#include "duckdb/common/assert.hpp"
+#include "duckdb/common/helper.hpp"
+#include "duckdb/common/numeric_utils.hpp"
+#include "duckdb/common/shared_ptr_ipp.hpp"
+#include "duckdb/common/types/validity_mask.hpp"
+#include "duckdb/common/types/value.hpp"
+#include "duckdb/common/types/vector.hpp"
+#include "duckdb/common/vector.hpp"
+#include "duckdb/common/vector/dictionary_vector.hpp"
+#include "duckdb/common/vector/flat_vector.hpp"
+#include "duckdb/common/vector/unified_vector_format.hpp"
+#include "duckdb/common/vector_operations/vector_operations.hpp"
+#include "duckdb/common/vector_size.hpp"
+#include "resizable_buffer.hpp"
+
+namespace duckdb {
+
+DictionaryDecoder::DictionaryDecoder(ColumnReader &reader)
+    : reader(reader), offset_buffer(reader.encoding_buffers[0]), valid_sel(STANDARD_VECTOR_SIZE),
+      dictionary_selection_vector(STANDARD_VECTOR_SIZE), dictionary_size(0) {
+}
+
+void DictionaryDecoder::InitializeDictionary(idx_t new_dictionary_size, optional_ptr<const TableFilter> filter,
+                                             optional_ptr<TableFilterState> filter_state, bool has_defines) {
+	dictionary_size = new_dictionary_size;
+	filter_cache.reset();
+	filter_rejects_null = false;
+	can_have_nulls = has_defines;
+
+	// we use the last entry as a NULL, dictionary vectors don't have a separate validity mask
+	const auto duckdb_dictionary_size = dictionary_size + can_have_nulls;
+	dictionary = DictionaryVector::CreateReusableDictionary(reader.Type(), duckdb_dictionary_size);
+	auto &dictionary_data = dictionary->data;
+	auto &dict_validity = FlatVector::ValidityMutable(dictionary_data);
+	dict_validity.Reset(duckdb_dictionary_size);
+	if (can_have_nulls) {
+		dict_validity.SetInvalid(dictionary_size);
+	}
+
+	// now read the non-NULL values from Parquet
+	if (dictionary_size > 0) {
+		reader.Plain(reader.block, nullptr, dictionary_size, 0, dictionary_data);
+	}
+
+	if (filter && CanFilter(*filter_state)) {
+		CreateFilterCache(*filter_state);
+	}
+}
+
+void DictionaryDecoder::InitializePage() {
+	// where is it otherwise??
+	auto &block = reader.block;
+	auto dict_width = block->Read<uint8_t>();
+	block_offset = block->GetOffset();
+	idx_t dict_len;
+	auto loc = block->ConsumeRemaining(dict_len);
+	dict_decoder = make_uniq<RleBpDecoder>(loc, dict_len, dict_width);
+}
+
+void DictionaryDecoder::Rebase() {
+	ColumnReader::RebaseDecoder(dict_decoder, *reader.block, block_offset);
+}
+
+void DictionaryDecoder::ConvertDictToSelVec(uint32_t *offsets, const SelectionVector &rows, idx_t count) {
+	D_ASSERT(count <= STANDARD_VECTOR_SIZE);
+	for (idx_t idx = 0; idx < count; idx++) {
+		auto row_idx = rows.get_index(idx);
+		auto offset = offsets[idx];
+		if (offset >= dictionary_size) {
+			throw std::runtime_error("Parquet file is likely corrupted, dictionary offset out of range");
+		}
+		dictionary_selection_vector.set_index(row_idx, offset);
+	}
+}
+
+idx_t DictionaryDecoder::GetValidValues(uint8_t *defines, idx_t read_count, idx_t result_offset) {
+	idx_t valid_count = read_count;
+	if (defines) {
+		D_ASSERT(can_have_nulls);
+		valid_count = 0;
+		const auto max_define = reader.MaxDefine();
+		const uint64_t valid_defines = max_define * UINT64_C(0x0101010101010101);
+		idx_t i = 0;
+		for (; max_define <= NumericLimits<uint8_t>::Maximum() && i + 8 <= read_count; i += 8) {
+			if (Load<uint64_t>(defines + result_offset + i) == valid_defines) {
+				for (idx_t j = 0; j < 8; j++) {
+					valid_sel.set_index(valid_count + j, i + j);
+				}
+				valid_count += 8;
+			} else {
+				for (idx_t j = 0; j < 8; j++) {
+					valid_sel.set_index(valid_count, i + j);
+					dictionary_selection_vector.set_index(i + j, dictionary_size);
+					valid_count += defines[result_offset + i + j] == max_define;
+				}
+			}
+		}
+		for (; i < read_count; i++) {
+			valid_sel.set_index(valid_count, i);
+			dictionary_selection_vector.set_index(i, dictionary_size);
+			valid_count += defines[result_offset + i] == max_define;
+		}
+	}
+	return valid_count;
+}
+
+idx_t DictionaryDecoder::Read(uint8_t *defines, idx_t read_count, Vector &result, idx_t result_offset) {
+	if (!dictionary) {
+		throw std::runtime_error("Parquet file is likely corrupted, missing dictionary");
+	}
+	idx_t valid_count = GetValidValues(defines, read_count, result_offset);
+	if (valid_count == read_count) {
+		// all values are valid - we can directly decompress the offsets into the selection vector
+		dict_decoder->GetBatch<uint32_t>(data_ptr_cast(dictionary_selection_vector.data()),
+		                                 NumericCast<uint32_t>(valid_count));
+		// we do still need to verify the offsets though
+		uint32_t max_index = 0;
+		for (idx_t idx = 0; idx < valid_count; idx++) {
+			max_index = MaxValue(max_index, dictionary_selection_vector[idx]);
+		}
+		if (max_index >= dictionary_size) {
+			throw std::runtime_error("Parquet file is likely corrupted, dictionary offset out of range");
+		}
+	} else if (valid_count > 0) {
+		// for the valid entries - decode the offsets
+		offset_buffer.Resize(reader.GetAllocator(), sizeof(uint32_t) * valid_count);
+		dict_decoder->GetBatch<uint32_t>(offset_buffer.GetCurrentLoc(), NumericCast<uint32_t>(valid_count));
+		ConvertDictToSelVec(reinterpret_cast<uint32_t *>(offset_buffer.GetCurrentLoc()), valid_sel, valid_count);
+	}
+#ifdef DEBUG
+	dictionary_selection_vector.Verify(read_count, dictionary_size + can_have_nulls);
+#endif
+	if (result_offset == 0) {
+		result.Dictionary(dictionary, dictionary_selection_vector, read_count);
+		D_ASSERT(result.GetVectorType() == VectorType::DICTIONARY_VECTOR);
+	} else {
+		D_ASSERT(result.GetVectorType() == VectorType::FLAT_VECTOR);
+		VectorOperations::Copy(dictionary->data, result, dictionary_selection_vector, read_count, 0, result_offset);
+	}
+	return valid_count;
+}
+
+void DictionaryDecoder::Skip(uint8_t *defines, idx_t skip_count) {
+	if (!dictionary) {
+		throw std::runtime_error("Parquet file is likely corrupted, missing dictionary");
+	}
+	idx_t valid_count = reader.GetValidCount(defines, skip_count);
+	// skip past the valid offsets
+	dict_decoder->Skip(NumericCast<uint32_t>(valid_count));
+}
+
+bool DictionaryDecoder::CanFilter(const TableFilterState &filter_state) {
+	return dictionary_size > 0 && filter_state.can_cache;
+}
+
+void DictionaryDecoder::CreateFilterCache(TableFilterState &state) {
+	filter_cache = state.CreateCache(dictionary->data, dictionary_size + can_have_nulls);
+	filter_rejects_null = false;
+	if (filter_cache->CanSkipAll()) {
+		// Skipped pages materialize NULL placeholders on the ordinary-read path.
+		Vector null_value(Value(reader.Type()), count_t(1));
+		auto null_cache = state.CreateCache(null_value, 1);
+		filter_rejects_null = null_cache->CanSkipAll();
+	}
+}
+
+void DictionaryDecoder::ResetFilter(const TableFilterState &state) {
+	if (filter_cache && !filter_cache->IsValidFor(state)) {
+		filter_cache.reset();
+		filter_rejects_null = false;
+	}
+}
+
+bool DictionaryDecoder::HasFilter(TableFilterState &state) {
+	ResetFilter(state);
+	if (!dictionary || dictionary_size == 0 || !state.can_cache) {
+		return false;
+	}
+	if (!filter_cache) {
+		CreateFilterCache(state);
+	}
+	return true;
+}
+
+void DictionaryDecoder::Filter(uint8_t *defines, const idx_t read_count, Vector &result, SelectionVector &sel,
+                               idx_t &approved_tuple_count) {
+	if (!dictionary) {
+		throw std::runtime_error("Parquet file is likely corrupted, missing dictionary");
+	}
+	D_ASSERT(filter_cache);
+	Read(defines, read_count, result, 0);
+	filter_cache->Filter(dictionary_selection_vector, sel, approved_tuple_count);
+}
+
+} // namespace duckdb
