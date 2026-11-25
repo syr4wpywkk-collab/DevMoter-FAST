@@ -52,6 +52,15 @@ pub enum ValueKind {
 }
 
 impl Value {
+    /// Excel has no negative zero: `-0.0` (e.g. from an empty `SUM`)
+    /// becomes `0.0`.
+    pub fn normalize_zero(self) -> Value {
+        match self {
+            Value::Number(0.0) => Value::Number(0.0),
+            other => other,
+        }
+    }
+
     /// Classify this value.
     pub fn kind(&self) -> ValueKind {
         match self {
