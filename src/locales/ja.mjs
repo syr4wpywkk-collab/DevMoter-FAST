@@ -1246,6 +1246,7 @@ export const ja = {
   "workspaceTools.cleanTree": "作業ツリーはクリーンです。",
   "workspaceTools.fileMeta.binary": "バイナリ",
   "workspaceTools.fileMeta.changed": "変更あり",
+  "workspaceTools.fileMeta.untracked": "新規ファイル",
   "workspaceTools.loadingDiff": "差分を読み込んでいます…",
   "workspaceTools.backToFiles": "← ファイル一覧",
   "workspaceTools.view.unified": "統合表示",

@@ -1246,6 +1246,7 @@ export const zhHant = {
   "workspaceTools.cleanTree": "工作目錄乾淨，沒有變更。",
   "workspaceTools.fileMeta.binary": "二進位",
   "workspaceTools.fileMeta.changed": "已變更",
+  "workspaceTools.fileMeta.untracked": "新檔案",
   "workspaceTools.loadingDiff": "正在載入差異…",
   "workspaceTools.backToFiles": "← 檔案清單",
   "workspaceTools.view.unified": "整合檢視",
