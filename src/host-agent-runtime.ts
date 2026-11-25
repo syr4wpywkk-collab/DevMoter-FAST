@@ -1,5 +1,5 @@
 import type { SubagentRun } from "./subagent-runtime.mjs";
-import { responseError } from "./device-gate.mjs";
+import { DeviceAuthError, responseError } from "./device-gate.mjs";
 import { t, translateServerMessage } from "./i18n";
 
 type FleetSnapshot = {
@@ -30,14 +30,25 @@ export class HostAgentRuntime {
   private events: EventSource | null = null;
   private reconnectTimer: number | null = null;
   private refreshInFlight: Promise<AgentState> | null = null;
+  // Set when the server refuses this browser (401/403); cleared once it is trusted.
+  private deviceBlocked = false;
 
   constructor() {
     this.connectEvents();
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") void this.refresh().catch(() => {});
+      if (document.visibilityState === "visible" && !this.deviceBlocked) void this.refresh().catch(() => {});
     });
-    window.addEventListener("pageshow", () => void this.refresh().catch(() => {}));
+    window.addEventListener("pageshow", () => {
+      if (!this.deviceBlocked) void this.refresh().catch(() => {});
+    });
+    window.addEventListener("devmoter:device-trust-changed", event => {
+      if ((event as CustomEvent<{ trusted?: boolean }>).detail?.trusted !== true) return;
+      this.deviceBlocked = false;
+      this.connectEvents();
+      void this.refresh().catch(() => {});
+    });
     window.addEventListener("online", () => {
+      if (this.deviceBlocked) return;
       this.connectEvents();
       void this.refresh().catch(() => {});
     });
@@ -63,7 +74,7 @@ export class HostAgentRuntime {
   }
 
   private connectEvents() {
-    if (this.events || !navigator.onLine) return;
+    if (this.events || this.deviceBlocked || !navigator.onLine) return;
     const source = new EventSource("/api/agent-runs/events");
     this.events = source;
     source.addEventListener("state", event => {
@@ -77,10 +88,13 @@ export class HostAgentRuntime {
       source.close();
       if (this.events === source) this.events = null;
       if (this.reconnectTimer !== null || !navigator.onLine) return;
+      // EventSource hides the status, so probe with a plain request before reconnecting.
       this.reconnectTimer = window.setTimeout(() => {
         this.reconnectTimer = null;
-        this.connectEvents();
-        void this.refresh().catch(() => {});
+        void this.refresh().then(
+          () => this.connectEvents(),
+          () => this.connectEvents()
+        );
       }, 1500);
     };
   }
@@ -101,8 +115,20 @@ export class HostAgentRuntime {
     if (this.refreshInFlight) return this.refreshInFlight;
     this.refreshInFlight = this.request<AgentState>("/api/agent-runs")
       .then(state => this.applyState(state))
+      .catch(error => {
+        if (error instanceof DeviceAuthError) this.pauseForDevice();
+        throw error;
+      })
       .finally(() => { this.refreshInFlight = null; });
     return this.refreshInFlight;
+  }
+
+  private pauseForDevice() {
+    this.deviceBlocked = true;
+    this.events?.close();
+    this.events = null;
+    if (this.reconnectTimer !== null) window.clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
   }
 
   subscribe(listener: (run: SubagentRun) => void) {
