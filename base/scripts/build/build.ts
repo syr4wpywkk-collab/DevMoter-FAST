@@ -200,7 +200,7 @@ async function buildEngine(repo: string, buildRoot: string, pin: EnginePin, opti
   const started = Date.now();
   const say = (message: string) => console.log(`[${pin.name}] ${message}`);
 
-  const vendored = await run('git', ['rev-parse', '--verify', `HEAD:${pin.directory}`], { cwd: repo });
+  const vendored = await run('git', ['rev-parse', '--verify', `HEAD:./${pin.directory}`], { cwd: repo });
   if (vendored.code !== 0 || vendored.output.trim() !== pin.tree) {
     say(`FAIL ${pin.directory} does not match the pinned tree ${pin.tree}; run npm run upstream:verify`);
     return false;

@@ -1,4 +1,4 @@
-name: Engine builds
+name: Base engine builds
 
 # Building the four engines takes much longer than the integration-layer checks,
 # so it only runs when the engines or their build scripts change, or on demand.
@@ -7,20 +7,20 @@ on:
   push:
     branches: [main]
     paths:
-      - engines/**
-      - scripts/build/**
-      - .github/workflows/engines.yml
+      - base/engines/**
+      - base/scripts/build/**
+      - .github/workflows/base-engines.yml
   pull_request:
     paths:
-      - engines/**
-      - scripts/build/**
-      - .github/workflows/engines.yml
+      - base/engines/**
+      - base/scripts/build/**
+      - .github/workflows/base-engines.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: engines-${{ github.ref }}
+  group: base-engines-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -38,6 +38,9 @@ jobs:
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: base
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { findSecrets, isBinary, isSensitivePath } from "../scripts/secret-scan.mjs";
+import { findSecrets, isBinary, isCredentialFreeNpmrc, isSensitivePath } from "../scripts/secret-scan.mjs";
 
 // Fixtures are assembled at runtime so this file never contains a literal
 // credential that the repository scan itself would flag.
@@ -62,6 +62,14 @@ test("credential files are flagged by name, env templates are allowed", () => {
   for (const path of [".env.example", "docs/.env.template", "src/env.ts", "keys.md", "ios/DevMoter/DevMoterApp.swift"]) {
     assert.ok(!isSensitivePath(path), path);
   }
+});
+
+test("an .npmrc without registry credentials may be tracked", () => {
+  assert.ok(isCredentialFreeNpmrc("base/.npmrc", "ignore-scripts=true\n"));
+  for (const body of ["//registry.npmjs.org/:_authToken=${NPM_TOKEN}\n", "_auth=dXNlcjpwYXNz\n", "ignore-scripts=true\n_password=x\n"]) {
+    assert.ok(!isCredentialFreeNpmrc(".npmrc", body), body);
+  }
+  assert.ok(!isCredentialFreeNpmrc(".env", "ignore-scripts=true\n"));
 });
 
 test("binary files are skipped, text files with any extension are scanned", () => {

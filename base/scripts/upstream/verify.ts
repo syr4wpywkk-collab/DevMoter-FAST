@@ -89,7 +89,7 @@ export async function verifyVendoredTrees(manifest: Manifest, git: Git): Promise
   for (const pin of manifest.engines) {
     let tree: string;
     try {
-      tree = await git(['rev-parse', '--verify', `HEAD:${pin.directory}`]);
+      tree = await git(['rev-parse', '--verify', `HEAD:./${pin.directory}`]);
     } catch {
       findings.push({ rule: 'vendored-tree', engine: pin.name, message: `${pin.directory} does not exist at HEAD` });
       continue;
@@ -102,7 +102,7 @@ export async function verifyVendoredTrees(manifest: Manifest, git: Git): Promise
       });
     }
     try {
-      await git(['rev-parse', '--verify', `HEAD:${pin.directory}/${pin.licenseFile}`]);
+      await git(['rev-parse', '--verify', `HEAD:./${pin.directory}/${pin.licenseFile}`]);
     } catch {
       findings.push({ rule: 'license-file', engine: pin.name, message: `${pin.directory}/${pin.licenseFile} is missing` });
     }

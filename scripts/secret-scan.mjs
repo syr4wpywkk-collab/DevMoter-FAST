@@ -22,6 +22,14 @@ export function isSensitivePath(path) {
   return !ALLOWED_ENV_TEMPLATE.test(path) && SENSITIVE_NAME.test(path);
 }
 
+// An .npmrc is a credential file only when it holds registry auth settings;
+// one with only options such as ignore-scripts=true is safe to track.
+const NPMRC_CREDENTIAL = /^\s*(?:\/\/[^\s=]*:)?(?:_auth|_authToken|_password|username|email|certfile|keyfile)\s*=/im;
+
+export function isCredentialFreeNpmrc(path, body) {
+  return /(^|\/)\.npmrc$/i.test(path) && !NPMRC_CREDENTIAL.test(String(body));
+}
+
 // Every match is checked, so a placeholder earlier in a file cannot hide a
 // real credential later in the same file.
 export function findSecrets(body) {

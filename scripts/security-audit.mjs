@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import { basename } from "node:path";
-import { findSecrets, isBinary, isSensitivePath } from "./secret-scan.mjs";
+import { findSecrets, isBinary, isCredentialFreeNpmrc, isSensitivePath } from "./secret-scan.mjs";
 import { findCiEnforcementGaps } from "./ci-required-checks.mjs";
 
 const failures = [];
@@ -162,14 +162,32 @@ for (const required of ["SECURITY.md", "THREAT_MODEL.md"]) {
 
 let tracked = [];
 try {
-  tracked = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8" })
+  tracked = execFileSync("git", ["ls-files", "-z"], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 })
     .split("\0")
     .filter(Boolean);
 } catch {
   failures.push("git ls-files could not enumerate tracked files");
 }
 
-const suspiciousTrackedPaths = tracked.filter(isSensitivePath);
+// base/engines/<name>/ hold upstream database sources (with their own test keys
+// and certificates) that base's `npm run upstream:verify` proves byte-identical
+// to the pinned upstream commits, and Base CI runs it whenever base/ changes.
+const baseManifest = JSON.parse(await text("base/engines/manifest.json"));
+const vendoredPrefixes = baseManifest.engines.map(pin => "base/" + pin.directory + "/");
+const baseCiWorkflow = await text(".github/workflows/base-ci.yml");
+check(vendoredPrefixes.length > 0 && vendoredPrefixes.every(prefix => /^base\/engines\/[a-z0-9-]+\/$/.test(prefix)),
+  "vendored engine trees are pinned in base/engines/manifest.json");
+check(/^\s+(?:- )?run: npm run upstream:verify\b/m.test(baseCiWorkflow),
+  "Base CI verifies the vendored engine trees against upstream");
+const isVendored = path => vendoredPrefixes.some(prefix => path.startsWith(prefix));
+const vendoredCount = tracked.filter(isVendored).length;
+tracked = tracked.filter(path => !isVendored(path));
+passes.push(vendoredCount + " vendored upstream engine files are left to upstream:verify");
+
+const suspiciousTrackedPaths = [];
+for (const path of tracked.filter(isSensitivePath)) {
+  if (!isCredentialFreeNpmrc(path, await readFile(path, "utf8").catch(() => ""))) suspiciousTrackedPaths.push(path);
+}
 if (suspiciousTrackedPaths.length === 0) {
   passes.push("no likely secret files are tracked");
 } else {

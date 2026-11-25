@@ -1,15 +1,22 @@
-name: CI
+name: Base CI
 
+# DevMoter Base lives in base/; FAST-only changes do not run these checks.
 on:
   push:
     branches: [main]
+    paths:
+      - base/**
+      - .github/workflows/base-ci.yml
   pull_request:
+    paths:
+      - base/**
+      - .github/workflows/base-ci.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: base-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -25,6 +32,9 @@ jobs:
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: base
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -34,11 +44,12 @@ jobs:
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /*
-            !/engines/*/
+            !/base/engines/*/
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version-file: .node-version
+          node-version-file: base/.node-version
           cache: npm
+          cache-dependency-path: base/package-lock.json
       - run: node --version && uname -m
       - name: Check the lockfile against policy before installing anything
         run: node scripts/deps/check.ts --offline

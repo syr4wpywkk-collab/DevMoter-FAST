@@ -35,7 +35,7 @@ const rules = (findings: { rule: string }[]) => findings.map((finding) => findin
 function fakeGit(objects: Record<string, string>, status = '', directories: string[] = []): Git {
   return async (args) => {
     if (args[0] === 'rev-parse') {
-      const id = objects[args.at(-1) ?? ''];
+      const id = objects[(args.at(-1) ?? '').replace(':./', ':')];
       if (!id) throw new Error('fatal: path does not exist');
       return id;
     }
