@@ -72,9 +72,9 @@ mod tests {
     }
 
     #[test]
-    fn uncalled_lambda_is_value_error() {
-        // A lambda reaching the cell boundary cannot display -> #VALUE!.
-        assert_eq!(e(&eval("=LAMBDA(x,x+1)")), CalcError::Value);
+    fn uncalled_lambda_is_calc_error() {
+        // A lambda reaching the cell boundary cannot display -> #CALC!.
+        assert_eq!(e(&eval("=LAMBDA(x,x+1)")), CalcError::Calc);
     }
 
     #[test]

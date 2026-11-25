@@ -340,3 +340,10 @@ fn spilled_cells_are_not_stored_inputs() {
     assert!(e.workbook().cell_a1("Sheet1", "C3").unwrap().is_none());
     assert_eq!(num(&get(&mut e, "C3")), 4.0);
 }
+
+#[test]
+fn uncalled_lambda_cell_is_calc_error() {
+    let mut e = engine();
+    set(&mut e, "A1", "=LAMBDA(x,x)");
+    assert_eq!(get(&mut e, "A1"), Value::Error(CalcError::Calc));
+}
