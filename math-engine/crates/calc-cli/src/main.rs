@@ -53,7 +53,9 @@ fn run(args: &[String]) -> Outcome {
 }
 
 /// A syntax error also gets its 1-based character column and a caret
-/// under that position, so non-ASCII formulas point at the right place.
+/// under that position on the line where it occurs. The caret's indent
+/// copies tabs and uses an ideographic space under wide (CJK) characters
+/// so it lines up in a terminal.
 fn error_message(formula: &str, e: &EngineError) -> String {
     let EngineError::Parse(p) = e else {
         return format!("error: {e}\n");
@@ -61,12 +63,32 @@ fn error_message(formula: &str, e: &EngineError) -> String {
     let Some(before) = formula.get(..p.offset) else {
         return format!("error: {e}\n");
     };
-    let col = before.chars().count();
+    let line_start = before.rfind('\n').map_or(0, |i| i + 1);
+    let line_end = formula[p.offset..]
+        .find(['\r', '\n'])
+        .map_or(formula.len(), |i| p.offset + i);
+    let indent: String = formula[line_start..p.offset]
+        .chars()
+        .map(|c| match c {
+            '\t' => '\t',
+            c if is_wide(c) => '\u{3000}',
+            _ => ' ',
+        })
+        .collect();
     format!(
-        "error: {e} (character {})\n  {formula}\n  {}^\n",
-        col + 1,
-        " ".repeat(col)
+        "error: {e} (character {})\n  {}\n  {indent}^\n",
+        before.chars().count() + 1,
+        &formula[line_start..line_end],
     )
+}
+
+/// East Asian wide/fullwidth characters (two terminal columns).
+fn is_wide(c: char) -> bool {
+    matches!(c as u32,
+        0x1100..=0x115F | 0x2E80..=0x303E | 0x3041..=0x33FF | 0x3400..=0x4DBF
+        | 0x4E00..=0x9FFF | 0xA000..=0xA4CF | 0xAC00..=0xD7A3 | 0xF900..=0xFAFF
+        | 0xFE30..=0xFE4F | 0xFF00..=0xFF60 | 0xFFE0..=0xFFE6
+        | 0x1F300..=0x1F64F | 0x1F900..=0x1F9FF | 0x20000..=0x3FFFD)
 }
 
 fn main() -> ExitCode {
@@ -134,9 +156,17 @@ mod tests {
         }
         match run(&args(&["eval", "=\"あ\"+"])) {
             Outcome::Err(3, msg) => assert!(
-                msg.ends_with("(character 6)\n  =\"あ\"+\n       ^\n"),
+                msg.ends_with("(character 6)\n  =\"あ\"+\n    \u{3000}  ^\n"),
                 "{msg}"
             ),
+            _ => panic!("expected syntax error"),
+        }
+    }
+
+    #[test]
+    fn syntax_error_caret_is_on_the_failing_line() {
+        match run(&args(&["eval", "=1+\n\t2+"])) {
+            Outcome::Err(3, msg) => assert!(msg.ends_with("\n  \t2+\n  \t  ^\n"), "{msg:?}"),
             _ => panic!("expected syntax error"),
         }
     }
