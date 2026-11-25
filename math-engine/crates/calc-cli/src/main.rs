@@ -64,13 +64,29 @@ fn render(v: &Value) -> String {
     let mut out = format!("<array {}x{}>\n", a.rows(), a.cols());
     for r in 0..a.rows().min(MAX_ARRAY_ROWS) {
         let row: Vec<String> = (0..a.cols())
-            .map(|c| a.get(r, c).map(Value::to_string).unwrap_or_default())
+            .map(|c| a.get(r, c).map(cell_text).unwrap_or_default())
             .collect();
         out.push_str(&row.join("\t"));
         out.push('\n');
     }
     if a.rows() > MAX_ARRAY_ROWS {
         out.push_str(&format!("... {} more rows\n", a.rows() - MAX_ARRAY_ROWS));
+    }
+    out
+}
+
+/// A cell's display text with `\\`, tab and line breaks escaped, so they
+/// cannot be mistaken for the column and row separators.
+fn cell_text(v: &Value) -> String {
+    let mut out = String::new();
+    for ch in v.to_string().chars() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '\t' => out.push_str("\\t"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            c => out.push(c),
+        }
     }
     out
 }
@@ -137,6 +153,17 @@ mod tests {
         }
         match run(&args(&["eval", "={1,\"a\";TRUE,#N/A}"])) {
             Outcome::Ok(msg) => assert_eq!(msg, "<array 2x2>\n1\ta\nTRUE\t#N/A\n"),
+            Outcome::Err(..) => panic!("expected array"),
+        }
+    }
+
+    #[test]
+    fn array_text_separators_are_escaped() {
+        match run(&args(&[
+            "eval",
+            "={\"a\"&CHAR(9)&\"b\",\"c\"&CHAR(10)&\"d\\\"}",
+        ])) {
+            Outcome::Ok(msg) => assert_eq!(msg, "<array 1x2>\na\\tb\tc\\nd\\\\\n"),
             Outcome::Err(..) => panic!("expected array"),
         }
     }
