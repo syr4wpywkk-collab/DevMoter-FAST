@@ -57,9 +57,10 @@ export declare class WasmWorkbook {
   sheetNames(): string[];
 
   /**
-   * Store typed input: a leading `=` marks a formula, anything else is
-   * stored as literal text (the UI-typing convention). A formula that
-   * fails to parse throws and leaves the cell unchanged.
+   * Store input as typed into a cell: a leading `=` marks a formula,
+   * `'` forces text, `TRUE`/`FALSE` and number text (`42`, `-1.5`, `5%`)
+   * are typed values, `""` clears the cell, anything else is text. A
+   * formula that fails to parse throws and leaves the cell unchanged.
    */
   setCell(sheet: string, address: string, input: string): void;
 

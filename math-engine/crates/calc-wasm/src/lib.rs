@@ -185,12 +185,16 @@ impl WasmWorkbook {
             .collect()
     }
 
-    /// Store typed input: a leading `=` marks a formula, anything else is
-    /// stored as literal text (the UI-typing convention). A formula that
-    /// fails to parse is rejected and the cell is left unchanged.
-    /// Use `setCellValue` for typed literal values.
+    /// Store input as typed into a cell (the UI-typing convention): a
+    /// leading `=` marks a formula, `'` forces text, `TRUE`/`FALSE` and
+    /// number text (`42`, `-1.5`, `5%`) are typed values, an empty string
+    /// clears the cell, anything else is text. A formula that fails to
+    /// parse is rejected and the cell is left unchanged.
     #[wasm_bindgen(js_name = setCell)]
     pub fn set_cell(&mut self, sheet: &str, address: &str, input: &str) -> Result<(), JsError> {
+        if input.is_empty() {
+            return self.engine.clear_cell(sheet, address).map_err(engine_err);
+        }
         self.engine
             .set_cell(sheet, address, CellInput::from_typed(input))
             .map_err(engine_err)
@@ -397,8 +401,30 @@ mod tests {
         assert_eq!(
             cell_value(&v),
             CellValue::Number { value: 84.0 },
-            "typed '42' is text; A1*2 coerces text to number"
+            "typed '42' is a number"
         );
+    }
+
+    #[test]
+    fn set_cell_types_literals_like_a_ui() {
+        let mut wb = WasmWorkbook::new();
+        wb.set_cell("Sheet1", "A1", "5").unwrap();
+        wb.set_cell("Sheet1", "A2", "TRUE").unwrap();
+        wb.set_cell("Sheet1", "A3", "'123").unwrap();
+        wb.set_cell("Sheet1", "A4", "x").unwrap();
+        wb.set_cell("Sheet1", "A4", "").unwrap();
+        wb.set_cell("Sheet1", "B1", "=SUM(A1:A3)").unwrap();
+        wb.set_cell("Sheet1", "B2", "=ISBLANK(A4)").unwrap();
+        let get = |wb: &mut WasmWorkbook, a| cell_value(&wb.engine.get_value("Sheet1", a).unwrap());
+        assert_eq!(get(&mut wb, "B1"), CellValue::Number { value: 5.0 });
+        assert_eq!(get(&mut wb, "A2"), CellValue::Boolean { value: true });
+        assert_eq!(
+            get(&mut wb, "A3"),
+            CellValue::Text {
+                value: "123".into()
+            }
+        );
+        assert_eq!(get(&mut wb, "B2"), CellValue::Boolean { value: true });
     }
 
     #[test]
