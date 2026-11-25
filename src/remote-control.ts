@@ -468,6 +468,7 @@ export function mountRemoteControlCenter() {
 
     const detailsTrigger = document.createElement("details");
     detailsTrigger.innerHTML = `<summary>${esc(t("remote.automation.triggers"))}</summary>`;
+    detailsTrigger.open = !(triggers.triggers || []).length;
     const triggerList = document.createElement("div");
     triggerList.className = "dm-list";
     for (const item of triggers.triggers || []) {
@@ -684,7 +685,7 @@ export function mountRemoteControlCenter() {
       runFilterBar.appendChild(item);
     }
     drawRuns();
-    detailsAutopilot.open = automationRunsOpen;
+    detailsAutopilot.open = automationRunsOpen || !(runs.runs || []).length;
     detailsAutopilot.addEventListener("toggle", () => { automationRunsOpen = detailsAutopilot.open; });
     detailsAutopilot.appendChild(runFilterBar);
     detailsAutopilot.appendChild(runList);
