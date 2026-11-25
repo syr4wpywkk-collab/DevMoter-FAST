@@ -1,0 +1,106 @@
+# 2019-12-05
+#
+# The author disclaims copyright to this source code.  In place of
+# a legal notice, here is a blessing:
+#
+#    May you do good and not evil.
+#    May you find forgiveness for yourself and forgive others.
+#    May you share freely, never taking more than you give.
+#
+#***********************************************************************
+# Additional test cases
+
+if {![info exists testdir]} {
+  set testdir [file join [file dirname [info script]] .. .. test]
+} 
+source [file join [file dirname [info script]] rtree_util.tcl]
+source $testdir/tester.tcl
+set testprefix rtreeI
+ifcapable !rtree { finish_test ; return }
+
+# The following is a test of rowvalue handling on virtual tables that
+# deal with inequalities and that set the OMIT flag on terms of the
+# WHERE clause.  This is not specific to rtree.  We just use rtree because
+# it is a convenient test platform since it has all the right
+# characteristics.
+#
+do_execsql_test rtreeI-1.10 {
+  CREATE TABLE t1(a);
+  INSERT INTO t1 VALUES(2);
+  CREATE VIRTUAL TABLE t2 USING rtree(id,x0,x1);
+  INSERT INTO t2(id,x0,x1) VALUES(1,2,3);
+} {}
+do_execsql_test rtreeI-1.20 {
+  SELECT 123 FROM t1, t2 WHERE (a,0)>(x0,0);
+} {}
+do_execsql_test rtreeI-1.21 {
+  SELECT 123 FROM t1, t2 WHERE (a,0.1)>(x0,0);
+} {123}
+do_execsql_test rtreeI-1.22 {
+  SELECT 123 FROM t1, t2 WHERE (a,0)>=(x0,0);
+} {123}
+do_execsql_test rtreeI-1.23 {
+  SELECT 123 FROM t1, t2 WHERE (a,0)<=(x0,0);
+} {123}
+do_execsql_test rtreeI-1.24 {
+  SELECT 123 FROM t1, t2 WHERE (a,0)<(x0,0);
+} {}
+do_execsql_test rtreeI-1.30 {
+  SELECT 123 FROM t1, t2 WHERE (x0,0)<(a,0);
+} {}
+do_execsql_test rtreeI-1.31 {
+  SELECT 123 FROM t1, t2 WHERE (x0,0)<(a,0.1);
+} {123}
+do_execsql_test rtreeI-1.40 {
+  SELECT 123 FROM t1, t2 WHERE x1<5 AND id<99 AND (a,0)>(x0,0);
+} {}
+do_execsql_test rtreeI-1.41 {
+  SELECT 123 FROM t1, t2 WHERE x1<5 AND id<99 AND (a,0.5)>(x0,0);
+} {123}
+do_execsql_test rtreeI-1.42 {
+  SELECT 123 FROM t1, t2 WHERE x1<5 AND id<99 AND (a,0)>=(x0,0);
+} {123}
+do_execsql_test rtreeI-1.43 {
+  SELECT 123 FROM t1, t2 WHERE x1<5 AND id<99 AND (a,0)<(x0,0);
+} {}
+do_execsql_test rtreeI-1.50 {
+  SELECT 123 FROM t1, t2 WHERE 5>x1 AND 99>id AND (x0,0)<(a,0);
+} {}
+do_execsql_test rtreeI-1.51 {
+  SELECT 123 FROM t1, t2 WHERE 5>x1 AND 99>id AND (x0,0)<(a,0.5);
+} {123}
+
+#-------------------------------------------------------------------------
+#
+reset_db
+do_execsql_test 2.0 {
+  PRAGMA page_size = 4096;
+  CREATE TABLE zero(x INTEGER PRIMARY KEY);
+  CREATE VIRTUAL TABLE t1 USING rtree(id, x1, x2, y1, y2);
+
+  WITH RECURSIVE c(i) AS (VALUES(1) UNION ALL SELECT i+1 FROM c WHERE i<51)
+  INSERT INTO t1 SELECT i,i,i+1,i,i+1 FROM c;
+
+  CREATE TRIGGER tr BEFORE INSERT ON t1_node BEGIN
+    SELECT raise(IGNORE);
+  END;
+} {}
+
+db close
+sqlite3 db test.db
+
+do_execsql_test 2.1 {
+  PRAGMA integrity_check
+} {ok}
+
+do_catchsql_test 2.2 {
+  INSERT INTO t1 VALUES(1000, 0, 1, 0, 1);
+} {1 {database disk image is malformed}}
+
+do_execsql_test 2.3 {
+  SELECT * FROM t1 WHERE id=25
+} {25 25.0 26.0 25.0 26.0}
+
+
+
+finish_test

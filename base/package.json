@@ -1,0 +1,34 @@
+{
+  "name": "devmoter-base",
+  "version": "0.1.0",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE",
+  "description": "DevMoter Base: unified, self-hostable data platform layer over PostgreSQL, SQLite, DuckDB and Valkey",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node src/main.ts",
+    "keys": "node src/cli/keys.ts",
+    "audit:verify": "node src/cli/audit.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "deps:check": "node scripts/deps/check.ts",
+    "upstream:verify": "node scripts/upstream/verify.ts",
+    "stats": "node scripts/stats/code-stats.ts",
+    "stats:update": "node scripts/stats/code-stats.ts --write",
+    "stats:check": "node scripts/stats/code-stats.ts --check",
+    "build:engines": "node scripts/build/build.ts",
+    "build:engines:container": "scripts/build/container.sh",
+    "check": "npm run typecheck && npm test && npm run deps:check && npm run upstream:verify && npm run stats:check"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/pg": "8.23.1",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  }
+}

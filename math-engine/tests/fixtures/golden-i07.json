@@ -1,0 +1,4351 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {},
+  "cases": [
+    {
+      "id": "I07-PI-001",
+      "formula": "=PI()",
+      "inputs": {},
+      "expected": {
+        "number": 3.141592653589793,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-PI-002",
+      "formula": "=PI()/2",
+      "inputs": {},
+      "expected": {
+        "number": 1.5707963267948966,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-PI-003",
+      "formula": "=2*PI()",
+      "inputs": {},
+      "expected": {
+        "number": 6.283185307179586,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-PI-004",
+      "formula": "=-PI()",
+      "inputs": {},
+      "expected": {
+        "number": -3.141592653589793,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-PI-005",
+      "formula": "=PI(1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "arity"
+    },
+    {
+      "id": "I07-PI-006",
+      "formula": "=PI()=PI()",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-PI-007",
+      "formula": "=SQRT(PI())",
+      "inputs": {},
+      "expected": {
+        "number": 1.772453850905516,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-PI-008",
+      "formula": "=PI()-3",
+      "inputs": {},
+      "expected": {
+        "number": 0.14159265358979312,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-PI-009",
+      "formula": "=SIN(PI())",
+      "inputs": {},
+      "expected": {
+        "number": 0.0,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "f64 residue ~1.22e-16, not exactly 0"
+    },
+    {
+      "id": "I07-PI-010",
+      "formula": "=SEC(PI())",
+      "inputs": {},
+      "expected": {
+        "number": -1.0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-QUOTIENT-001",
+      "formula": "=QUOTIENT(5,2)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-QUOTIENT-002",
+      "formula": "=QUOTIENT(-5,2)",
+      "inputs": {},
+      "expected": {
+        "number": -2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "truncates toward zero, unlike INT"
+    },
+    {
+      "id": "I07-QUOTIENT-003",
+      "formula": "=QUOTIENT(4.5,3.1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-QUOTIENT-004",
+      "formula": "=QUOTIENT(-10,3)",
+      "inputs": {},
+      "expected": {
+        "number": -3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-QUOTIENT-005",
+      "formula": "=QUOTIENT(5,-2)",
+      "inputs": {},
+      "expected": {
+        "number": -2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-QUOTIENT-006",
+      "formula": "=QUOTIENT(-5,-2)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-QUOTIENT-007",
+      "formula": "=QUOTIENT(10,2)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-QUOTIENT-008",
+      "formula": "=QUOTIENT(0,7)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-QUOTIENT-009",
+      "formula": "=QUOTIENT(1,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-QUOTIENT-010",
+      "formula": "=QUOTIENT(\"9\",\"2\")",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-QUOTIENT-011",
+      "formula": "=QUOTIENT(\"x\",2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-QUOTIENT-012",
+      "formula": "=QUOTIENT(1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RADIANS-001",
+      "formula": "=RADIANS(180)",
+      "inputs": {},
+      "expected": {
+        "number": 3.141592653589793,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RADIANS-002",
+      "formula": "=RADIANS(270)",
+      "inputs": {},
+      "expected": {
+        "number": 4.71238898038469,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RADIANS-003",
+      "formula": "=RADIANS(-90)",
+      "inputs": {},
+      "expected": {
+        "number": -1.5707963267948966,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RADIANS-004",
+      "formula": "=RADIANS(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RADIANS-005",
+      "formula": "=RADIANS(360)",
+      "inputs": {},
+      "expected": {
+        "number": 6.283185307179586,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RADIANS-006",
+      "formula": "=RADIANS(45)",
+      "inputs": {},
+      "expected": {
+        "number": 0.7853981633974483,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RADIANS-007",
+      "formula": "=RADIANS(\"90\")",
+      "inputs": {},
+      "expected": {
+        "number": 1.5707963267948966,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RADIANS-008",
+      "formula": "=RADIANS(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RADIANS-009",
+      "formula": "=RADIANS()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RADIANS-010",
+      "formula": "=RADIANS(1,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RANDARRAY-001",
+      "formula": "=INDEX(RANDARRAY(5,2,7,7),4,2)",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "min=max pins every draw INDEX/ROWS access: array results are not flattened into aggregates (engine gap)",
+      "rngSeed": 1
+    },
+    {
+      "id": "I07-RANDARRAY-002",
+      "formula": "=AND(INDEX(RANDARRAY(30,3),1,1)>=0,INDEX(RANDARRAY(30,3),30,3)<1)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "rngSeed": 2,
+      "notes": "INDEX/ROWS access: array results are not flattened into aggregates (engine gap)"
+    },
+    {
+      "id": "I07-RANDARRAY-003",
+      "formula": "=AND(INDEX(RANDARRAY(20,1,5,8),1)>=5,INDEX(RANDARRAY(20,1,5,8),20)<8)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "rngSeed": 3,
+      "notes": "INDEX/ROWS access: array results are not flattened into aggregates (engine gap)"
+    },
+    {
+      "id": "I07-RANDARRAY-004",
+      "formula": "=INDEX(RANDARRAY(50,1,4,4,TRUE),37)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "integer mode, pinned bound INDEX/ROWS access: array results are not flattened into aggregates (engine gap)",
+      "rngSeed": 4
+    },
+    {
+      "id": "I07-RANDARRAY-005",
+      "formula": "=AND(INDEX(RANDARRAY(30,1,2,9,TRUE),1)>=2,INDEX(RANDARRAY(30,1,2,9,TRUE),30)<=9)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "rngSeed": 5,
+      "notes": "INDEX/ROWS access: array results are not flattened into aggregates (engine gap)"
+    },
+    {
+      "id": "I07-RANDARRAY-006",
+      "formula": "=RANDARRAY(1,1,10,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RANDARRAY-007",
+      "formula": "=RANDARRAY(-1,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RANDARRAY-008",
+      "formula": "=RANDARRAY(1.5,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "spec doc: non-integer dims -> #VALUE!"
+    },
+    {
+      "id": "I07-RANDARRAY-009",
+      "formula": "=ROWS(RANDARRAY(4,5))*COLUMNS(RANDARRAY(4,5))",
+      "inputs": {},
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "rngSeed": 6,
+      "notes": "INDEX/ROWS access: array results are not flattened into aggregates (engine gap)"
+    },
+    {
+      "id": "I07-RANDARRAY-010",
+      "formula": "=RANDARRAY(1,1,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-RANDARRAY-011",
+      "formula": "=RANDARRAY(0,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#CALC!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Excel may report #CALC! rather than #VALUE! for a zero-size array; engine currently returns #VALUE! per the spec doc's error table"
+    },
+    {
+      "id": "I07-RANDARRAY-012",
+      "formula": "=RANDARRAY(1,1,1.5,10.5,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "expected intentionally wrong placeholder - do not pin",
+      "specOpen": true,
+      "specOpenReason": "integer-mode bound coercion for fractional min/max is undocumented (trunc vs RANDBETWEEN-style ceil/floor); engine truncates"
+    },
+    {
+      "id": "I07-ROMAN-001",
+      "formula": "=ROMAN(499)",
+      "inputs": {},
+      "expected": {
+        "text": "CDXCIX"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-002",
+      "formula": "=ROMAN(499,1)",
+      "inputs": {},
+      "expected": {
+        "text": "LDVLIV"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-003",
+      "formula": "=ROMAN(499,2)",
+      "inputs": {},
+      "expected": {
+        "text": "XDIX"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-004",
+      "formula": "=ROMAN(499,3)",
+      "inputs": {},
+      "expected": {
+        "text": "VDIV"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-005",
+      "formula": "=ROMAN(499,4)",
+      "inputs": {},
+      "expected": {
+        "text": "ID"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-006",
+      "formula": "=ROMAN(999)",
+      "inputs": {},
+      "expected": {
+        "text": "CMXCIX"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-007",
+      "formula": "=ROMAN(999,1)",
+      "inputs": {},
+      "expected": {
+        "text": "LMVLIV"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-008",
+      "formula": "=ROMAN(999,2)",
+      "inputs": {},
+      "expected": {
+        "text": "XMIX"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-009",
+      "formula": "=ROMAN(999,3)",
+      "inputs": {},
+      "expected": {
+        "text": "VMIV"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-010",
+      "formula": "=ROMAN(999,4)",
+      "inputs": {},
+      "expected": {
+        "text": "IM"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-011",
+      "formula": "=ROMAN(2013)",
+      "inputs": {},
+      "expected": {
+        "text": "MMXIII"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-012",
+      "formula": "=ROMAN(0)",
+      "inputs": {},
+      "expected": {
+        "text": ""
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "empty string for 0 per LibreOffice docs"
+    },
+    {
+      "id": "I07-ROMAN-013",
+      "formula": "=ROMAN(3999)",
+      "inputs": {},
+      "expected": {
+        "text": "MMMCMXCIX"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-014",
+      "formula": "=ROMAN(-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-015",
+      "formula": "=ROMAN(4000)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-016",
+      "formula": "=ROMAN(10,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-017",
+      "formula": "=ROMAN(499,TRUE)",
+      "inputs": {},
+      "expected": {
+        "text": "CDXCIX"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-018",
+      "formula": "=ROMAN(499,FALSE)",
+      "inputs": {},
+      "expected": {
+        "text": "ID"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-019",
+      "formula": "=ROMAN(58)",
+      "inputs": {},
+      "expected": {
+        "text": "LVIII"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROMAN-020",
+      "formula": "=ROMAN(499.9)",
+      "inputs": {},
+      "expected": {
+        "text": "CDXCIX"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "non-integer number truncated"
+    },
+    {
+      "id": "I07-ROUNDDOWN-001",
+      "formula": "=ROUNDDOWN(3.2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDDOWN-002",
+      "formula": "=ROUNDDOWN(76.9,0)",
+      "inputs": {},
+      "expected": {
+        "number": 76
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDDOWN-003",
+      "formula": "=ROUNDDOWN(3.14159,3)",
+      "inputs": {},
+      "expected": {
+        "number": 3.141
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDDOWN-004",
+      "formula": "=ROUNDDOWN(-3.14159,1)",
+      "inputs": {},
+      "expected": {
+        "number": -3.1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDDOWN-005",
+      "formula": "=ROUNDDOWN(31415.92654,-2)",
+      "inputs": {},
+      "expected": {
+        "number": 31400
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDDOWN-006",
+      "formula": "=ROUNDDOWN(2.5,0)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "toward zero, not half-up"
+    },
+    {
+      "id": "I07-ROUNDDOWN-007",
+      "formula": "=ROUNDDOWN(-2.5,0)",
+      "inputs": {},
+      "expected": {
+        "number": -2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDDOWN-008",
+      "formula": "=ROUNDDOWN(0.4,0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDDOWN-009",
+      "formula": "=ROUNDDOWN(12345,-10)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDDOWN-010",
+      "formula": "=ROUNDDOWN(3.14159,3.9)",
+      "inputs": {},
+      "expected": {
+        "number": 3.141
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "fractional num_digits truncated"
+    },
+    {
+      "id": "I07-ROUNDDOWN-011",
+      "formula": "=ROUNDDOWN(\"3.7\",\"0\")",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDDOWN-012",
+      "formula": "=ROUNDDOWN(\"x\",0)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDDOWN-013",
+      "formula": "=ROUNDDOWN(-31415.92654,-2)",
+      "inputs": {},
+      "expected": {
+        "number": -31400
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDUP-001",
+      "formula": "=ROUNDUP(3.2,0)",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDUP-002",
+      "formula": "=ROUNDUP(76.9,0)",
+      "inputs": {},
+      "expected": {
+        "number": 77
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDUP-003",
+      "formula": "=ROUNDUP(3.14159,3)",
+      "inputs": {},
+      "expected": {
+        "number": 3.142
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDUP-004",
+      "formula": "=ROUNDUP(-3.14159,1)",
+      "inputs": {},
+      "expected": {
+        "number": -3.2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDUP-005",
+      "formula": "=ROUNDUP(31415.92654,-2)",
+      "inputs": {},
+      "expected": {
+        "number": 31500
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDUP-006",
+      "formula": "=ROUNDUP(2.5,0)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDUP-007",
+      "formula": "=ROUNDUP(2.675,2)",
+      "inputs": {},
+      "expected": {
+        "number": 2.68
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "decimal-model boundary"
+    },
+    {
+      "id": "I07-ROUNDUP-008",
+      "formula": "=ROUNDUP(0.001,0)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDUP-009",
+      "formula": "=ROUNDUP(-0.001,0)",
+      "inputs": {},
+      "expected": {
+        "number": -1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDUP-010",
+      "formula": "=ROUNDUP(2.67,2)",
+      "inputs": {},
+      "expected": {
+        "number": 2.67
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "no discarded nonzero digits -> unchanged"
+    },
+    {
+      "id": "I07-ROUNDUP-011",
+      "formula": "=ROUNDUP(0,2)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDUP-012",
+      "formula": "=ROUNDUP(\"3.2\",\"0\")",
+      "inputs": {},
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-ROUNDUP-013",
+      "formula": "=ROUNDUP(\"x\",0)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SEC-001",
+      "formula": "=SEC(0)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SEC-002",
+      "formula": "=SEC(45*PI()/180)",
+      "inputs": {},
+      "expected": {
+        "number": 1.4142135623730951,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SEC-003",
+      "formula": "=SEC(2)",
+      "inputs": {},
+      "expected": {
+        "number": -2.402997961722381,
+        "tolerance": 1e-13
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SEC-004",
+      "formula": "=SEC(PI())",
+      "inputs": {},
+      "expected": {
+        "number": -1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SEC-005",
+      "formula": "=SEC(60*PI()/180)",
+      "inputs": {},
+      "expected": {
+        "number": 2,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SEC-006",
+      "formula": "=SEC(-1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.8508157176809255,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "even function: same as SEC(1)"
+    },
+    {
+      "id": "I07-SEC-007",
+      "formula": "=SEC(\"0\")",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SEC-008",
+      "formula": "=SEC(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SEC-009",
+      "formula": "=SEC(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SEC-010",
+      "formula": "=SEC()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SEC-011",
+      "formula": "=SEC(PI()/2)",
+      "inputs": {},
+      "expected": {
+        "number": 16331239353195370
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "result near odd pi/2 multiples is huge but finite; exact magnitude depends on the f64 cos residue - pin expected sign/magnitude against a reference build"
+    },
+    {
+      "id": "I07-SECH-001",
+      "formula": "=SECH(0)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SECH-002",
+      "formula": "=SECH(1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.6480542736638853,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SECH-003",
+      "formula": "=SECH(-3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.0993279274194332,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SECH-004",
+      "formula": "=SECH(5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.013475282221304556,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SECH-005",
+      "formula": "=SECH(1000)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "cosh saturates -> exactly 0, no error"
+    },
+    {
+      "id": "I07-SECH-006",
+      "formula": "=SECH(\"0\")",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SECH-007",
+      "formula": "=SECH(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SECH-008",
+      "formula": "=SECH(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SECH-009",
+      "formula": "=SECH()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SECH-010",
+      "formula": "=SECH(-2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.2658022288340797,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "even function"
+    },
+    {
+      "id": "I07-SERIESSUM-001",
+      "formula": "=SERIESSUM(PI()/4,0,2,{1,-0.5,0.0416666666666667,-0.00138888888888889,0.0000248015873015873})",
+      "inputs": {},
+      "expected": {
+        "number": 0.707103,
+        "tolerance": 0.0001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Microsoft example: cos(pi/4) Taylor coefficients"
+    },
+    {
+      "id": "I07-SERIESSUM-002",
+      "formula": "=SERIESSUM(2,0,1,{1,2,3})",
+      "inputs": {},
+      "expected": {
+        "number": 17
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SERIESSUM-003",
+      "formula": "=SERIESSUM(1,2,2,{2,3})",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SERIESSUM-004",
+      "formula": "=SERIESSUM(9,0.5,1,{4})",
+      "inputs": {},
+      "expected": {
+        "number": 12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "fractional exponent"
+    },
+    {
+      "id": "I07-SERIESSUM-005",
+      "formula": "=SERIESSUM(0,1,1,{1,2})",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SERIESSUM-006",
+      "formula": "=SERIESSUM(0,0,1,{1,2})",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "0^0 undefined"
+    },
+    {
+      "id": "I07-SERIESSUM-007",
+      "formula": "=SERIESSUM(0,-1,1,{1,2})",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SERIESSUM-008",
+      "formula": "=SERIESSUM(2,0,1,{1,\"x\"})",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SERIESSUM-009",
+      "formula": "=SERIESSUM(3,2,1,4)",
+      "inputs": {},
+      "expected": {
+        "number": 36
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SERIESSUM-010",
+      "formula": "=SERIESSUM(2,0,1,A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 17
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SERIESSUM-011",
+      "formula": "=SERIESSUM(10,400,1,{1})",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "overflow"
+    },
+    {
+      "id": "I07-SERIESSUM-012",
+      "formula": "=SERIESSUM(2,0,1,A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": {
+          "blank": true
+        },
+        "A3": 3
+      },
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "blank range cell contributes no term (documented choice)",
+      "specOpen": true,
+      "specOpenReason": "whether blank/text cells inside a coefficient RANGE skip or error is a spec open question; engine skips blanks and errors on other non-numerics"
+    },
+    {
+      "id": "I07-SIGN-001",
+      "formula": "=SIGN(10)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIGN-002",
+      "formula": "=SIGN(4-4)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIGN-003",
+      "formula": "=SIGN(-0.00001)",
+      "inputs": {},
+      "expected": {
+        "number": -1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIGN-004",
+      "formula": "=SIGN(-0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "negative zero is 0"
+    },
+    {
+      "id": "I07-SIGN-005",
+      "formula": "=SIGN(TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIGN-006",
+      "formula": "=SIGN(FALSE)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIGN-007",
+      "formula": "=SIGN(\"3\")",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIGN-008",
+      "formula": "=SIGN(\"-7\")",
+      "inputs": {},
+      "expected": {
+        "number": -1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIGN-009",
+      "formula": "=SIGN(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIGN-010",
+      "formula": "=SIGN(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIGN-011",
+      "formula": "=SIGN()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIN-001",
+      "formula": "=SIN(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIN-002",
+      "formula": "=SIN(PI()/2)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIN-003",
+      "formula": "=SIN(PI())",
+      "inputs": {},
+      "expected": {
+        "number": 0,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "f64 residue ~1.22e-16"
+    },
+    {
+      "id": "I07-SIN-004",
+      "formula": "=SIN(30*PI()/180)",
+      "inputs": {},
+      "expected": {
+        "number": 0.5,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIN-005",
+      "formula": "=SIN(-PI()/2)",
+      "inputs": {},
+      "expected": {
+        "number": -1,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIN-006",
+      "formula": "=SIN(RADIANS(90))",
+      "inputs": {},
+      "expected": {
+        "number": 1,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIN-007",
+      "formula": "=SIN(\"0\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIN-008",
+      "formula": "=SIN(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIN-009",
+      "formula": "=SIN(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIN-010",
+      "formula": "=SIN()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SIN-011",
+      "formula": "=SIN(1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.8414709848078965,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SINH-001",
+      "formula": "=SINH(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SINH-002",
+      "formula": "=SINH(1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.1752011936438014,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SINH-003",
+      "formula": "=SINH(-1)",
+      "inputs": {},
+      "expected": {
+        "number": -1.1752011936438014,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SINH-004",
+      "formula": "=SINH(3)",
+      "inputs": {},
+      "expected": {
+        "number": 10.017874927409903,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SINH-005",
+      "formula": "=SINH(1000)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "f64 overflow"
+    },
+    {
+      "id": "I07-SINH-006",
+      "formula": "=SINH(-1000)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SINH-007",
+      "formula": "=SINH(\"0\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SINH-008",
+      "formula": "=SINH(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SINH-009",
+      "formula": "=SINH(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SINH-010",
+      "formula": "=SINH()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SQRTPI-001",
+      "formula": "=SQRTPI(1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.772453850905516,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SQRTPI-002",
+      "formula": "=SQRTPI(2)",
+      "inputs": {},
+      "expected": {
+        "number": 2.5066282746310002,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SQRTPI-003",
+      "formula": "=SQRTPI(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SQRTPI-004",
+      "formula": "=SQRTPI(3)",
+      "inputs": {},
+      "expected": {
+        "number": 3.0699801238394655,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SQRTPI-005",
+      "formula": "=SQRTPI(-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SQRTPI-006",
+      "formula": "=SQRTPI(\"2\")",
+      "inputs": {},
+      "expected": {
+        "number": 2.5066282746310002,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SQRTPI-007",
+      "formula": "=SQRTPI(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SQRTPI-008",
+      "formula": "=SQRTPI(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SQRTPI-009",
+      "formula": "=SQRTPI(A1)",
+      "inputs": {
+        "A1": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SQRTPI-010",
+      "formula": "=SQRTPI()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-001",
+      "formula": "=SUBTOTAL(9,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "number": 15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-002",
+      "formula": "=SUBTOTAL(1,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-003",
+      "formula": "=SUBTOTAL(2,A1:A6)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5,
+        "A6": "x"
+      },
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-004",
+      "formula": "=SUBTOTAL(3,A1:A7)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5,
+        "A6": "x",
+        "A7": true
+      },
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-005",
+      "formula": "=SUBTOTAL(4,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-006",
+      "formula": "=SUBTOTAL(5,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-007",
+      "formula": "=SUBTOTAL(6,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "number": 120
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-008",
+      "formula": "=SUBTOTAL(7,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "number": 1.5811388300841898,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-009",
+      "formula": "=SUBTOTAL(8,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "number": 1.4142135623730951,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-010",
+      "formula": "=SUBTOTAL(10,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "number": 2.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-011",
+      "formula": "=SUBTOTAL(11,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-012",
+      "formula": "=SUBTOTAL(109,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "number": 15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "DEVIATION: no hidden-row state, 101-111 alias to 1-11"
+    },
+    {
+      "id": "I07-SUBTOTAL-013",
+      "formula": "=SUBTOTAL(9,A1:A2,B1:B2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "B1": 3,
+        "B2": 4
+      },
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-014",
+      "formula": "=SUBTOTAL(0,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-015",
+      "formula": "=SUBTOTAL(12,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-016",
+      "formula": "=SUBTOTAL(112,A1:A5)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "A4": 4,
+        "A5": 5
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-017",
+      "formula": "=SUBTOTAL(9,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "non-reference arg rejected"
+    },
+    {
+      "id": "I07-SUBTOTAL-018",
+      "formula": "=SUBTOTAL(1,A1:A2)",
+      "inputs": {
+        "A1": "x"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-019",
+      "formula": "=SUBTOTAL(7,A1)",
+      "inputs": {
+        "A1": 1
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUBTOTAL-020",
+      "formula": "=SUBTOTAL(9,A1:A2)",
+      "inputs": {
+        "A1": 1,
+        "A2": {
+          "error": "#DIV/0!"
+        }
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "error cell propagates"
+    },
+    {
+      "id": "I07-SUMSQ-001",
+      "formula": "=SUMSQ(3,4)",
+      "inputs": {},
+      "expected": {
+        "number": 25
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMSQ-002",
+      "formula": "=SUMSQ({1,2;3,4})",
+      "inputs": {},
+      "expected": {
+        "number": 30
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMSQ-003",
+      "formula": "=SUMSQ(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": 3
+      },
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "text in range ignored"
+    },
+    {
+      "id": "I07-SUMSQ-004",
+      "formula": "=SUMSQ(TRUE,3)",
+      "inputs": {},
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "direct boolean counts"
+    },
+    {
+      "id": "I07-SUMSQ-005",
+      "formula": "=SUMSQ(\"3\",4)",
+      "inputs": {},
+      "expected": {
+        "number": 25
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMSQ-006",
+      "formula": "=SUMSQ(A1:A2)",
+      "inputs": {
+        "A1": 5,
+        "A2": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "number": 25
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMSQ-007",
+      "formula": "=SUMSQ(A1:A3)",
+      "inputs": {
+        "A1": "x"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "no numbers -> 0"
+    },
+    {
+      "id": "I07-SUMSQ-008",
+      "formula": "=SUMSQ(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMSQ-009",
+      "formula": "=SUMSQ(1e308,1e308)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "overflow"
+    },
+    {
+      "id": "I07-SUMSQ-010",
+      "formula": "=SUMSQ()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMSQ-011",
+      "formula": "=SUMSQ(A1:A2,3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2
+      },
+      "expected": {
+        "number": 14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2MY2-001",
+      "formula": "=SUMX2MY2(A1:A7,B1:B7)",
+      "inputs": {
+        "A1": 2,
+        "A2": 3,
+        "A3": 9,
+        "A4": 1,
+        "A5": 8,
+        "A6": 7,
+        "A7": 5,
+        "B1": 6,
+        "B2": 5,
+        "B3": 11,
+        "B4": 7,
+        "B5": 5,
+        "B6": 4,
+        "B7": 4
+      },
+      "expected": {
+        "number": -55
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "documented Microsoft example"
+    },
+    {
+      "id": "I07-SUMX2MY2-002",
+      "formula": "=SUMX2MY2({2,3,9,1,8,7,5},{6,5,11,7,5,4,4})",
+      "inputs": {},
+      "expected": {
+        "number": -55
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2MY2-003",
+      "formula": "=SUMX2MY2(3,2)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2MY2-004",
+      "formula": "=SUMX2MY2(A1:A6,B1:B7)",
+      "inputs": {
+        "A1": 2,
+        "A2": 3,
+        "A3": 9,
+        "A4": 1,
+        "A5": 8,
+        "A6": 7,
+        "A7": 5,
+        "B1": 6,
+        "B2": 5,
+        "B3": 11,
+        "B4": 7,
+        "B5": 5,
+        "B6": 4,
+        "B7": 4
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2MY2-005",
+      "formula": "=SUMX2MY2(A1:A2,B1:B2)",
+      "inputs": {
+        "A1": 2,
+        "A2": 9,
+        "B1": "x",
+        "B2": 1
+      },
+      "expected": {
+        "number": 80
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "non-numeric pair skipped"
+    },
+    {
+      "id": "I07-SUMX2MY2-006",
+      "formula": "=SUMX2MY2(A1:A2,B1:B2)",
+      "inputs": {
+        "A1": 2,
+        "A2": 9,
+        "B2": 1
+      },
+      "expected": {
+        "number": 80
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "blank pair skipped"
+    },
+    {
+      "id": "I07-SUMX2MY2-007",
+      "formula": "=SUMX2MY2(A1,B1)",
+      "inputs": {
+        "A1": "x",
+        "B1": "y"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2MY2-008",
+      "formula": "=SUMX2MY2(A1,B1)",
+      "inputs": {
+        "A1": 1,
+        "B1": {
+          "error": "#DIV/0!"
+        }
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2MY2-009",
+      "formula": "=SUMX2MY2(1e308,0)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2MY2-010",
+      "formula": "=SUMX2MY2(1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2PY2-001",
+      "formula": "=SUMX2PY2(A1:A7,B1:B7)",
+      "inputs": {
+        "A1": 2,
+        "A2": 3,
+        "A3": 9,
+        "A4": 1,
+        "A5": 8,
+        "A6": 7,
+        "A7": 5,
+        "B1": 6,
+        "B2": 5,
+        "B3": 11,
+        "B4": 7,
+        "B5": 5,
+        "B6": 4,
+        "B7": 4
+      },
+      "expected": {
+        "number": 521
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "documented Microsoft example"
+    },
+    {
+      "id": "I07-SUMX2PY2-002",
+      "formula": "=SUMX2PY2({2,3,9,1,8,7,5},{6,5,11,7,5,4,4})",
+      "inputs": {},
+      "expected": {
+        "number": 521
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2PY2-003",
+      "formula": "=SUMX2PY2(3,2)",
+      "inputs": {},
+      "expected": {
+        "number": 13
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2PY2-004",
+      "formula": "=SUMX2PY2(A1:A6,B1:B7)",
+      "inputs": {
+        "A1": 2,
+        "A2": 3,
+        "A3": 9,
+        "A4": 1,
+        "A5": 8,
+        "A6": 7,
+        "A7": 5,
+        "B1": 6,
+        "B2": 5,
+        "B3": 11,
+        "B4": 7,
+        "B5": 5,
+        "B6": 4,
+        "B7": 4
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2PY2-005",
+      "formula": "=SUMX2PY2(A1:A2,B1:B2)",
+      "inputs": {
+        "A1": 2,
+        "A2": 9,
+        "B1": "x",
+        "B2": 1
+      },
+      "expected": {
+        "number": 82
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2PY2-006",
+      "formula": "=SUMX2PY2(A1:A2,B1:B2)",
+      "inputs": {
+        "A1": 2,
+        "A2": 9,
+        "B2": 1
+      },
+      "expected": {
+        "number": 82
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2PY2-007",
+      "formula": "=SUMX2PY2(A1,B1)",
+      "inputs": {
+        "A1": "x",
+        "B1": "y"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2PY2-008",
+      "formula": "=SUMX2PY2(A1,B1)",
+      "inputs": {
+        "A1": 1,
+        "B1": {
+          "error": "#DIV/0!"
+        }
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2PY2-009",
+      "formula": "=SUMX2PY2(1e308,1e308)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMX2PY2-010",
+      "formula": "=SUMX2PY2(1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMXMY2-001",
+      "formula": "=SUMXMY2(A1:A7,B1:B7)",
+      "inputs": {
+        "A1": 2,
+        "A2": 3,
+        "A3": 9,
+        "A4": 1,
+        "A5": 8,
+        "A6": 7,
+        "A7": 5,
+        "B1": 6,
+        "B2": 5,
+        "B3": 11,
+        "B4": 7,
+        "B5": 5,
+        "B6": 4,
+        "B7": 4
+      },
+      "expected": {
+        "number": 79
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "documented Microsoft example"
+    },
+    {
+      "id": "I07-SUMXMY2-002",
+      "formula": "=SUMXMY2({2,3,9,1,8,7,5},{6,5,11,7,5,4,4})",
+      "inputs": {},
+      "expected": {
+        "number": 79
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMXMY2-003",
+      "formula": "=SUMXMY2(5,2)",
+      "inputs": {},
+      "expected": {
+        "number": 9
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMXMY2-004",
+      "formula": "=SUMXMY2(A1,B1)",
+      "inputs": {
+        "A1": 3,
+        "B1": 3
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMXMY2-005",
+      "formula": "=SUMXMY2(A1:A6,B1:B7)",
+      "inputs": {
+        "A1": 2,
+        "A2": 3,
+        "A3": 9,
+        "A4": 1,
+        "A5": 8,
+        "A6": 7,
+        "A7": 5,
+        "B1": 6,
+        "B2": 5,
+        "B3": 11,
+        "B4": 7,
+        "B5": 5,
+        "B6": 4,
+        "B7": 4
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMXMY2-006",
+      "formula": "=SUMXMY2(A1:A2,B1:B2)",
+      "inputs": {
+        "A1": 2,
+        "A2": 9,
+        "B1": "x",
+        "B2": 1
+      },
+      "expected": {
+        "number": 64
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMXMY2-007",
+      "formula": "=SUMXMY2(A1,B1)",
+      "inputs": {
+        "A1": "x",
+        "B1": "y"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMXMY2-008",
+      "formula": "=SUMXMY2(A1,B1)",
+      "inputs": {
+        "A1": 1,
+        "B1": {
+          "error": "#DIV/0!"
+        }
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMXMY2-009",
+      "formula": "=SUMXMY2(1e308,-1e308)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-SUMXMY2-010",
+      "formula": "=SUMXMY2(1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TAN-001",
+      "formula": "=TAN(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TAN-002",
+      "formula": "=TAN(0.785)",
+      "inputs": {},
+      "expected": {
+        "number": 0.9992,
+        "tolerance": 0.0001
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TAN-003",
+      "formula": "=TAN(45*PI()/180)",
+      "inputs": {},
+      "expected": {
+        "number": 1,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TAN-004",
+      "formula": "=TAN(-PI()/4)",
+      "inputs": {},
+      "expected": {
+        "number": -1,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TAN-005",
+      "formula": "=TAN(RADIANS(60))",
+      "inputs": {},
+      "expected": {
+        "number": 1.7320508075688772,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TAN-006",
+      "formula": "=TAN(PI())",
+      "inputs": {},
+      "expected": {
+        "number": 0,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TAN-007",
+      "formula": "=TAN(\"0\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TAN-008",
+      "formula": "=TAN(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TAN-009",
+      "formula": "=TAN(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TAN-010",
+      "formula": "=TAN()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TAN-011",
+      "formula": "=TAN(1)",
+      "inputs": {},
+      "expected": {
+        "number": 1.5574077246549023,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TANH-001",
+      "formula": "=TANH(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TANH-002",
+      "formula": "=TANH(-2)",
+      "inputs": {},
+      "expected": {
+        "number": -0.9640275800758169,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TANH-003",
+      "formula": "=TANH(0.5)",
+      "inputs": {},
+      "expected": {
+        "number": 0.46211715726000974,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TANH-004",
+      "formula": "=TANH(1000)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "saturates, no error"
+    },
+    {
+      "id": "I07-TANH-005",
+      "formula": "=TANH(-1000)",
+      "inputs": {},
+      "expected": {
+        "number": -1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TANH-006",
+      "formula": "=TANH(3)",
+      "inputs": {},
+      "expected": {
+        "number": 0.9950547536867305,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TANH-007",
+      "formula": "=TANH(\"0\")",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TANH-008",
+      "formula": "=TANH(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TANH-009",
+      "formula": "=TANH(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TANH-010",
+      "formula": "=TANH()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I07-TANH-011",
+      "formula": "=TANH(1)",
+      "inputs": {},
+      "expected": {
+        "number": 0.7615941559557649,
+        "tolerance": 1e-14
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    }
+  ]
+}

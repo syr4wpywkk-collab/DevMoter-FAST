@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-DevMoter FAST is an independent open-source project.
+DevMoter FAST is an independent source-available project.
 
 ## Runtime integrations
 
@@ -19,7 +19,7 @@ DevMoter FAST does not bundle either upstream application's source code or crede
 
 The project uses npm development dependencies including TypeScript, Vite, and c8, plus their transitive dependencies. Their respective license notices remain available in the packages distributed by their maintainers and in npm package metadata.
 
-DevMoter FAST itself is licensed under the MIT License. See `LICENSE`.
+DevMoter FAST itself is licensed under the PolyForm Strict License 1.0.0. See `LICENSE`; the README's License section lists the folders with their own licenses.
 
 ## Bundled Markdown dependencies
 
@@ -57,3 +57,7 @@ all MIT, resolved externally) are recorded in `vendor/pptx/NOTICE.md`.
 ## Bundled visual assets
 
 The current source tree does not bundle upstream provider logos, third-party photographs, illustrations, or font files. Provider names are presented textually for interoperability. See `RELEASE_LEGAL_AUDIT.md` for the review rule that applies before adding third-party visual assets.
+
+## DevMoter Base database engines
+
+`base/engines/` vendors the unmodified sources of PostgreSQL (PostgreSQL License), SQLite (public domain), DuckDB (MIT) and Valkey (BSD-3-Clause), each pinned to an upstream commit in `base/engines/manifest.json`. Each engine keeps its upstream license file (`COPYRIGHT`, `LICENSE.md`, `LICENSE`, `COPYING`); see `base/engines/UPSTREAM.md`. The PolyForm Strict License of `base/` does not apply to them.

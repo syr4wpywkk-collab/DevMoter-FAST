@@ -6,12 +6,13 @@ Audit target: DevMoter FAST source tree on the current public `main` line.
 
 ## 1. Project license
 
-**Decision:** DevMoter FAST is distributed under the MIT License.
+**Decision:** DevMoter FAST's own code is distributed under the PolyForm Strict License 1.0.0 (noncommercial use only, no distribution, no changes or new works). It replaces the MIT License; releases published before the change keep the MIT License. The repository is licensed per folder: `base/` (DevMoter Base) is also PolyForm Strict 1.0.0, `base/engines/<name>/` keep their upstream licenses, `math-engine/` (DevMoter Calc Engine) is proprietary (all rights reserved), and `vendor/<name>/` and `deepseek-harness-mobile/` carry their own license files.
 
 Evidence in the repository:
 
-- `LICENSE` contains the project license.
-- `package.json` declares `"license": "MIT"`.
+- `LICENSE` and `base/LICENSE` contain the PolyForm Strict License 1.0.0 with its Required Notice; `math-engine/LICENSE` is the proprietary notice.
+- `package.json` and `base/package.json` declare `"license": "SEE LICENSE IN LICENSE"`.
+- The README's License section lists each folder's license.
 - `THIRD_PARTY_NOTICES.md` distinguishes DevMoter from separately installed upstream products.
 
 Release rule: do not remove the license file or copyright notice from distributed source archives.

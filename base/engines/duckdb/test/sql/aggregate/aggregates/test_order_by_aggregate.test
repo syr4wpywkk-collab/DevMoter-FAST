@@ -1,0 +1,104 @@
+# name: test/sql/aggregate/aggregates/test_order_by_aggregate.test
+# description: Test ORDER BY in AGGREGATE clause
+# group: [aggregates]
+
+statement ok
+CREATE TABLE integers(grp INTEGER, i INTEGER);
+
+statement ok
+INSERT INTO integers VALUES (1, 10), (2, 15), (1, 30), (2, 20)
+
+query I
+SELECT FIRST(i ORDER BY i) FROM integers
+----
+10
+
+# ordering by the same aggregate multiple times has no effect
+query I
+SELECT FIRST(i ORDER BY i, i, i) FROM integers
+----
+10
+
+query I
+SELECT FIRST(i ORDER BY i, i DESC, i) FROM integers
+----
+10
+
+query I
+SELECT FIRST(i ORDER BY i DESC) FROM integers
+----
+30
+
+query I
+SELECT FIRST(i ORDER BY i DESC, i ASC) FROM integers
+----
+30
+
+query II
+SELECT FIRST(i ORDER BY i), FIRST(i ORDER BY i DESC) FROM integers
+----
+10	30
+
+query II
+SELECT grp, FIRST(i ORDER BY i) FROM integers GROUP BY grp ORDER BY ALL
+----
+1	10
+2	15
+
+# ordering by the group has no effect
+query II
+SELECT grp, FIRST(i ORDER BY grp, i, grp DESC, i DESC) FROM integers GROUP BY grp ORDER BY ALL
+----
+1	10
+2	15
+
+query II
+SELECT grp, FIRST(i ORDER BY i DESC) FROM integers GROUP BY grp ORDER BY ALL
+----
+1	30
+2	20
+
+statement ok
+CREATE TABLE user_causes (
+    user_id INT,
+    cause VARCHAR,
+    "date" DATE
+);
+
+statement ok
+INSERT INTO user_causes (user_id, cause, "date") VALUES
+(1, 'Environmental', '2024-03-18'),
+(1, 'Environmental', '2024-02-18'),
+(1, 'Health', '2024-01-18'),
+(1, 'Social', '2023-12-18'),
+(1, NULL, '2023-11-19');
+
+statement error
+SELECT 
+    user_id, 
+    list(DISTINCT cause ORDER BY "date" DESC) FILTER(cause IS NOT NULL) AS causes
+FROM user_causes 
+GROUP BY user_id;
+----
+Binder Error: In a DISTINCT aggregate, ORDER BY expressions must appear in the argument list
+
+query II
+SELECT 
+    user_id, 
+    list(DISTINCT cause ORDER BY cause DESC) FILTER(cause IS NOT NULL) AS causes
+FROM user_causes 
+GROUP BY user_id;
+----
+1	[Social, Health, Environmental]
+
+# the finalized strings of the inner aggregate outlive the finalize call
+query II
+SELECT string_agg(x, ',' ORDER BY x), string_agg(x, '|' ORDER BY x DESC) FROM (VALUES ('a string that is not inlined'), ('b'), ('c')) t(x);
+----
+a string that is not inlined,b,c	c|b|a string that is not inlined
+
+# the perfect hash aggregate keeps the finalize state alive while its results are scanned
+query I
+SELECT count(*) FROM (SELECT i % 1000 g, string_agg(md5(i::VARCHAR), ',' ORDER BY i) s FROM range(3000) r(i) GROUP BY g) WHERE s != concat_ws(',', md5(g::VARCHAR), md5((g + 1000)::VARCHAR), md5((g + 2000)::VARCHAR));
+----
+0

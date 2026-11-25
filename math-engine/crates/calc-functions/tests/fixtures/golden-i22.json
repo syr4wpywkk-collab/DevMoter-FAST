@@ -1,0 +1,1814 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-24",
+  "referenceDefaults": {
+    "implementation": "Microsoft Excel",
+    "version": "general documented behavior (not empirically recorded)",
+    "dateSystem": "1900",
+    "os": "any",
+    "locale": "en-US",
+    "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+  },
+  "cases": [
+    {
+      "id": "I22-BYCOL-001",
+      "formula": "=BYCOL({1,2,3;4,5,6},LAMBDA(c,SUM(c)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            5,
+            7,
+            9
+          ]
+        ]
+      },
+      "notes": "Spec doc worked example.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYCOL-002",
+      "formula": "=BYCOL({1,2;3,4},LAMBDA(c,MAX(c)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            3,
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYCOL-003",
+      "formula": "=BYCOL({2;4},LAMBDA(c,MIN(c)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYCOL-004",
+      "formula": "=BYCOL({1,2;3,4},LAMBDA(c,AVERAGE(c)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2,
+            3
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYCOL-005",
+      "formula": "=BYCOL(A1:B2,LAMBDA(c,SUM(c)))",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "array": [
+          [
+            4,
+            6
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYCOL-006",
+      "formula": "=BYCOL({1,2,3},LAMBDA(c,ROWS(c)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            1,
+            1
+          ]
+        ]
+      },
+      "notes": "Each column is a 1x1 vector; lambda receives the column array.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYCOL-007",
+      "formula": "=BYCOL({1,2},LAMBDA(a,b,a))",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Lambda arity mismatch.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYCOL-008",
+      "formula": "=BYCOL({1,2},5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Non-lambda second argument.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYCOL-009",
+      "formula": "=BYCOL({\"a\",\"b\"},LAMBDA(c,INDEX(c,1)&\"!\"))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a!",
+            "b!"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYCOL-010",
+      "formula": "=BYCOL({1,0},LAMBDA(c,1/SUM(c)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            {
+              "error": "#DIV/0!"
+            }
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: whether an error inside one column's LAMBDA becomes that element's value or fails the whole call.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYCOL-011",
+      "formula": "=BYCOL({1,2},LAMBDA(c,{1,2}))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            {
+              "error": "#CALC!"
+            },
+            {
+              "error": "#CALC!"
+            }
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: error kind for multi-value LAMBDA results (#CALC! assumed vs #VALUE!).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYCOL-012",
+      "formula": "=BYCOL({1,2})",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Arity error: missing LAMBDA argument.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYROW-001",
+      "formula": "=BYROW({1,2,3;4,5,6},LAMBDA(r,SUM(r)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            6
+          ],
+          [
+            15
+          ]
+        ]
+      },
+      "notes": "Spec doc worked example.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYROW-002",
+      "formula": "=BYROW({1,2;3,4},LAMBDA(r,MAX(r)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2
+          ],
+          [
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYROW-003",
+      "formula": "=BYROW({2,4},LAMBDA(r,MIN(r)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYROW-004",
+      "formula": "=BYROW({1,2;3,4},LAMBDA(r,AVERAGE(r)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1.5
+          ],
+          [
+            3.5
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYROW-005",
+      "formula": "=BYROW(A1:B2,LAMBDA(r,SUM(r)))",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "array": [
+          [
+            3
+          ],
+          [
+            7
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYROW-006",
+      "formula": "=BYROW({1,2,3},LAMBDA(r,COLUMNS(r)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            3
+          ]
+        ]
+      },
+      "notes": "Lambda receives the 1x3 row vector.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYROW-007",
+      "formula": "=BYROW({1;2},LAMBDA(a,b,a))",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Lambda arity mismatch.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYROW-008",
+      "formula": "=BYROW({1;2},5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Non-lambda second argument.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYROW-009",
+      "formula": "=BYROW({\"a\";\"b\"},LAMBDA(r,INDEX(r,1)&\"!\"))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a!"
+          ],
+          [
+            "b!"
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYROW-010",
+      "formula": "=BYROW({1;0},LAMBDA(r,1/SUM(r)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            {
+              "error": "#DIV/0!"
+            }
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: element-wise vs whole-call failure for errors inside LAMBDA.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYROW-011",
+      "formula": "=BYROW({1;2},LAMBDA(r,{1;2}))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            {
+              "error": "#CALC!"
+            }
+          ],
+          [
+            {
+              "error": "#CALC!"
+            }
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: error kind for multi-value LAMBDA results (#CALC! assumed vs #VALUE!).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-BYROW-012",
+      "formula": "=BYROW({1;2})",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Arity error: missing LAMBDA argument.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-FALSE-001",
+      "formula": "=FALSE()",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-FALSE-002",
+      "formula": "=FALSE",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "notes": "Bare literal alias (parser).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-FALSE-003",
+      "formula": "=FALSE()+0",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "notes": "Numeric coercion.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-FALSE-004",
+      "formula": "=FALSE()*5",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-FALSE-005",
+      "formula": "=NOT(FALSE())",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-FALSE-006",
+      "formula": "=IF(FALSE(),1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-FALSE-007",
+      "formula": "=FALSE()&\"\"",
+      "inputs": {},
+      "expected": {
+        "text": "FALSE"
+      },
+      "notes": "Text context display.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-FALSE-008",
+      "formula": "=FALSE(1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Arity error.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-FALSE-009",
+      "formula": "=AND(FALSE(),TRUE())",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-FALSE-010",
+      "formula": "=OR(FALSE(),FALSE())",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-TRUE-001",
+      "formula": "=TRUE()",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-TRUE-002",
+      "formula": "=TRUE",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "notes": "Bare literal alias (parser).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-TRUE-003",
+      "formula": "=TRUE()+0",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "notes": "Numeric coercion.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-TRUE-004",
+      "formula": "=TRUE()*5",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-TRUE-005",
+      "formula": "=NOT(TRUE())",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-TRUE-006",
+      "formula": "=IF(TRUE(),1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-TRUE-007",
+      "formula": "=TRUE()&\"\"",
+      "inputs": {},
+      "expected": {
+        "text": "TRUE"
+      },
+      "notes": "Text context display.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-TRUE-008",
+      "formula": "=TRUE(1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Arity error.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-TRUE-009",
+      "formula": "=AND(TRUE(),TRUE())",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-TRUE-010",
+      "formula": "=TRUE()=TRUE",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-IFNA-001",
+      "formula": "=IFNA(#N/A,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "notes": "Spec doc worked example.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-IFNA-002",
+      "formula": "=IFNA(5,1)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "notes": "Spec doc worked example.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-IFNA-003",
+      "formula": "=IFNA(1/0,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "notes": "Spec doc worked example: non-#N/A errors propagate.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-IFNA-004",
+      "formula": "=IFNA(#N/A,\"not found\")",
+      "inputs": {},
+      "expected": {
+        "text": "not found"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-IFNA-005",
+      "formula": "=IFNA(\"x\"+1,1)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-IFNA-006",
+      "formula": "=IFNA(#N/A,1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "notes": "Fallback error is the result, not re-trapped.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-IFNA-007",
+      "formula": "=IFNA(A1,\"fallback\")",
+      "inputs": {},
+      "expected": {
+        "blank": true
+      },
+      "notes": "Blank cell is not an error; returned as-is (displays as 0).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-IFNA-008",
+      "formula": "=IFNA(VLOOKUP(9,{1,2;3,4},1,FALSE),\"nf\")",
+      "inputs": {},
+      "expected": {
+        "text": "nf"
+      },
+      "notes": "The canonical IFNA(VLOOKUP(...)) pattern.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-IFNA-009",
+      "formula": "=IFNA(TRUE,0)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-IFNA-010",
+      "formula": "=IFNA(#N/A,#N/A)",
+      "inputs": {},
+      "expected": {
+        "error": "#N/A"
+      },
+      "notes": "Fallback that is itself #N/A propagates.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-IFNA-011",
+      "formula": "=IFNA(#N/A)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": true,
+      "specOpenReason": "Same open question as IFERROR: whether a missing second argument is an arity error or yields 0.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-XOR-001",
+      "formula": "=XOR(TRUE,FALSE)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "notes": "Spec doc worked example.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-XOR-002",
+      "formula": "=XOR(TRUE,TRUE)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "notes": "Spec doc worked example.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-XOR-003",
+      "formula": "=XOR(TRUE,TRUE,TRUE)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "notes": "Spec doc worked example: odd count rule.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-XOR-004",
+      "formula": "=XOR(3>2,2>3,1>0)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "notes": "Spec doc worked example: even count.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-XOR-005",
+      "formula": "=XOR(1,0)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "notes": "Direct numeric coercion.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-XOR-006",
+      "formula": "=XOR(\"TRUE\")",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "notes": "Direct text coercion.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-XOR-007",
+      "formula": "=XOR(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Spec doc: must evaluate to logical values.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-XOR-008",
+      "formula": "=XOR({TRUE,TRUE,FALSE})",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-XOR-009",
+      "formula": "=XOR(A1:A3)",
+      "inputs": {
+        "A1": true,
+        "A2": "x"
+      },
+      "expected": {
+        "bool": true
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: whether text/blank members inside ranges are ignored (assumed, same scanning model as AND/OR).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-XOR-010",
+      "formula": "=XOR(A1:A3)",
+      "inputs": {
+        "A1": "abc"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Zero effective logical values -> #VALUE!.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-XOR-011",
+      "formula": "=XOR()",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Arity error.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-XOR-012",
+      "formula": "=XOR(A1:A2)",
+      "inputs": {
+        "A1": true,
+        "A2": 1
+      },
+      "expected": {
+        "bool": false
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: whether numbers inside ranges coerce (nonzero TRUE) \u2014 assumed same as AND/OR.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-MAKEARRAY-001",
+      "formula": "=MAKEARRAY(3,2,LAMBDA(r,c,r*c))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            2
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            6
+          ]
+        ]
+      },
+      "notes": "Spec doc worked example.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-MAKEARRAY-002",
+      "formula": "=MAKEARRAY(2,3,LAMBDA(r,c,r+c))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2,
+            3,
+            4
+          ],
+          [
+            3,
+            4,
+            5
+          ]
+        ]
+      },
+      "notes": "Spec doc worked example.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-MAKEARRAY-003",
+      "formula": "=MAKEARRAY(1,1,LAMBDA(r,c,r+c))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-MAKEARRAY-004",
+      "formula": "=MAKEARRAY(2.9,1.1,LAMBDA(r,c,r))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: whether non-integer dims are truncated (assumed per SEQUENCE convention).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-MAKEARRAY-005",
+      "formula": "=MAKEARRAY(0,2,LAMBDA(r,c,r))",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: exact error kind for invalid dims (#VALUE! assumed; #CALC! is the alternative).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-MAKEARRAY-006",
+      "formula": "=MAKEARRAY(2,-1,LAMBDA(r,c,r))",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "specOpen": true,
+      "specOpenReason": "Same open question as I22-MAKEARRAY-005: error kind for invalid dims.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-MAKEARRAY-007",
+      "formula": "=MAKEARRAY(2,2,LAMBDA(r,r))",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Lambda arity mismatch.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-MAKEARRAY-008",
+      "formula": "=MAKEARRAY(2,2,5)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Non-lambda third argument.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-MAKEARRAY-009",
+      "formula": "=MAKEARRAY(1,2,LAMBDA(r,c,\"x\"&c))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "x1",
+            "x2"
+          ]
+        ]
+      },
+      "notes": "1-based column index is observable in the result.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-MAKEARRAY-010",
+      "formula": "=MAKEARRAY(1,2,LAMBDA(r,c,1/(c-1)))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            {
+              "error": "#DIV/0!"
+            },
+            1
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: element-wise vs whole-call failure for errors inside LAMBDA.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-MAKEARRAY-011",
+      "formula": "=MAKEARRAY(1,1,LAMBDA(r,c,{1,2}))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            {
+              "error": "#CALC!"
+            }
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: nested-array LAMBDA results \u2014 #CALC! assumed (higher-dim spill rule).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-MAKEARRAY-012",
+      "formula": "=MAKEARRAY(\"x\",2,LAMBDA(r,c,r))",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Dim coercion failure.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-SCAN-001",
+      "formula": "=SCAN(0,{1,2,3,4},LAMBDA(a,v,a+v))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            3,
+            6,
+            10
+          ]
+        ]
+      },
+      "notes": "Spec doc worked example.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-SCAN-002",
+      "formula": "=SCAN(\"\",{\"a\",\"b\",\"c\"},LAMBDA(a,v,a&v))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            "a",
+            "ab",
+            "abc"
+          ]
+        ]
+      },
+      "notes": "Spec doc worked example: accumulator may change type.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-SCAN-003",
+      "formula": "=SCAN(0,{1,2;3,4},LAMBDA(a,v,a+v))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            3
+          ],
+          [
+            6,
+            10
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: traversal order on 2-D arrays (row-major assumed).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-SCAN-004",
+      "formula": "=SCAN({1,2,3},LAMBDA(a,v,a+v))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            3,
+            6
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: no-initial_value semantics (first element seeds accumulator; lambda not invoked for it \u2014 assumed same as REDUCE).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-SCAN-005",
+      "formula": "=SCAN({7},LAMBDA(a,v,a+v))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            7
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Same open question as I22-SCAN-004.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-SCAN-006",
+      "formula": "=SCAN(0,A1:A3,LAMBDA(a,v,a+v))",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            3
+          ],
+          [
+            6
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-SCAN-007",
+      "formula": "=SCAN(0,{1,2},LAMBDA(a,a))",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Lambda arity mismatch.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-SCAN-008",
+      "formula": "=SCAN(0,{1,2},42)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "notes": "Non-lambda last argument.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-SCAN-009",
+      "formula": "=SCAN(2,{1,2,3},LAMBDA(a,v,a*v))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            2,
+            4,
+            12
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-SCAN-010",
+      "formula": "=SCAN(0,{1,0,2},LAMBDA(a,v,1/v+a))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            {
+              "error": "#DIV/0!"
+            },
+            {
+              "error": "#DIV/0!"
+            }
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: whether an error accumulator feeds subsequent elements (engine policy: error fills remaining elements without further lambda calls).",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-SCAN-011",
+      "formula": "=SCAN(1/0,{1,2},LAMBDA(a,v,a+v))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            {
+              "error": "#DIV/0!"
+            },
+            {
+              "error": "#DIV/0!"
+            }
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: error propagation policy for a seeded error accumulator.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "I22-SCAN-012",
+      "formula": "=SCAN(0,{1,#N/A},LAMBDA(a,v,a+v))",
+      "inputs": {},
+      "expected": {
+        "array": [
+          [
+            1,
+            {
+              "error": "#N/A"
+            }
+          ]
+        ]
+      },
+      "specOpen": true,
+      "specOpenReason": "Spec doc open question: error elements inside the array propagate into the accumulator.",
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    }
+  ]
+}

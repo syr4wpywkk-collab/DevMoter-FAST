@@ -1,0 +1,30 @@
+[package]
+name = "calc-core"
+version.workspace = true
+edition.workspace = true
+license-file.workspace = true
+rust-version.workspace = true
+description = "Spreadsheet formula engine core: values, parser, dependency graph, evaluator"
+
+[dependencies]
+
+[dev-dependencies]
+calc-functions = { path = "../calc-functions" }
+criterion = "0.7.0"
+
+[[bench]]
+name = "eval_scaffold"
+harness = false
+
+[[bench]]
+name = "parse_bench"
+harness = false
+
+[[bench]]
+name = "recalc_bench"
+harness = false
+
+[[example]]
+name = "end_to_end"
+test = true
+harness = false

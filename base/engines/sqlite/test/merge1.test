@@ -1,0 +1,222 @@
+# 2021-12-29
+#
+# The author disclaims copyright to this source code.  In place of
+# a legal notice, here is a blessing:
+#
+#    May you do good and not evil.
+#    May you find forgiveness for yourself and forgive others.
+#    May you share freely, never taking more than you give.
+#
+#***********************************************************************
+#
+# Testing the compound-SELECT merge algorithm to ensure that it works
+# when it tries to balance the merge tree.
+
+set testdir [file dirname $argv0]
+source $testdir/tester.tcl
+set testprefix merge1
+
+ifcapable !vtab {
+  finish_test
+  return
+}
+
+load_static_extension db series
+
+
+optimization_control db all on
+do_execsql_test 100 {
+  WITH data(v) AS (
+    SELECT value FROM generate_series(1,35,3)
+    UNION ALL
+    SELECT value FROM generate_series(10,30,4)
+    UNION ALL
+    SELECT value FROM generate_series(20,50,5)
+    UNION ALL
+    SELECT value FROM generate_series(30,60,6)
+    UNION ALL
+    SELECT value FROM generate_series(1,50,7)
+    UNION ALL
+    SELECT value FROM generate_series(10,80,8)
+  )
+  SELECT v FROM data ORDER BY v;
+} {1 1 4 7 8 10 10 10 13 14 15 16 18 18 19 20 22 22 22 25 25 26 26 28 29 30 30 30 31 34 34 35 36 36 40 42 42 43 45 48 50 50 50 54 58 60 66 74}
+do_eqp_test 101 {
+  WITH data(v) AS (
+    SELECT value FROM generate_series(1,35,3)
+    UNION ALL
+    SELECT value FROM generate_series(10,30,4)
+    UNION ALL
+    SELECT value FROM generate_series(20,50,5)
+    UNION ALL
+    SELECT value FROM generate_series(30,60,6)
+    UNION ALL
+    SELECT value FROM generate_series(1,50,7)
+    UNION ALL
+    SELECT value FROM generate_series(10,80,8)
+  )
+  SELECT v FROM data ORDER BY v;
+} {
+  QUERY PLAN
+  `--MERGE (UNION ALL)
+     |--LEFT
+     |  `--MERGE (UNION ALL)
+     |     |--LEFT
+     |     |  `--MERGE (UNION ALL)
+     |     |     |--LEFT
+     |     |     |  `--SCAN generate_series VIRTUAL TABLE INDEX 0x17:
+     |     |     `--RIGHT
+     |     |        `--SCAN generate_series VIRTUAL TABLE INDEX 0x17:
+     |     `--RIGHT
+     |        `--SCAN generate_series VIRTUAL TABLE INDEX 0x17:
+     `--RIGHT
+        `--MERGE (UNION ALL)
+           |--LEFT
+           |  `--MERGE (UNION ALL)
+           |     |--LEFT
+           |     |  `--SCAN generate_series VIRTUAL TABLE INDEX 0x17:
+           |     `--RIGHT
+           |        `--SCAN generate_series VIRTUAL TABLE INDEX 0x17:
+           `--RIGHT
+              `--SCAN generate_series VIRTUAL TABLE INDEX 0x17:
+}
+
+# Same test with the blanced-merge optimization
+# disabled.  Should give the exact same answer.
+#
+optimization_control db balanced-merge off
+db cache flush
+do_execsql_test 110 {
+  WITH data(v) AS (
+    SELECT value FROM generate_series(1,35,3)
+    UNION ALL
+    SELECT value FROM generate_series(10,30,4)
+    UNION ALL
+    SELECT value FROM generate_series(20,50,5)
+    UNION ALL
+    SELECT value FROM generate_series(30,60,6)
+    UNION ALL
+    SELECT value FROM generate_series(1,50,7)
+    UNION ALL
+    SELECT value FROM generate_series(10,80,8)
+  )
+  SELECT v FROM data ORDER BY v;
+} {1 1 4 7 8 10 10 10 13 14 15 16 18 18 19 20 22 22 22 25 25 26 26 28 29 30 30 30 31 34 34 35 36 36 40 42 42 43 45 48 50 50 50 54 58 60 66 74}
+do_eqp_test 111 {
+  WITH data(v) AS (
+    SELECT value FROM generate_series(1,35,3)
+    UNION ALL
+    SELECT value FROM generate_series(10,30,4)
+    UNION ALL
+    SELECT value FROM generate_series(20,50,5)
+    UNION ALL
+    SELECT value FROM generate_series(30,60,6)
+    UNION ALL
+    SELECT value FROM generate_series(1,50,7)
+    UNION ALL
+    SELECT value FROM generate_series(10,80,8)
+  )
+  SELECT v FROM data ORDER BY v;
+} {
+  QUERY PLAN
+  `--MERGE (UNION ALL)
+     |--LEFT
+     |  `--MERGE (UNION ALL)
+     |     |--LEFT
+     |     |  `--MERGE (UNION ALL)
+     |     |     |--LEFT
+     |     |     |  `--MERGE (UNION ALL)
+     |     |     |     |--LEFT
+     |     |     |     |  `--MERGE (UNION ALL)
+     |     |     |     |     |--LEFT
+     |     |     |     |     |  `--SCAN generate_series VIRTUAL TABLE INDEX 0x17:
+     |     |     |     |     `--RIGHT
+     |     |     |     |        `--SCAN generate_series VIRTUAL TABLE INDEX 0x17:
+     |     |     |     `--RIGHT
+     |     |     |        `--SCAN generate_series VIRTUAL TABLE INDEX 0x17:
+     |     |     `--RIGHT
+     |     |        `--SCAN generate_series VIRTUAL TABLE INDEX 0x17:
+     |     `--RIGHT
+     |        `--SCAN generate_series VIRTUAL TABLE INDEX 0x17:
+     `--RIGHT
+        `--SCAN generate_series VIRTUAL TABLE INDEX 0x17:
+}
+
+
+# Bug 2026-10-18T23:46:25Z
+#
+# When a compound is coded as a merge of two smaller compounds,
+# the smaller compounds must remove duplicates using the collating
+# sequence of the whole compound, not the collating sequence
+# of their own SELECTs.
+#
+# Problem bisects to check-in 2021-12-30T00:37:11.863Z (released 3.38.0):
+#
+#     When implementing a multi-way compound SELECT using merge,
+#     try to balance the merge tree. 
+#
+optimization_control db all on
+do_execsql_test 200 {
+  CREATE TABLE t0(c0);
+  CREATE TABLE t1(c0 COLLATE RTRIM);
+  INSERT INTO t1 VALUES (''), (' ');
+  SELECT quote(x) FROM (
+    SELECT c0 AS x FROM t0 UNION SELECT 1 UNION SELECT 2 UNION SELECT c0 FROM t1
+  );
+} {1 2 '' {' '}}
+do_execsql_test 210 {
+  SELECT quote(c0) FROM (
+    SELECT c0 FROM t0 UNION SELECT 1 UNION SELECT 2 UNION SELECT c0 FROM t1
+    ORDER BY 1
+  );
+} {1 2 '' {' '}}
+do_execsql_test 220 {
+  SELECT quote(x) FROM (
+    SELECT 1 COLLATE BINARY AS x UNION SELECT 2 UNION SELECT ''
+    UNION SELECT ' ' COLLATE RTRIM EXCEPT SELECT 9
+  );
+} {1 2 '' {' '}}
+do_execsql_test 230 {
+  CREATE TABLE t2(c);
+  INSERT INTO t2 VALUES ('a'), ('A');
+  SELECT c || '' FROM t2 UNION SELECT 'b'
+    UNION ALL SELECT 'x' COLLATE NOCASE ORDER BY 1;
+} {a b x}
+do_execsql_test 240 {
+  SELECT 'a','b' UNION SELECT 'A','B'
+    UNION ALL SELECT 'x' COLLATE NOCASE, 'y' COLLATE NOCASE ORDER BY 1;
+} {A B x y}
+
+optimization_control db BalancedMerge off
+do_execsql_test 250 {
+  SELECT quote(c0) FROM (
+    SELECT c0 FROM t0 UNION SELECT 1 UNION SELECT 2 UNION SELECT c0 FROM t1
+    ORDER BY 1
+  );
+} {1 2 '' {' '}}
+optimization_control db all on
+
+# The same applies when the rightmost compound operator is UNION ALL.
+#
+do_execsql_test 260 {
+  SELECT 'a' UNION SELECT 'A' UNION ALL SELECT 'x' COLLATE NOCASE;
+} {A x}
+do_execsql_test 270 {
+  SELECT c || '' FROM t2 UNION SELECT 'b'
+    UNION ALL SELECT 'x' COLLATE NOCASE;
+} {a b x}
+do_execsql_test 280 {
+  SELECT 'a' EXCEPT SELECT 'A' UNION SELECT 'x' COLLATE NOCASE;
+} {x}
+do_execsql_test 290 {
+  SELECT 'a' INTERSECT SELECT 'A' UNION ALL SELECT 'x' COLLATE NOCASE;
+} {a x}
+do_execsql_test 300 {
+  SELECT 'a' INTERSECT SELECT 'A'
+    UNION ALL SELECT 'x' COLLATE NOCASE ORDER BY 1;
+} {a x}
+do_execsql_test 310 {
+  SELECT 'a' UNION ALL SELECT 'A' UNION ALL SELECT 'x' COLLATE NOCASE;
+} {a A x}
+
+finish_test

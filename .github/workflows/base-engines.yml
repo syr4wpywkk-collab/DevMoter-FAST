@@ -1,0 +1,50 @@
+name: Base engine builds
+
+# Building the four engines takes much longer than the integration-layer checks,
+# so it only runs when the engines or their build scripts change, or on demand.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - base/engines/**
+      - base/scripts/build/**
+      - .github/workflows/base-engines.yml
+  pull_request:
+    paths:
+      - base/engines/**
+      - base/scripts/build/**
+      - .github/workflows/base-engines.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: base-engines-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: ${{ matrix.engine }} (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [postgresql, sqlite, duckdb, valkey]
+        arch: [x86-64, arm64]
+        include:
+          - arch: x86-64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: base
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and smoke-test in the pinned build image
+        run: scripts/build/container.sh ${{ matrix.engine }}
+      - run: cat build/*/${{ matrix.engine }}/BUILD_INFO.json

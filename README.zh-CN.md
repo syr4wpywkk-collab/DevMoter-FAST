@@ -11,7 +11,7 @@
 
 Alpha 轨道表示产品/发布成熟度。`package.json` 中的 `0.2.0` 是独立的 npm 包版本，不代表 v3 产品轨道或稳定版发布。
 
-DevMoter FAST 是一个用于统一控制编程代理与开发工具的**开源、自托管、移动优先控制平面**。
+DevMoter FAST 是一个用于统一控制编程代理与开发工具的**源码公开、自托管、移动优先控制平面**。
 
 Codex、OpenCode、仓库、凭据、终端、Git 工作流和主机集成继续留在 Linux 主机上；手机、平板、PWA 或浏览器只负责控制。
 
@@ -440,7 +440,17 @@ DevMoter FAST 大量使用 AI 辅助实现、debug、protocol research、test、
 
 ## License
 
-MIT。详见 [LICENSE](./LICENSE)。
+许可证按目录区分：
+
+| 路径 | 许可证 |
+|---|---|
+| 以下目录以外的全部内容 | [PolyForm Strict 1.0.0](./LICENSE) |
+| `base/`（DevMoter Base） | [PolyForm Strict 1.0.0](./base/LICENSE) |
+| `base/engines/<名称>/` | 各引擎的上游许可证（PostgreSQL License、SQLite 公有领域、DuckDB MIT、Valkey BSD-3-Clause），见 [`base/engines/UPSTREAM.md`](./base/engines/UPSTREAM.md) |
+| `math-engine/`（DevMoter Calc Engine） | 专有许可，保留所有权利，见 [`math-engine/LICENSE`](./math-engine/LICENSE) |
+| `vendor/<名称>/`、`deepseek-harness-mobile/` | 该目录中的许可证文件 |
+
+PolyForm Strict 1.0.0 仅允许非商业用途，不允许分发软件，也不允许修改或基于其创作衍生作品。在此变更之前发布的版本仍适用发布时的 MIT License。
 
 ---
 

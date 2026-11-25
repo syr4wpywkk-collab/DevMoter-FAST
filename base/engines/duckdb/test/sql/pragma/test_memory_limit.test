@@ -1,0 +1,136 @@
+# name: test/sql/pragma/test_memory_limit.test
+# description: Test PRAGMA memory_limit
+# group: [pragma]
+
+# set memory_limit
+statement ok
+SET memory_limit='1GB'
+
+statement ok
+SET memory_limit=-1
+
+statement ok
+SET memory_limit='-1'
+
+statement ok
+SET memory_limit='none'
+
+statement ok
+SET memory_limit=' -1'
+
+# different units can be used
+# G and GB = gigabyte
+statement ok
+SET memory_limit='1G'
+
+statement ok
+SET memory_limit='   1G'
+
+statement ok
+SET memory_limit='1GB'
+
+statement ok
+SET memory_limit='1gb'
+
+statement ok
+SET memory_limit = '1GB'
+
+statement ok
+SET memory_limit='1.0gb'
+
+statement ok
+SET memory_limit='1.0 gb'
+
+statement ok
+SET memory_limit='488.2 MiB'
+
+statement ok
+SET memory_limit='1.0 gigabytes'
+
+# M and MB = megabyte
+statement ok
+SET memory_limit='100M'
+
+statement ok
+SET memory_limit='100MB'
+
+statement ok
+SET memory_limit='100mb'
+
+statement ok
+SET memory_limit='100 megabytes'
+
+# K and KB = kilobyte
+statement ok
+SET memory_limit='10000K'
+
+statement ok
+SET memory_limit='10000KB'
+
+statement ok
+SET memory_limit='10000kb'
+
+statement ok
+SET memory_limit='10000 kilobytes'
+
+# B = byte
+statement ok
+SET memory_limit='1000000B'
+
+statement ok
+SET memory_limit='1000000b'
+
+statement ok
+SET memory_limit='1000000 bytes'
+
+# T and TB = terabyte
+statement ok
+SET memory_limit='0.01T'
+
+statement ok
+SET memory_limit='0.01TB'
+
+statement ok
+SET memory_limit='0.01tb'
+
+statement ok
+SET memory_limit='0.01 terabytes'
+
+# no unit or unknown units fail
+statement error
+SET memory_limit=100
+----
+
+statement error
+SET memory_limit='0.01BG'
+----
+
+statement error
+SET memory_limit='0.01BLA'
+----
+
+statement error
+SET memory_limit='0.01PP'
+----
+
+statement error
+SET memory_limit='0.01TEST'
+----
+
+# we can't invoke it like this either
+statement error
+PRAGMA memory_limit
+----
+
+statement error
+PRAGMA memory_limit()
+----
+Parser Error: syntax error at or near ")"
+
+statement error
+PRAGMA memory_limit(1, 2)
+----
+
+statement error
+SET memory_limit='blabla'
+----

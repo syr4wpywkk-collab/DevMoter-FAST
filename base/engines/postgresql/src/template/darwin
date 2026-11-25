@@ -1,0 +1,17 @@
+# src/template/darwin
+
+# Note: Darwin is the original code name for macOS, also known as OS X.
+# We still use "darwin" as the port name, partly because config.guess does.
+
+# Select where system include files should be sought
+PG_SYSROOT=`${srcdir}/src/tools/darwin_sysroot $PG_SYSROOT`
+
+if test -d "$PG_SYSROOT" ; then
+  CPPFLAGS="-isysroot $PG_SYSROOT $CPPFLAGS"
+  LDFLAGS="-isysroot $PG_SYSROOT $LDFLAGS"
+fi
+
+# Extra CFLAGS for code that will go into a shared library
+CFLAGS_SL=""
+
+DLSUFFIX=".dylib"

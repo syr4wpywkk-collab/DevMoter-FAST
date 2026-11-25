@@ -1,0 +1,2823 @@
+{
+  "formatVersion": 1,
+  "generated": "2026-11-23",
+  "referenceDefaults": {},
+  "cases": [
+    {
+      "id": "GEN-001",
+      "formula": "=1+2*3",
+      "inputs": {},
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "GEN-002",
+      "formula": "=SUM(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "GEN-003",
+      "formula": "=IF(FALSE,1/0,42)",
+      "inputs": {},
+      "expected": {
+        "number": 42
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Unevaluated branch must not raise #DIV/0! (lazy IF)."
+    },
+    {
+      "id": "GEN-004",
+      "formula": "=IFERROR(1/0,99)",
+      "inputs": {},
+      "expected": {
+        "number": 99
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "GEN-005",
+      "formula": "=LEFT(\"沖縄県\",2)",
+      "inputs": {},
+      "expected": {
+        "text": "沖縄"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Character-count semantics (UTF-16 code units vs Unicode scalar values) must be confirmed against Excel/LibreOffice for non-BMP input; BMP chars used here are safe but the rule itself is open.",
+      "notes": "Plan section 6 Phase 3 flags the UTF-16 length rule for verification."
+    },
+    {
+      "id": "GEN-006",
+      "formula": "=SQRT(-1)",
+      "inputs": {},
+      "expected": {
+        "error": "#NUM!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "GEN-007",
+      "formula": "=STDEV.S(1)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "GEN-008",
+      "formula": "=CORREL(A1:A3,B1:B2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3,
+        "B1": 1,
+        "B2": 2
+      },
+      "expected": {
+        "error": "#N/A"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Size mismatch check independent of referenced contents."
+    },
+    {
+      "id": "GEN-009",
+      "formula": "=SORT(A1:A4)",
+      "inputs": {
+        "A1": 4,
+        "A2": 1,
+        "A3": 3,
+        "A4": 2
+      },
+      "expected": {
+        "array": [
+          [
+            1
+          ],
+          [
+            2
+          ],
+          [
+            3
+          ],
+          [
+            4
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Expected shape/kind for dynamic-array results must be finalized once the engine's spill representation is decided; ascending stable order is fixed, representation is not."
+    },
+    {
+      "id": "GEN-010",
+      "formula": "=UNIQUE(A1:A5)",
+      "inputs": {
+        "A1": 3,
+        "A2": 1,
+        "A3": 3,
+        "A4": 2,
+        "A5": 1
+      },
+      "expected": {
+        "array": [
+          [
+            3
+          ],
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ]
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Same as GEN-009: first-occurrence order is the specified behavior, the result encoding for spilled arrays is pending."
+    },
+    {
+      "id": "P1-SUM-001",
+      "formula": "=SUM(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-SUM-002",
+      "formula": "=SUM(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 6
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-SUM-003",
+      "formula": "=SUM(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": 3
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Text inside a referenced range is ignored."
+    },
+    {
+      "id": "P1-SUM-004",
+      "formula": "=SUM(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": {
+          "blank": true
+        },
+        "A3": 3
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Blank cells inside a referenced range are ignored."
+    },
+    {
+      "id": "P1-SUM-005",
+      "formula": "=SUM(A1:A3)",
+      "inputs": {
+        "A1": "x",
+        "A2": "y"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "No numeric values yields 0."
+    },
+    {
+      "id": "P1-SUM-006",
+      "formula": "=SUM(\"3\",2)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Numeric-looking text in a direct argument is coerced to number."
+    },
+    {
+      "id": "P1-SUM-007",
+      "formula": "=SUM(\"abc\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Non-numeric text in a direct argument is an error."
+    },
+    {
+      "id": "P1-SUM-008",
+      "formula": "=SUM(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 0.5,
+        "A3": -2
+      },
+      "expected": {
+        "number": -0.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-SUM-009",
+      "formula": "=SUM(A1:A2,B1:B2)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "B1": 10,
+        "B2": 20
+      },
+      "expected": {
+        "number": 33
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Multiple ranges."
+    },
+    {
+      "id": "P1-SUM-010",
+      "formula": "=SUM(TRUE,2)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Boolean in a direct argument coerces to 1/0."
+    },
+    {
+      "id": "P1-SUM-011",
+      "formula": "=SUM(A1:A3)",
+      "inputs": {
+        "A1": true,
+        "A2": 2,
+        "A3": false
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Boolean cells inside a range are ignored."
+    },
+    {
+      "id": "P1-SUM-012",
+      "formula": "=SUM(1.5,0.25)",
+      "inputs": {},
+      "expected": {
+        "number": 1.75
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-SUM-013",
+      "formula": "=SUM(A1:B2)",
+      "inputs": {
+        "A1": 1,
+        "B1": 2,
+        "A2": 3,
+        "B2": 4
+      },
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "2-D range sums in row/column order (order irrelevant for sum)."
+    },
+    {
+      "id": "P1-AVERAGE-001",
+      "formula": "=AVERAGE(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-AVERAGE-002",
+      "formula": "=AVERAGE(A1:A3)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": 3
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-AVERAGE-003",
+      "formula": "=AVERAGE(A1:A3)",
+      "inputs": {
+        "A1": "x",
+        "A2": "y"
+      },
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "No numeric values yields #DIV/0!."
+    },
+    {
+      "id": "P1-AVERAGE-004",
+      "formula": "=AVERAGE(A1:A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": 3,
+        "A4": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Text and blanks in range are excluded from the count."
+    },
+    {
+      "id": "P1-AVERAGE-005",
+      "formula": "=AVERAGE(\"4\",6)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Numeric text in a direct argument is coerced."
+    },
+    {
+      "id": "P1-AVERAGE-006",
+      "formula": "=AVERAGE(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-AVERAGE-007",
+      "formula": "=AVERAGE(-1,1)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-AVERAGE-008",
+      "formula": "=AVERAGE(0.1,0.2)",
+      "inputs": {},
+      "expected": {
+        "number": 0.15,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Floating point; tolerance recorded."
+    },
+    {
+      "id": "P1-AVERAGE-009",
+      "formula": "=AVERAGE(TRUE,3)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Boolean direct args coerce to 1/0: (1+3)/2."
+    },
+    {
+      "id": "P1-AVERAGE-010",
+      "formula": "=AVERAGE(A1:A3)",
+      "inputs": {
+        "A1": true,
+        "A2": 4
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Boolean cells in a range are ignored, not averaged."
+    },
+    {
+      "id": "P1-AVERAGE-011",
+      "formula": "=AVERAGE(A1:A2,B1)",
+      "inputs": {
+        "A1": 2,
+        "A2": 4,
+        "B1": 6
+      },
+      "expected": {
+        "number": 4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MIN-001",
+      "formula": "=MIN(3,1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MIN-002",
+      "formula": "=MIN(A1:A3)",
+      "inputs": {
+        "A1": 3,
+        "A2": 1,
+        "A3": 2
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MIN-003",
+      "formula": "=MIN(A1:A3)",
+      "inputs": {
+        "A1": "x",
+        "A2": "y"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "No numeric values in range yields 0 (not an error)."
+    },
+    {
+      "id": "P1-MIN-004",
+      "formula": "=MIN(A1:A3)",
+      "inputs": {
+        "A1": -5,
+        "A2": 1
+      },
+      "expected": {
+        "number": -5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MIN-005",
+      "formula": "=MIN(A1:A4)",
+      "inputs": {
+        "A1": 5,
+        "A2": "x",
+        "A3": 10,
+        "A4": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Text/blank in range ignored."
+    },
+    {
+      "id": "P1-MIN-006",
+      "formula": "=MIN(\"2\",7)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Numeric text direct arg coerced."
+    },
+    {
+      "id": "P1-MIN-007",
+      "formula": "=MIN(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MIN-008",
+      "formula": "=MIN(1.5,1.4)",
+      "inputs": {},
+      "expected": {
+        "number": 1.4
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MIN-009",
+      "formula": "=MIN(TRUE,5)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Boolean direct arg coerces to 1."
+    },
+    {
+      "id": "P1-MIN-010",
+      "formula": "=MIN(A1:A2)",
+      "inputs": {
+        "A1": true,
+        "A2": 9
+      },
+      "expected": {
+        "number": 9
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Boolean cells in range ignored."
+    },
+    {
+      "id": "P1-MIN-011",
+      "formula": "=MIN(A1:A2,B1)",
+      "inputs": {
+        "A1": 4,
+        "A2": 8,
+        "B1": 2
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MAX-001",
+      "formula": "=MAX(3,1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MAX-002",
+      "formula": "=MAX(A1:A3)",
+      "inputs": {
+        "A1": 3,
+        "A2": 1,
+        "A3": 2
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MAX-003",
+      "formula": "=MAX(A1:A3)",
+      "inputs": {
+        "A1": "x",
+        "A2": "y"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MAX-004",
+      "formula": "=MAX(A1:A3)",
+      "inputs": {
+        "A1": -5,
+        "A2": -1
+      },
+      "expected": {
+        "number": -1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MAX-005",
+      "formula": "=MAX(A1:A4)",
+      "inputs": {
+        "A1": 5,
+        "A2": "x",
+        "A3": 10,
+        "A4": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MAX-006",
+      "formula": "=MAX(\"9\",7)",
+      "inputs": {},
+      "expected": {
+        "number": 9
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MAX-007",
+      "formula": "=MAX(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MAX-008",
+      "formula": "=MAX(1.5,1.4)",
+      "inputs": {},
+      "expected": {
+        "number": 1.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-MAX-009",
+      "formula": "=MAX(FALSE,-3)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "FALSE coerces to 0 in direct args."
+    },
+    {
+      "id": "P1-MAX-010",
+      "formula": "=MAX(A1:A2)",
+      "inputs": {
+        "A1": true,
+        "A2": -9
+      },
+      "expected": {
+        "number": -9
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Boolean cells in range ignored, so only -9 counts."
+    },
+    {
+      "id": "P1-MAX-011",
+      "formula": "=MAX(A1:A2,B1)",
+      "inputs": {
+        "A1": 4,
+        "A2": 8,
+        "B1": 20
+      },
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-COUNT-001",
+      "formula": "=COUNT(A1:A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": 2,
+        "A3": "x",
+        "A4": 3
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-COUNT-002",
+      "formula": "=COUNT(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-COUNT-003",
+      "formula": "=COUNT(A1:A3)",
+      "inputs": {
+        "A1": "1",
+        "A2": "2"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Numeric text stored as cell text is NOT counted in ranges."
+    },
+    {
+      "id": "P1-COUNT-004",
+      "formula": "=COUNT(\"5\",2)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Numeric text in a direct argument IS coerced and counted."
+    },
+    {
+      "id": "P1-COUNT-005",
+      "formula": "=COUNT(A1:A3)",
+      "inputs": {
+        "A1": {
+          "blank": true
+        },
+        "A2": "x"
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-COUNT-006",
+      "formula": "=COUNT(A1:A3)",
+      "inputs": {
+        "A1": true,
+        "A2": 2,
+        "A3": false
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Boolean cells in a range are not numbers and are not counted."
+    },
+    {
+      "id": "P1-COUNT-007",
+      "formula": "=COUNT(TRUE,2)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Boolean direct args coerced, both counted."
+    },
+    {
+      "id": "P1-COUNT-008",
+      "formula": "=COUNT(A1:A2,B1:B2)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "B1": 2,
+        "B2": 3
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-COUNT-009",
+      "formula": "=COUNT(0)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Zero is counted."
+    },
+    {
+      "id": "P1-COUNT-010",
+      "formula": "=COUNT(-1,1.5,1e3)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-COUNTA-001",
+      "formula": "=COUNTA(A1:A4)",
+      "inputs": {
+        "A1": 1,
+        "A2": "x",
+        "A3": true,
+        "A4": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Counts every non-empty cell: number, text, boolean."
+    },
+    {
+      "id": "P1-COUNTA-002",
+      "formula": "=COUNTA(A1:A3)",
+      "inputs": {
+        "A1": "",
+        "A2": 1
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Empty string \"\" is NOT blank and IS counted."
+    },
+    {
+      "id": "P1-COUNTA-003",
+      "formula": "=COUNTA(A1:A3)",
+      "inputs": {
+        "A1": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-COUNTA-004",
+      "formula": "=COUNTA(1,2,3)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-COUNTA-005",
+      "formula": "=COUNTA(A1:A3)",
+      "inputs": {
+        "A1": 0
+      },
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Zero counts."
+    },
+    {
+      "id": "P1-COUNTA-006",
+      "formula": "=COUNTA(\"x\",1,TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-COUNTA-007",
+      "formula": "=COUNTA(A1:B2)",
+      "inputs": {
+        "A1": 1,
+        "B2": "t"
+      },
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "2-D range."
+    },
+    {
+      "id": "P1-COUNTA-008",
+      "formula": "=COUNTA(\" \")",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "A space-only string is not blank."
+    },
+    {
+      "id": "P1-COUNTA-009",
+      "formula": "=COUNTA(A1:A2)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "All cells absent/blank."
+    },
+    {
+      "id": "P1-COUNTA-010",
+      "formula": "=COUNTA(1/0)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Excel counts error CELLS with COUNTA; whether an error produced inside the argument expression behaves identically needs empirical confirmation.",
+      "notes": "Error values produced by direct arguments are counted (they are non-empty values)."
+    },
+    {
+      "id": "P1-IF-001",
+      "formula": "=IF(TRUE,1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-IF-002",
+      "formula": "=IF(FALSE,1,2)",
+      "inputs": {},
+      "expected": {
+        "number": 2
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-IF-003",
+      "formula": "=IF(FALSE,1/0,42)",
+      "inputs": {},
+      "expected": {
+        "number": 42
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Lazy evaluation: unchosen branch must not evaluate."
+    },
+    {
+      "id": "P1-IF-004",
+      "formula": "=IF(TRUE,42,1/0)",
+      "inputs": {},
+      "expected": {
+        "number": 42
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-IF-005",
+      "formula": "=IF(1,10,20)",
+      "inputs": {},
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Nonzero number coerces to TRUE."
+    },
+    {
+      "id": "P1-IF-006",
+      "formula": "=IF(0,10,20)",
+      "inputs": {},
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Zero coerces to FALSE."
+    },
+    {
+      "id": "P1-IF-007",
+      "formula": "=IF(\"x\",1,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Text is not a valid condition."
+    },
+    {
+      "id": "P1-IF-008",
+      "formula": "=IF(FALSE,1)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Missing value_if_false returns FALSE."
+    },
+    {
+      "id": "P1-IF-009",
+      "formula": "=IF(TRUE,1)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-IF-010",
+      "formula": "=IF(A1=1,\"one\",\"other\")",
+      "inputs": {
+        "A1": 1
+      },
+      "expected": {
+        "text": "one"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-IF-011",
+      "formula": "=IF(A1=1,\"one\",\"other\")",
+      "inputs": {
+        "A1": 2
+      },
+      "expected": {
+        "text": "other"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-IF-012",
+      "formula": "=IF(A1,\"y\",\"n\")",
+      "inputs": {
+        "A1": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "text": "n"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Blank-as-condition coercion should be confirmed against Excel (FALSE vs #VALUE!).",
+      "notes": "Blank cell as condition coerces to FALSE."
+    },
+    {
+      "id": "P1-IF-013",
+      "formula": "=IF(1/0,1,2)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Error in the condition propagates; IF does not catch it."
+    },
+    {
+      "id": "P1-AND-001",
+      "formula": "=AND(TRUE,TRUE)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-AND-002",
+      "formula": "=AND(TRUE,FALSE)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-AND-003",
+      "formula": "=AND(1,2)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Nonzero numbers coerce to TRUE."
+    },
+    {
+      "id": "P1-AND-004",
+      "formula": "=AND(1,0)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-AND-005",
+      "formula": "=AND(A1:A3)",
+      "inputs": {
+        "A1": true,
+        "A2": true,
+        "A3": true
+      },
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-AND-006",
+      "formula": "=AND(A1:A4)",
+      "inputs": {
+        "A1": true,
+        "A2": "x",
+        "A3": {
+          "blank": true
+        },
+        "A4": true
+      },
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Text and blank cells in the range are ignored."
+    },
+    {
+      "id": "P1-AND-007",
+      "formula": "=AND(A1:A3)",
+      "inputs": {
+        "A1": "x",
+        "A2": "y"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "No logical/numeric values at all yields #VALUE!."
+    },
+    {
+      "id": "P1-AND-008",
+      "formula": "=AND(TRUE,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Text in a direct argument is #VALUE!."
+    },
+    {
+      "id": "P1-AND-009",
+      "formula": "=AND(FALSE,1/0)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Whether AND/OR propagate errors from sibling arguments or return the determined boolean needs empirical confirmation; Excel does evaluate all arguments.",
+      "notes": "Result already FALSE; Excel evaluates all args so the error cell form would propagate, but a literal error arg still resolves FALSE in Excel."
+    },
+    {
+      "id": "P1-AND-010",
+      "formula": "=AND(5,-3)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-AND-011",
+      "formula": "=AND(A1,B1)",
+      "inputs": {
+        "A1": true,
+        "B1": false
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Cell references as direct arguments."
+    },
+    {
+      "id": "P1-OR-001",
+      "formula": "=OR(FALSE,FALSE)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-OR-002",
+      "formula": "=OR(TRUE,FALSE)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-OR-003",
+      "formula": "=OR(0,0)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-OR-004",
+      "formula": "=OR(0,7)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-OR-005",
+      "formula": "=OR(A1:A3)",
+      "inputs": {
+        "A1": false,
+        "A2": false,
+        "A3": true
+      },
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-OR-006",
+      "formula": "=OR(A1:A4)",
+      "inputs": {
+        "A1": false,
+        "A2": "x",
+        "A3": {
+          "blank": true
+        },
+        "A4": false
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-OR-007",
+      "formula": "=OR(A1:A3)",
+      "inputs": {
+        "A1": "x",
+        "A2": "y"
+      },
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-OR-008",
+      "formula": "=OR(FALSE,\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-OR-009",
+      "formula": "=OR(-1,0)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Negative numbers are nonzero => TRUE."
+    },
+    {
+      "id": "P1-OR-010",
+      "formula": "=OR(A1,B1)",
+      "inputs": {
+        "A1": false,
+        "B1": true
+      },
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-NOT-001",
+      "formula": "=NOT(TRUE)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-NOT-002",
+      "formula": "=NOT(FALSE)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-NOT-003",
+      "formula": "=NOT(0)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-NOT-004",
+      "formula": "=NOT(1)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-NOT-005",
+      "formula": "=NOT(-5)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Nonzero => TRUE => NOT gives FALSE."
+    },
+    {
+      "id": "P1-NOT-006",
+      "formula": "=NOT(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-NOT-007",
+      "formula": "=NOT(A1)",
+      "inputs": {
+        "A1": true
+      },
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-NOT-008",
+      "formula": "=NOT(A1)",
+      "inputs": {
+        "A1": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Confirm blank-cell coercion for NOT in Excel (blank -> FALSE expected).",
+      "notes": "Blank coerces to FALSE, NOT gives TRUE."
+    },
+    {
+      "id": "P1-NOT-009",
+      "formula": "=NOT(1=1)",
+      "inputs": {},
+      "expected": {
+        "bool": false
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-NOT-010",
+      "formula": "=NOT(2>3)",
+      "inputs": {},
+      "expected": {
+        "bool": true
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ROUND-001",
+      "formula": "=ROUND(2.5,0)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Half away from zero."
+    },
+    {
+      "id": "P1-ROUND-002",
+      "formula": "=ROUND(-2.5,0)",
+      "inputs": {},
+      "expected": {
+        "number": -3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Half away from zero for negatives."
+    },
+    {
+      "id": "P1-ROUND-003",
+      "formula": "=ROUND(2.345,2)",
+      "inputs": {},
+      "expected": {
+        "number": 2.35,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Boundary flagged in plan section 10.2; verify against reference implementations."
+    },
+    {
+      "id": "P1-ROUND-004",
+      "formula": "=ROUND(1234.567,-2)",
+      "inputs": {},
+      "expected": {
+        "number": 1200
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ROUND-005",
+      "formula": "=ROUND(2.349,2)",
+      "inputs": {},
+      "expected": {
+        "number": 2.35
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ROUND-006",
+      "formula": "=ROUND(0.5,0)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ROUND-007",
+      "formula": "=ROUND(-0.5,0)",
+      "inputs": {},
+      "expected": {
+        "number": -1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ROUND-008",
+      "formula": "=ROUND(3.14159,4)",
+      "inputs": {},
+      "expected": {
+        "number": 3.1416
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ROUND-009",
+      "formula": "=ROUND(1.005,2)",
+      "inputs": {},
+      "expected": {
+        "number": 1.01,
+        "tolerance": 1e-12
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Binary representation of 1.005 is 1.00499...; Excel's documented half-away result may differ from IEEE computation. Record empirically."
+    },
+    {
+      "id": "P1-ROUND-010",
+      "formula": "=ROUND(15,-1)",
+      "inputs": {},
+      "expected": {
+        "number": 20
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ROUND-011",
+      "formula": "=ROUND(14,-1)",
+      "inputs": {},
+      "expected": {
+        "number": 10
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ROUND-012",
+      "formula": "=ROUND(\"2.5\",0)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Numeric text coerced in direct args."
+    },
+    {
+      "id": "P1-ROUND-013",
+      "formula": "=ROUND(\"x\",0)",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ABS-001",
+      "formula": "=ABS(-3)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ABS-002",
+      "formula": "=ABS(3)",
+      "inputs": {},
+      "expected": {
+        "number": 3
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ABS-003",
+      "formula": "=ABS(0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ABS-004",
+      "formula": "=ABS(-2.5)",
+      "inputs": {},
+      "expected": {
+        "number": 2.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ABS-005",
+      "formula": "=ABS(\"-2.5\")",
+      "inputs": {},
+      "expected": {
+        "number": 2.5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Numeric text in a direct argument coerces."
+    },
+    {
+      "id": "P1-ABS-006",
+      "formula": "=ABS(\"x\")",
+      "inputs": {},
+      "expected": {
+        "error": "#VALUE!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ABS-007",
+      "formula": "=ABS(TRUE)",
+      "inputs": {},
+      "expected": {
+        "number": 1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ABS-008",
+      "formula": "=ABS(A1)",
+      "inputs": {
+        "A1": -7
+      },
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-ABS-009",
+      "formula": "=ABS(A1)",
+      "inputs": {
+        "A1": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Blank cell coerces to 0."
+    },
+    {
+      "id": "P1-ABS-010",
+      "formula": "=ABS(1/0)",
+      "inputs": {},
+      "expected": {
+        "error": "#DIV/0!"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Errors propagate through ABS."
+    },
+    {
+      "id": "P1-ABS-011",
+      "formula": "=ABS(-0.001)",
+      "inputs": {},
+      "expected": {
+        "number": 0.001,
+        "tolerance": 1e-15
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-IFERROR-001",
+      "formula": "=IFERROR(1/0,99)",
+      "inputs": {},
+      "expected": {
+        "number": 99
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-IFERROR-002",
+      "formula": "=IFERROR(42,99)",
+      "inputs": {},
+      "expected": {
+        "number": 42
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "No error: first argument returned, second not needed."
+    },
+    {
+      "id": "P1-IFERROR-003",
+      "formula": "=IFERROR(0/0,\"err\")",
+      "inputs": {},
+      "expected": {
+        "text": "err"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-IFERROR-004",
+      "formula": "=IFERROR(IF(FALSE,1/0,5),-1)",
+      "inputs": {},
+      "expected": {
+        "number": 5
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "IF avoids the error internally; IFERROR sees 5."
+    },
+    {
+      "id": "P1-IFERROR-005",
+      "formula": "=IFERROR(IF(TRUE,1/0,5),-1)",
+      "inputs": {},
+      "expected": {
+        "number": -1
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Chosen branch errors; IFERROR catches it."
+    },
+    {
+      "id": "P1-IFERROR-006",
+      "formula": "=IFERROR(\"x\"+1,\"caught\")",
+      "inputs": {},
+      "expected": {
+        "text": "caught"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Catches #VALUE! from bad coercion."
+    },
+    {
+      "id": "P1-IFERROR-007",
+      "formula": "=IFERROR(SQRT(-1),\"num\")",
+      "inputs": {},
+      "expected": {
+        "text": "num"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Catches #NUM!."
+    },
+    {
+      "id": "P1-IFERROR-008",
+      "formula": "=IFERROR(A1,\"blank\")",
+      "inputs": {
+        "A1": 7
+      },
+      "expected": {
+        "number": 7
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      }
+    },
+    {
+      "id": "P1-IFERROR-009",
+      "formula": "=IFERROR(A1,\"fallback\")",
+      "inputs": {
+        "A1": {
+          "blank": true
+        }
+      },
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Confirm Excel returns 0 for a blank referenced cell here (expected: yes).",
+      "notes": "Blank reference coerces to 0, which is not an error."
+    },
+    {
+      "id": "P1-IFERROR-010",
+      "formula": "=IFERROR(IFERROR(1/0,1/0),\"deep\")",
+      "inputs": {},
+      "expected": {
+        "text": "deep"
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "notes": "Nested IFERROR."
+    },
+    {
+      "id": "P1-IFERROR-011",
+      "formula": "=IFERROR(1/0)",
+      "inputs": {},
+      "expected": {
+        "number": 0
+      },
+      "reference": {
+        "implementation": "Microsoft Excel",
+        "version": "general documented behavior (not empirically recorded)",
+        "dateSystem": "1900",
+        "os": "any",
+        "locale": "en-US",
+        "source": "Published Excel/LibreOffice general specification; to be re-recorded empirically per plan section 10.5"
+      },
+      "specOpen": true,
+      "specOpenReason": "Excel may reject a missing second argument at parse time (too few arguments) rather than returning 0. Confirm arity rule empirically before enabling."
+    }
+  ]
+}
