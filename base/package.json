@@ -2,6 +2,7 @@
   "name": "devmoter-base",
   "version": "0.1.0",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE",
   "description": "DevMoter Base: unified, self-hostable data platform layer over PostgreSQL, SQLite, DuckDB and Valkey",
   "type": "module",
   "engines": {

@@ -32,7 +32,7 @@ npm run stats:check      # 統計が最新かどうか
 npm run check       # 型検査・テスト・依存関係検査・上流照合・統計確認をまとめて実行
 ```
 
-CI（GitHub Actions）は Pull Request と main への push ごとに、x86-64 と ARM64 の両方で同じ検査を実行します。
+DevMoter Base は DevMoter FAST リポジトリの `base/` にあります。CI（GitHub Actions の `.github/workflows/base-ci.yml`）は `base/` を変更する Pull Request と main への push ごとに、x86-64 と ARM64 の両方で同じ検査を実行します。FAST だけの変更では実行しません。
 
 ## 構造化ログ
 
@@ -103,3 +103,7 @@ TLS を外しているのは、初期段階がローカル検証（unix ソケ�
 依存パッケージのインストールスクリプトは `.npmrc` の `ignore-scripts=true` で実行されません。CI は `npm ci` の前に `node scripts/deps/check.ts --offline` で lockfile を検査します。スクリプトが必要なパッケージを入れる場合は、許可リストに追加したうえで `npm rebuild <パッケージ名> --ignore-scripts=false` を明示的に実行します。
 
 npm パッケージと GitHub Actions の更新は Dependabot が週次で PR にします。
+
+## ライセンス
+
+DevMoter Base 独自のコード（`engines/` 以外）は [PolyForm Strict License 1.0.0](LICENSE) です。非商用目的の利用だけを許可し、再配布と、改変・派生物の作成を許可しません。`engines/<エンジン>/` は各上流のライセンス（PostgreSQL License、SQLite はパブリックドメイン、DuckDB は MIT、Valkey は BSD-3-Clause）のままです。

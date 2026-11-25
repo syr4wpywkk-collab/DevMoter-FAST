@@ -8,7 +8,7 @@
 - ホスト: Linux x86-64、8コア、Docker 29.9.2
 - ビルド環境: `scripts/build/Dockerfile`（`node:22-bookworm-slim` をダイジェストで固定、gcc 12.2.0）。ビルド中はネットワークなし、リポジトリは読み取り専用でマウント
 - ARM64: 同じホスト上で `--platform linux/arm64`（QEMU ユーザーモードエミュレーション）。ARM64 の実機では未検証
-- GitHub Actions のワークフロー（`.github/workflows/engines.yml`）は、アカウントの課金の問題で開始前に失敗するため、GitHub 上では未検証
+- GitHub Actions のワークフロー（`.github/workflows/base-engines.yml`）は、アカウントの課金の問題で開始前に失敗するため、GitHub 上では未検証
 
 ## 結果
 

@@ -11,7 +11,7 @@
 > **リリース状態:** 開発中 / プレリリース  
 > **npm package version:** `0.2.0`（private package metadata。製品世代とは独立）
 
-DevMoter FASTは、**AIを活用したソフトウェア開発のための、オープンソース・セルフホスト・モバイルファーストなコントロールプレーン**です。
+DevMoter FASTは、**AIを活用したソフトウェア開発のための、ソース公開・セルフホスト・モバイルファーストなコントロールプレーン**です。
 
 コーディングエージェント、Projects、Gitワークフロー、変更レビュー、開発者ツール、ホスト連携を一つのワークスペースにまとめながら、実行環境と認証情報は自分が管理するマシンに保持します。
 
@@ -325,7 +325,17 @@ Issue、互換性報告、ドキュメント改善、Pull Requestを歓迎しま
 
 ## License
 
-MIT。詳細は [LICENSE](./LICENSE) を参照してください。
+ライセンスはフォルダーごとに分かれています。
+
+| パス | ライセンス |
+|---|---|
+| 下の各フォルダー以外すべて | [PolyForm Strict 1.0.0](./LICENSE) |
+| `base/`（DevMoter Base） | [PolyForm Strict 1.0.0](./base/LICENSE) |
+| `base/engines/<名前>/` | 各エンジンの上流ライセンス（PostgreSQL License、SQLite はパブリックドメイン、DuckDB は MIT、Valkey は BSD-3-Clause）。[`base/engines/UPSTREAM.md`](./base/engines/UPSTREAM.md) を参照 |
+| `math-engine/`（DevMoter Calc Engine） | 独占的ライセンス（All rights reserved）。[`math-engine/LICENSE`](./math-engine/LICENSE) を参照 |
+| `vendor/<名前>/`、`deepseek-harness-mobile/` | そのフォルダー内のライセンスファイル |
+
+PolyForm Strict 1.0.0 は非商用目的の利用だけを許可し、再配布と、改変・派生物の作成を許可しません。この変更より前に公開された版は、公開時の MIT License のままです。
 
 ---
 

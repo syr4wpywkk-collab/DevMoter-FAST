@@ -177,7 +177,11 @@ async function exportSource(repo: string, pin: EnginePin, paths: EnginePaths): P
   if ((await readFile(stamp, 'utf8').catch(() => '')) === pin.tree) return;
   await rm(paths.src, { recursive: true, force: true });
   await mkdir(paths.src, { recursive: true });
-  const archive = spawn('git', ['archive', '--format=tar', pin.tree], { cwd: repo, stdio: ['ignore', 'pipe', 'inherit'] });
+  // git archive run from a subdirectory archives only that path, so it runs from the repository top level
+  // (DevMoter Base may live in a subdirectory, such as base/ in DevMoter FAST).
+  const top = await run('git', ['rev-parse', '--show-toplevel'], { cwd: repo });
+  if (top.code !== 0) throw new Error(`could not find the repository top level: ${top.output}`);
+  const archive = spawn('git', ['archive', '--format=tar', pin.tree], { cwd: top.output.trim(), stdio: ['ignore', 'pipe', 'inherit'] });
   const archiveExit = new Promise<number>((resolve) => archive.on('close', (code) => resolve(code ?? 1)));
   const extract = await run('tar', ['-x', '-C', paths.src], { input: archive.stdout });
   if ((await archiveExit) !== 0 || extract.code !== 0) throw new Error(`could not export ${pin.name} tree ${pin.tree}: ${extract.output}`);

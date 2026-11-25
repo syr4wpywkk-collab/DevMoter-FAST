@@ -11,7 +11,7 @@ Run agents and developer tools on your own machine. Operate, coordinate, and rev
 > **Release status:** pre-release / active development  
 > **npm package version:** `0.2.0` (private package metadata; independent of the product generation)
 
-DevMoter FAST is an **open-source, self-hosted, mobile-first control plane for AI-assisted software engineering**. It brings coding agents, projects, Git workflows, reviews, developer tools, and host integrations into one coordinated workspace while keeping execution and credentials on the machine you control.
+DevMoter FAST is a **source-available, self-hosted, mobile-first control plane for AI-assisted software engineering**. It brings coding agents, projects, Git workflows, reviews, developer tools, and host integrations into one coordinated workspace while keeping execution and credentials on the machine you control.
 
 This is a new product generation—not simply a remote chat client with more buttons. DevMoter is designed to become the operational layer between you, your coding agents, your repositories, and the host that runs them.
 
@@ -326,7 +326,17 @@ Issues, compatibility reports, documentation improvements, and pull requests are
 
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+The repository is licensed per folder:
+
+| Path | License |
+|---|---|
+| everything outside the folders below | [PolyForm Strict 1.0.0](./LICENSE) |
+| `base/` (DevMoter Base) | [PolyForm Strict 1.0.0](./base/LICENSE) |
+| `base/engines/<name>/` | each engine's upstream license (PostgreSQL License, SQLite public domain, DuckDB MIT, Valkey BSD-3-Clause); see [`base/engines/UPSTREAM.md`](./base/engines/UPSTREAM.md) |
+| `math-engine/` (DevMoter Calc Engine) | proprietary, all rights reserved; see [`math-engine/LICENSE`](./math-engine/LICENSE) |
+| `vendor/<name>/`, `deepseek-harness-mobile/` | the license file in that folder |
+
+PolyForm Strict 1.0.0 allows noncommercial use only and does not allow distributing the software or making changes or new works based on it. Releases published before this change keep the MIT License they were published under.
 
 ---
 

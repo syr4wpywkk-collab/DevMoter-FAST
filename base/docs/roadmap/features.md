@@ -16,11 +16,11 @@
 |---|---|---|---|---|
 | 1 | 上流ソースのバージョン・コミット固定 | ● | 実装済み | `engines/manifest.json`、`scripts/upstream/verify.ts`、`engines/UPSTREAM.md` |
 | 2 | エンジン別ビルドスクリプト | ● | 実装済み | `scripts/build/build.ts`、`scripts/build/engines/*.sh`、`docs/build/verification.md` |
-| 3 | ARM64ビルド対応 | ● | 実装済み | `scripts/build/container.sh --platform linux/arm64`、`.github/workflows/engines.yml`、`docs/build/verification.md` |
+| 3 | ARM64ビルド対応 | ● | 実装済み | `scripts/build/container.sh --platform linux/arm64`、`.github/workflows/base-engines.yml`（FAST リポジトリのルート）、`docs/build/verification.md` |
 | 4 | x86-64ビルド対応 |  | 未着手 |  |
 | 5 | 自動依存関係検査 | ● | 実装済み | `scripts/deps/check.ts`、Dependabot、CI の `npm run deps:check` |
 | 6 | ライセンス・著作権表示管理 |  | 未着手 |  |
-| 7 | CIによる自動テスト | ● | 実装済み | `.github/workflows/ci.yml`（x86-64 / ARM64） |
+| 7 | CIによる自動テスト | ● | 実装済み | `.github/workflows/base-ci.yml`（FAST リポジトリのルート、x86-64 / ARM64） |
 | 8 | エンジン別ヘルスチェック | ● | 実装済み | `GET /v1/health/engines`、`GET /v1/databases/:name/health`（4エンジンすべて） |
 | 9 | 構造化ログ基盤 | ● | 実装済み | `src/logging/`、`test/logging/` |
 | 10 | コード行数・言語別統計の自動生成 | ● | 実装済み | `scripts/stats/code-stats.ts`、[`docs/stats/code-stats.md`](../stats/code-stats.md) |
