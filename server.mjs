@@ -664,7 +664,7 @@ async function readProjectRegistry() {
   }
 
   // Seed from the configured workspace; DevMoter's own install dir only when none is set.
-  const configured = [process.env.OPENCODE_DIRECTORY, process.env.CODEX_CWD].filter(Boolean);
+  const configured = [process.env.CODEX_CWD, process.env.OPENCODE_DIRECTORY].filter(Boolean);
   const candidates = (configured.length ? configured : [process.cwd()])
     .filter(Boolean)
     .map(value => resolve(String(value)))
@@ -673,9 +673,8 @@ async function readProjectRegistry() {
   const projects = [];
   for (const candidate of [...new Set(candidates)]) {
     try {
-      const actual = await realpath(candidate);
-      const info = await stat(actual);
-      if (!info.isDirectory()) continue;
+      const actual = await normalizeExistingProjectPath(candidate);
+      if (projects.some(project => project.path === actual)) continue;
       projects.push({
         id: randomUUID(),
         name: basename(actual) || actual,
@@ -683,7 +682,7 @@ async function readProjectRegistry() {
         addedAt: Date.now()
       });
     } catch {
-      // Ignore unavailable bootstrap paths.
+      // Skip paths a project could not be registered at.
     }
   }
 
