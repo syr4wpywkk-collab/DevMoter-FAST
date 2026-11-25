@@ -125,6 +125,21 @@ export function quoteNonFinite(source: string): string {
   return parts.join('');
 }
 
+const CHANGES_LINE = /^changes: +\d+ +total_changes: +(\d+)\n?/gm;
+
+/**
+ * Takes out the lines the shell prints after each statement with ".changes on". They cannot be
+ * mistaken for rows: JSON output has no line that starts with a bare word.
+ */
+export function takeChanges(stdout: string): { text: string; total: number | undefined } {
+  let total: number | undefined;
+  const text = stdout.replace(CHANGES_LINE, (_line, count: string) => {
+    total = Number(count);
+    return '';
+  });
+  return { text, total };
+}
+
 export function parseResultSets(text: string, options: { nonFinite?: boolean } = {}): ResultSet[] {
   return splitJsonValues(text).map((value) => {
     const source = options.nonFinite ? quoteNonFinite(value) : value;

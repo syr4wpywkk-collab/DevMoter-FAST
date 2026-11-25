@@ -40,14 +40,14 @@ test('the shell runs in safe mode and nothing of the request is a program argume
   const options = { binary: '/x/sqlite3', file: '/data/app.sqlite' };
   assert.deepEqual(sqliteInvocation(options, 'SELECT 1', []), {
     args: ['-safe', '-batch', '-noinit', '-bail', '-json', '/data/app.sqlite'],
-    input: '.timeout 5000\n.explain off\nSELECT 1\n',
+    input: '.timeout 5000\n.explain off\n.changes on\nSELECT 1\n',
   });
   assert.deepEqual(sqliteInvocation({ ...options, readOnly: true }, 'SELECT 1', []).args, ['-safe', '-batch', '-noinit', '-bail', '-json', '-readonly', '/data/app.sqlite']);
   const secret = sqliteInvocation(options, "SELECT 'sql-secret', ?1, ?2", ['a', 2]);
   assert.deepEqual(secret.args, ['-safe', '-batch', '-noinit', '-bail', '-json', '/data/app.sqlite']);
   assert.equal(
     secret.input,
-    ".timeout 5000\n.explain off\n.parameter init\nINSERT INTO temp.sqlite_parameters(key,value) VALUES('?1',char(97)),('?2',2);\nSELECT 'sql-secret', ?1, ?2\n",
+    ".timeout 5000\n.explain off\n.parameter init\nINSERT INTO temp.sqlite_parameters(key,value) VALUES('?1',char(97)),('?2',2);\n.changes on\nSELECT 'sql-secret', ?1, ?2\n",
   );
   assert.equal(sqliteInvocation({ binary: '/x/sqlite3', file: 'relative.sqlite' }, 'SELECT 1', []).args.at(-1), path.resolve('relative.sqlite'));
 });
@@ -233,6 +233,15 @@ describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () =>
     await outcome;
     assert.ok(shells.length >= 1, 'the running shell was found');
     for (const line of commandLines) assert.doesNotMatch(line, /sql-secret|param-secret|706172616d2d736563726574/);
+  });
+
+  test('reports the rows a request inserted, updated or deleted', async () => {
+    assert.equal((await adapter.query('CREATE TABLE changes_probe (a)', [])).changes, 0);
+    assert.equal((await adapter.query('INSERT INTO changes_probe VALUES (?1), (?2), (?3)', [1, 2, 3])).changes, 3);
+    const both = await adapter.query('UPDATE changes_probe SET a = a + 10 WHERE a > 1; DELETE FROM changes_probe WHERE a = 1; SELECT count(*) AS c FROM changes_probe', []);
+    assert.equal(both.changes, 3);
+    assert.deepEqual(both.results, [{ columns: ['c'], rows: [{ c: 2 }], rowCount: 1 }]);
+    assert.equal((await adapter.query('SELECT 1 AS x', [])).changes, 0);
   });
 
   test('a read-only database refuses writes', async () => {

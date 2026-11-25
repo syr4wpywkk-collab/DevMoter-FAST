@@ -18,6 +18,8 @@ export interface ResultSet {
 export interface QueryResult {
   /** One entry per statement that produced a result set. */
   results: ResultSet[];
+  /** Rows the request inserted, updated or deleted, as the engine counts them. */
+  changes?: number;
   durationMs: number;
 }
 

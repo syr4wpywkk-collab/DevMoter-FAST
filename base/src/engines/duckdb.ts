@@ -14,7 +14,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { parseResultSets } from './json-results.ts';
+import { parseResultSets, takeChanges } from './json-results.ts';
 import { runEngineProcess } from './process.ts';
 import { DUCKDB_SQL, sqlShape } from './sql-text.ts';
 import { EngineError, resolveTimeout, sqlHealth, type QueryOptions, type QueryParam, type QueryResult, type SqlAdapter } from './types.ts';
@@ -96,7 +96,8 @@ export function duckdbInvocation(options: DuckdbAdapterOptions, sql: string, par
   args.push(path.resolve(options.file));
   // The shell drops one carriage return before each line feed it reads. Doubling it keeps a
   // CRLF inside a string literal as it was sent; outside a literal it is blank space either way.
-  return { args, input: `${text}\n`.replaceAll('\r\n', '\r\r\n'), explain: shape.firstKeyword === 'EXPLAIN' && shape.statements === 1 && params.length === 0 };
+  // ".changes on": the shell reports the rows each statement changed, which -json alone leaves out.
+  return { args, input: `.changes on\n${text}\n`.replaceAll('\r\n', '\r\r\n'), explain: shape.firstKeyword === 'EXPLAIN' && shape.statements === 1 && params.length === 0 };
 }
 
 /** Turns the shell's error output into a message about the caller's SQL. */
@@ -141,9 +142,11 @@ export function createDuckdbAdapter(options: DuckdbAdapterOptions): SqlAdapter {
       const run = await child.finally(() => running.delete(child));
       if (run.code !== 0 || run.stderr.trim() !== '') throw new EngineError('query_failed', duckdbErrorMessage(run.stderr));
       const durationMs = () => Math.round(performance.now() - started);
-      if (explain) return { results: [{ columns: ['plan'], rows: [{ plan: run.stdout.trimEnd() }], rowCount: 1 }], durationMs: durationMs() };
+      const { text, total } = takeChanges(run.stdout);
+      const changes = total ?? 0;
+      if (explain) return { results: [{ columns: ['plan'], rows: [{ plan: text.trimEnd() }], rowCount: 1 }], changes, durationMs: durationMs() };
       try {
-        return { results: parseResultSets(run.stdout, { nonFinite: true }), durationMs: durationMs() };
+        return { results: parseResultSets(text, { nonFinite: true }), changes, durationMs: durationMs() };
       } catch (error) {
         throw new EngineError('query_failed', 'the engine returned output that could not be read', { cause: error });
       }
