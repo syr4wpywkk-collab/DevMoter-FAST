@@ -792,7 +792,7 @@
 }
 
 .api-advanced-settings summary::after {
-  content: "＋";
+  content: "+";
   margin-left: auto;
   font-size: 16px;
   font-weight: 500;

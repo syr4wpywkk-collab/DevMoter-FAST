@@ -370,7 +370,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
           <div class="ocx-composer-foot">
             <div class="ocx-composer-left">
-              <button id="ocxPlus" type="button" class="ocx-mini-button" aria-label="${escapeHtml(t("opencode.composer.attachAria"))}">＋</button>
+              <button id="ocxPlus" type="button" class="ocx-mini-button" aria-label="${escapeHtml(t("opencode.composer.attachAria"))}">+</button>
               <button id="ocxSlashButton" type="button" class="ocx-mini-button" aria-label="${escapeHtml(t("opencode.commands.openPalette"))}" title="${escapeHtml(t("opencode.commands.openPalette"))}">/</button>
               <span id="ocxActivity" class="ocx-activity">${escapeHtml(t("opencode.activity.offline"))}</span>
             </div>

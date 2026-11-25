@@ -1499,7 +1499,7 @@ export const zhHant = {
   "agentConsole.sheetSubtitle": "透過正常的 DevMoter 核准流程執行。",
   "agentConsole.modeLabel": "模式",
   "agentConsole.detailsSummary": "詳細資料",
-  "agentConsole.newModeBtn": "＋ 自訂模式",
+  "agentConsole.newModeBtn": "+ 自訂模式",
   "agentConsole.editModeBtn": "編輯所選",
   "agentConsole.modeIdLabel": "模式 ID",
   "agentConsole.modeNameLabel": "名稱",
