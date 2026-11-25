@@ -1790,6 +1790,7 @@ export const zhHant = {
   "workflow.refreshing": "重新整理中…",
   "workflow.ready": "就緒",
   "workflow.noChangesToReview": "沒有待審查的變更",
+  "workflow.gitRequiredHint": "在 Git 應用程式中檢查此專案，或在專案資料夾中執行 git init 以啟用 Git 功能。",
   "workflow.filterAria": "依判定狀態篩選檔案",
   "workflow.filterAll": "全部",
   "workflow.filterPending": "待定",
