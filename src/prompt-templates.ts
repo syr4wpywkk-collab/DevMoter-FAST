@@ -111,11 +111,13 @@ export function openPromptTemplates() {
   document.addEventListener("keydown", onKeydown);
 
   function say(message: string, kind: "info" | "error" = "info") {
+    status.parentElement?.querySelector(".pt-inline-gate")?.remove();
     status.textContent = message;
     status.dataset.kind = kind;
   }
   // An unregistered browser gets the shared Trusted device gate, as in Knowledge.
-  // `keepForm` leaves an open editor in place so an unsaved draft is not lost.
+  // `keepForm` leaves an open editor in place so an unsaved draft is not lost; its gate
+  // opens Trusted devices over the sheet without closing it.
   function report(error: unknown, keepForm = false) {
     if (isDeviceAuthError(error) && !keepForm) {
       say("");
@@ -123,6 +125,7 @@ export function openPromptTemplates() {
       return;
     }
     say(error instanceof Error ? error.message : String(error), "error");
+    if (isDeviceAuthError(error)) status.after(createDeviceGate(document, { error, compact: true, className: "pt-inline-gate" }));
   }
   function projectLabel(id: string | null) {
     if (!id) return t("promptTemplates.scopeGlobal");
