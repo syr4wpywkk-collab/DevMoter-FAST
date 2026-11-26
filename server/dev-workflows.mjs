@@ -5,6 +5,8 @@ import { promisify } from "node:util";
 import { createHash, randomUUID } from "node:crypto";
 import { AcpAdapter, createAgentAdapterRegistry, normalizeAcpEnvPassthrough } from "./acp-adapter.mjs";
 import { errorMessage } from "./error-message.mjs";
+import { assertExternalBackendExecutionAllowed } from "./advanced-features.mjs";
+import { verificationExecutionPlan } from "./verification-sandbox.mjs";
 
 const execFileAsync = promisify(execFile);
 const TERMINAL = new Set(["completed", "failed", "cancelled", "canceled", "interrupted", "aborted"]);
@@ -497,7 +499,7 @@ function adapterInventory(settings) {
   return createAgentAdapterRegistry(settings);
 }
 
-export function createDevWorkflowService({ homeDir, codex, projectResolver, configDir, pollMs = 700 }) {
+export function createDevWorkflowService({ homeDir, codex, projectResolver, configDir, pollMs = 700, sandboxEnv = process.env, sandboxSpawn, verificationRun = run }) {
   const settingsPath = join(configDir, "dev-workflows.json");
 
   async function readSettings() {
@@ -664,10 +666,24 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
         break;
       }
       const startedAt = Date.now();
+      let plan;
       try {
-        const result = await run(command.command, command.args, {
-          cwd: project.path,
-          timeoutMs: Math.max(1, Math.min(command.timeoutMs, remainingMs))
+        plan = await verificationExecutionPlan({
+          projectPath: project.path,
+          command: command.command,
+          args: command.args,
+          env: sandboxEnv,
+          spawn: sandboxSpawn
+        });
+        const executionBudget = deadline - Date.now();
+        if (executionBudget <= 0) {
+          timedOut = true;
+          break;
+        }
+        const result = await verificationRun(plan.command, plan.args, {
+          cwd: plan.cwd,
+          env: plan.env,
+          timeoutMs: Math.max(1, Math.min(command.timeoutMs, executionBudget))
         });
         const stdout = clip(result.stdout, 96000);
         const stderr = clip(result.stderr, 48000);
@@ -676,6 +692,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
           name: command.name,
           ok: true,
           exitCode: 0,
+          executionMode: plan.mode,
           durationMs: Date.now() - startedAt,
           stdout: stdout.text,
           stderr: stderr.text,
@@ -689,6 +706,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
           name: command.name,
           ok: false,
           exitCode: Number(error?.code) || 1,
+          executionMode: plan?.mode || "blocked",
           durationMs: Date.now() - startedAt,
           stdout: stdout.text,
           stderr: stderr.text,
@@ -707,6 +725,8 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
   }
 
   async function agentTurn({ prompt, cwd, model, readOnly, deadlineMs }) {
+    // Review and repair are external Codex execution paths, too.
+    assertExternalBackendExecutionAllowed("codex", { env: sandboxEnv, ...(sandboxSpawn ? { spawn: sandboxSpawn } : {}) });
     const params = cwd ? { cwd } : {};
     if (model) params.model = model;
     // Declining approvals alone does not stop writes the Codex sandbox already permits.
