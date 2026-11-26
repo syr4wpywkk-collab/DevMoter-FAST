@@ -2,7 +2,7 @@ import { createOfficeStore, OFFICE_LIMITS } from "./server/office/store.mjs";
 import { createOfficeAi } from "./server/office/ai.mjs";
 import http from "node:http";
 import { accessSync, constants as fsConstants } from "node:fs";
-import { lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, open, readFile, readdir, realpath, rename, stat, writeFile } from "node:fs/promises";
 import { basename, delimiter, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
@@ -691,11 +691,14 @@ async function readProjectRegistry() {
 
 async function writeProjectRegistry(projects) {
   await mkdir(PROJECT_CONFIG_DIR, { recursive: true, mode: 0o700 });
+  // Write then rename, so a concurrent reader never sees a half-written registry.
+  const temporary = `${PROJECTS_FILE}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(
-    PROJECTS_FILE,
+    temporary,
     JSON.stringify({ version: 1, projects }, null, 2),
     { mode: 0o600 }
   );
+  await rename(temporary, PROJECTS_FILE);
 }
 
 async function normalizeExistingProjectPath(input) {
