@@ -295,14 +295,14 @@ impl CalcEngine {
             .iter()
             .filter(|(c, v)| {
                 c.sheet_id == sheet_id
+                    && c.row <= r.row
+                    && c.col <= r.col
                     && matches!(v, Value::Error(CalcError::Spill))
                     && self.parsed.contains_key(c)
             })
             .map(|(c, _)| *c)
             .collect();
-        for c in blocked {
-            self.mark_dirty(c);
-        }
+        self.dirty.extend(blocked);
         // Clearing an anchor releases its whole spill.
         for c in self.release_spill(id).into_keys() {
             self.mark_dependents_dirty(c);
@@ -406,6 +406,8 @@ impl CalcEngine {
                 // `=SUM(C2:D3)` replacing a spiller must not read its
                 // stale spilled values).
                 let old = self.release_spill(id);
+                let was_spill =
+                    matches!(self.values.get(&id), Some(Value::Error(CalcError::Spill)));
                 let (value, steps) = {
                     let mut ctx = self.make_ctx(id);
                     let v = ctx.eval(&expr)?;
@@ -417,6 +419,13 @@ impl CalcEngine {
                 }
                 for c in self.apply_result(id, value, old) {
                     self.mark_dependents_dirty(c);
+                }
+                // An anchor re-run because its obstruction was cleared:
+                // its dependents were not dirtied up front.
+                if was_spill
+                    && !matches!(self.values.get(&id), Some(Value::Error(CalcError::Spill)))
+                {
+                    self.mark_dependents_dirty(id);
                 }
                 self.dirty.remove(&id);
                 report.evaluated.push(id);
