@@ -7,7 +7,7 @@ import { join } from "node:path";
 import test from "node:test";
 import vm from "node:vm";
 import { JSDOM } from "jsdom";
-import ts from "typescript";
+import ts from "typescript-legacy";
 import { createTerminalManager } from "../server/terminal.mjs";
 import * as deviceGate from "../src/device-gate.mjs";
 import * as diagnosticsFormat from "../src/diagnostics-format.mjs";

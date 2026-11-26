@@ -14,7 +14,7 @@ const jaI18n = {
   tApp: (id, f) => i18nCore.tApp(id, f, "ja")
 };
 import vm from "node:vm";
-import ts from "typescript";
+import ts from "typescript-legacy";
 import { JSDOM } from "jsdom";
 import { readFile } from "node:fs/promises";
 

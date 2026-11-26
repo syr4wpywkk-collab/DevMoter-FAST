@@ -14,7 +14,7 @@ const jaI18n = {
   tApp: (id, f) => i18nCore.tApp(id, f, "ja")
 };
 import { readFile } from "node:fs/promises";
-import ts from "typescript";
+import ts from "typescript-legacy";
 import { JSDOM } from "jsdom";
 import * as deviceGate from "../src/device-gate.mjs";
 import { renderChatMarkdown } from "../src/chat-markdown.mjs";

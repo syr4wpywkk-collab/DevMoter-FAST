@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import * as i18nCore from "../src/i18n-core.mjs";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
-import ts from "typescript";
+import ts from "typescript-legacy";
 
 const source = await readFile(new URL("../src/system-panel.ts", import.meta.url), "utf8");
 const helperSource = await readFile(new URL("../src/push-readiness.ts", import.meta.url), "utf8");
