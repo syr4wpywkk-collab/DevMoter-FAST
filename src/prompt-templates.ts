@@ -115,8 +115,9 @@ export function openPromptTemplates() {
     status.dataset.kind = kind;
   }
   // An unregistered browser gets the shared Trusted device gate, as in Knowledge.
-  function report(error: unknown) {
-    if (isDeviceAuthError(error)) {
+  // `keepForm` leaves an open editor in place so an unsaved draft is not lost.
+  function report(error: unknown, keepForm = false) {
+    if (isDeviceAuthError(error) && !keepForm) {
       say("");
       body.replaceChildren(createDeviceGate(document, { error, onRegister: close }));
       return;
@@ -267,7 +268,7 @@ export function openPromptTemplates() {
         scope = scopeControl.value;
         say(t("common.saved"));
         showList();
-      }).catch(error => { save.disabled = false; report(error); });
+      }).catch(error => { save.disabled = false; report(error, true); });
     });
     body.append(form);
     name.focus();
