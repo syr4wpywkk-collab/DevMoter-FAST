@@ -47,16 +47,21 @@ test("subagent spawn records explicit parent, scoped context, role and model", a
   assert.equal(run.state, "running");
 });
 
-test("completion and failure are surfaced independently", async () => {
+test("completion and failure are surfaced independently and terminal states stay fixed", async () => {
   const fake = fakeAdapter();
-  const runtime = new SubagentRuntime({ adapters: { codex: fake.adapter }, idFactory: () => "run-2" });
-  await runtime.spawn({ parentSessionId: "parent", task: "test" });
+  const runtime = new SubagentRuntime({ adapters: { codex: fake.adapter } });
+  await runtime.spawn({ id: "run-2", parentSessionId: "parent", task: "test" });
   fake.push({ outputDelta: "hello" });
   fake.push({ state: "completed" });
   assert.equal(runtime.getRun("run-2").output, "hello");
   assert.equal(runtime.getRun("run-2").state, "completed");
   runtime.update("run-2", { state: "failed", error: "late failure" });
-  assert.equal(runtime.getRun("run-2").error, "late failure");
+  assert.equal(runtime.getRun("run-2").state, "completed");
+  assert.equal(runtime.getRun("run-2").error, null);
+  await runtime.spawn({ id: "run-2-failure", parentSessionId: "parent", task: "independent failure" });
+  fake.push({ state: "failed", error: "backend failure" });
+  assert.equal(runtime.getRun("run-2-failure").state, "failed");
+  assert.equal(runtime.getRun("run-2-failure").error, "backend failure");
 });
 
 test("cancel delegates to the selected backend and surfaces cancelled state", async () => {
