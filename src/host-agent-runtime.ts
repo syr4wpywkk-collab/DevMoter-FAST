@@ -34,7 +34,15 @@ export class HostAgentRuntime {
   constructor() {
     this.connectEvents();
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") void this.refresh().catch(() => {});
+      if (document.visibilityState === "visible") {
+        this.connectEvents();
+        void this.refresh().catch(() => {});
+        return;
+      }
+      if (this.reconnectTimer !== null) window.clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+      this.events?.close();
+      this.events = null;
     });
     window.addEventListener("pageshow", () => void this.refresh().catch(() => {}));
     window.addEventListener("online", () => {
@@ -63,7 +71,8 @@ export class HostAgentRuntime {
   }
 
   private connectEvents() {
-    if (this.events || !navigator.onLine) return;
+    // A background tab holds no stream: HTTP/1.1 allows only six per host (#772).
+    if (this.events || !navigator.onLine || document.visibilityState === "hidden") return;
     const source = new EventSource("/api/agent-runs/events");
     this.events = source;
     source.addEventListener("state", event => {

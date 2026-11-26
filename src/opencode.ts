@@ -3276,6 +3276,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
   function connectEvents() {
     if (!shouldOpenEventSource(online, Boolean(eventSource))) return;
+    // A background tab holds no stream: HTTP/1.1 allows only six per host (#772).
+    if (document.visibilityState === "hidden") return;
 
     eventSource = new EventSource("/api/opencode/event");
 
@@ -3928,6 +3930,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
   window.addEventListener("devmoter:surface-changed", () => drafts.sync());
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void resumeFromBackground();
+    else disconnectEvents();
   });
   window.addEventListener("pageshow", () => void resumeFromBackground());
   window.addEventListener("online", () => void resumeFromBackground());

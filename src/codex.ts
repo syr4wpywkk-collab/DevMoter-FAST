@@ -2367,6 +2367,8 @@ export function mountCodexRemote(
 
   function connectEvents() {
     if (!shouldOpenEventSource(online, Boolean(events))) return;
+    // A background tab holds no stream: HTTP/1.1 allows only six per host (#772).
+    if (document.visibilityState === "hidden") return;
     events = new EventSource("/api/codex/events");
 
     events.onopen = () => {
@@ -3654,7 +3656,16 @@ export function mountCodexRemote(
   window.addEventListener("devmoter:surface-changed", () => closeSidebar(false));
   window.addEventListener("devmoter:surface-changed", () => drafts.sync());
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") void resumeFromBackground();
+    if (document.visibilityState === "visible") {
+      void resumeFromBackground();
+      return;
+    }
+    if (reconnectTimer !== null) {
+      window.clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    events?.close();
+    events = null;
   });
   window.addEventListener("pageshow", () => void resumeFromBackground());
   window.addEventListener("online", () => void resumeFromBackground());
