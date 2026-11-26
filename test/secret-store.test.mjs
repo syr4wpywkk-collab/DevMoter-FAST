@@ -7,9 +7,9 @@ import { createSecretStore } from "../server/secret-store.mjs";
 
 const PASSPHRASE = "correct horse battery staple for DevMoter";
 
-async function withStore(run) {
+async function withStore(run, options = {}) {
   const directory = await mkdtemp(join(tmpdir(), "devmoter-secret-store-"));
-  const store = createSecretStore({ filePath: join(directory, "vault.json") });
+  const store = createSecretStore({ ...options, filePath: join(directory, "vault.json") });
   try { await run({ directory, store, filePath: join(directory, "vault.json") }); }
   finally { await store.lock(); await rm(directory, { recursive: true, force: true }); }
 }
@@ -101,4 +101,42 @@ test("secret vault refuses to initialize over existing data and rejects a symlin
     await symlink(unrelated, filePath);
     await assert.rejects(() => store.initialize(PASSPHRASE), /symbolic link|too many levels|ELOOP/i);
   });
+});
+
+test("vault absolute unlock deadline cannot be extended by status polling or secret use", async () => {
+  let clock = 0;
+  await withStore(async ({ store }) => {
+    await store.initialize(PASSPHRASE);
+    const entry = { provider: "openai", name: "test", value: "dummy-value", projectIds: ["project-1"] };
+    const scope = { provider: "openai", projectId: "project-1" };
+    await store.set(entry);
+    clock = 29 * 60_000;
+    assert.equal((await store.status()).unlocked, true);
+    assert.equal(await store.resolve("secret://openai/test", scope), "dummy-value");
+    clock = 30 * 60_000;
+    assert.deepEqual(await store.status(), { initialized: true, unlocked: false, count: null });
+    await assert.rejects(() => store.resolve("secret://openai/test", scope), /locked/);
+    await assert.rejects(() => store.set(entry), /locked/);
+    await assert.rejects(() => store.remove("secret://openai/test"), /locked/);
+    await store.unlock(PASSPHRASE);
+    assert.equal(await store.resolve("secret://openai/test", scope), "dummy-value");
+    clock += 30 * 60_000;
+    // Even without a status request, the first operation must fail closed.
+    await assert.rejects(() => store.list(), /locked/);
+  }, { monotonicNow: () => clock });
+});
+
+test("vault re-unlock establishes a new deadline and manual lock remains idempotent", async () => {
+  let clock = 0;
+  await withStore(async ({ store }) => {
+    await store.initialize(PASSPHRASE);
+    clock = 20 * 60_000;
+    await store.unlock(PASSPHRASE);
+    clock = 30 * 60_000;
+    assert.equal((await store.status()).unlocked, true);
+    clock = 50 * 60_000;
+    assert.equal((await store.status()).unlocked, false);
+    assert.deepEqual(await store.lock(), { locked: true });
+    assert.deepEqual(await store.lock(), { locked: true });
+  }, { monotonicNow: () => clock });
 });
