@@ -81,9 +81,14 @@ Office uses the existing API Chat provider/model configuration and Vault
 authorization. It does not add write operations to the read-only Tools AI
 catalog. Explicit sharing consent is required for every run. Only the
 projected shareable text goes to the selected AI (at most 60 items, 8KB each,
-24KB total; 200 cells for workbooks). Suspicious credential-like contents and
-known secrets are excluded before truncation; the UI shows
-exclusion/truncation notices. Document text is treated as untrusted data.
+24KB total; 200 cells for workbooks). Workbook sharing additionally bounds the
+serialized document-data envelope (including cell addresses, sheet names,
+formulas and JSON overhead) to 24KB. Sheet names and addresses are subject to
+the same content exclusion policy; edit proposals are limited to shared sheets.
+Suspicious credential-like contents and known secrets are excluded before
+truncation; the UI shows exclusion/truncation notices. Document text and
+metadata are treated as untrusted data. These checks are defense in depth, not
+a guarantee that all sensitive content can be detected.
 
 The model may only return validated proposals: `{edits:[{blockId,text}]}` for
 DOCX, `{ops:[replaceText]}` or theme fields for PPTX, `{edits:[{cell,text}]}`
