@@ -684,6 +684,8 @@ fn cell_input_from_typed() {
         ("'=1", Value::Text("=1".into())),
         ("", Value::Blank),
         ("1/2/2024", Value::Text("1/2/2024".into())),
+        ("1e309", Value::Text("1e309".into())),
+        ("-1e309", Value::Text("-1e309".into())),
     ] {
         assert_eq!(
             CellInput::from_typed(typed),

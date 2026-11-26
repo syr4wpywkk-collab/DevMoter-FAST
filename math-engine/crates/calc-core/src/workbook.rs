@@ -56,7 +56,7 @@ impl CellInput {
             Value::Boolean(true)
         } else if s.eq_ignore_ascii_case("FALSE") {
             Value::Boolean(false)
-        } else if let Some(n) = crate::value::parse_number_text(s) {
+        } else if let Some(n) = crate::value::parse_number_text(s).filter(|n| n.is_finite()) {
             Value::Number(n)
         } else {
             Value::Text(s.to_string())
