@@ -391,7 +391,10 @@ impl CalcEngine {
             let dynamic: Vec<CellId> = self
                 .volatile
                 .iter()
-                .filter(|id| self.is_dynamic(id))
+                .filter(|id| {
+                    self.is_dynamic(id)
+                        && !matches!(self.values.get(id), Some(Value::Error(CalcError::Circ)))
+                })
                 .copied()
                 .collect();
             self.dirty.extend(dynamic);

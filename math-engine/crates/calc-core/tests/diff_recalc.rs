@@ -340,3 +340,16 @@ fn dynamic_reference_reads_target_evaluated_later() {
     set(&mut e, "B1", "=5");
     assert_eq!(e.get_value("Sheet1", "A1").unwrap(), Value::Number(10.0));
 }
+
+#[test]
+fn dynamic_reference_cycle_stays_circular_on_reads() {
+    let mut e = engine();
+    set(&mut e, "A1", "=IFERROR(B1,0)+1+INDIRECT(\"C1\")");
+    set(&mut e, "B1", "=A1");
+    for _ in 0..3 {
+        assert_eq!(
+            e.get_value("Sheet1", "A1").unwrap(),
+            Value::Error(calc_core::CalcError::Circ)
+        );
+    }
+}
