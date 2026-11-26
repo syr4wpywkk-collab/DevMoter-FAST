@@ -67,14 +67,6 @@ Do not place OpenCode, Codex, GitHub, provider, or DevMoter credentials in front
 
 The generated DevMoter password file and OpenCode password file are host-side secrets. Keep their filesystem permissions restricted and rotate them if they are disclosed.
 
-## Verification command isolation
-
-Set `DEVMOTER_VERIFICATION_SANDBOX=required` on the host to require Bubblewrap for DevMoter-managed verification commands, including the verification phase of repair. The existing global `DEVMOTER_SANDBOX=required` also requires this isolation and blocks external Codex review/repair execution. Without either required setting, existing verification commands retain host execution for compatibility. A conflicting global `off` setting blocks required verification rather than downgrading.
-
-Required verification uses a dedicated registered project directory, a private temporary home, a fixed minimal environment, read-only system binaries/libraries, and isolated network, PID, IPC and UTS namespaces. It does not mount the host runtime directory or grant extra project access. A failed isolation plan or wrapper execution is not retried on the host. Verification results report the selected execution mode (not an independent attestation of OS isolation).
-
-This is a limited execution profile, not a general external-agent sandbox. Project contents are writable; only register appropriately scoped project directories and keep secrets outside them. Tools installed only in the personal home directory and tests requiring network or host services may not work. CPU/memory quotas, mount provenance, actual namespace availability and ARM64 compatibility require separate host validation.
-
 ## Host integration boundary
 
 The Antigravity and Claude Code launchers are treated as privileged host integrations:
@@ -129,6 +121,14 @@ A useful private report includes the affected commit/version, environment, secur
 ## Dependency and upstream security
 
 Keep Node.js, OpenCode, Codex CLI, GitHub CLI, Tailscale/reverse-proxy components, and the operating system updated according to their respective security guidance. Upstream vulnerabilities should also be reported to the relevant project when appropriate.
+
+## Verification command isolation
+
+Set `DEVMOTER_VERIFICATION_SANDBOX=required` on the host to require Bubblewrap for DevMoter-managed verification commands, including the verification phase of repair. The existing global `DEVMOTER_SANDBOX=required` also requires this isolation and blocks external Codex review/repair execution. Without either required setting, existing verification commands retain host execution for compatibility. A conflicting global `off` setting blocks required verification rather than downgrading.
+
+Required verification uses a dedicated registered project directory, a private temporary home, a fixed minimal environment, read-only system binaries/libraries, and isolated network, PID, IPC and UTS namespaces. It does not mount the host runtime directory or grant extra project access. A failed isolation plan or wrapper execution is not retried on the host. Verification results report the selected execution mode (not an independent attestation of OS isolation).
+
+This is a limited execution profile, not a general external-agent sandbox. Project contents are writable; only register appropriately scoped project directories and keep secrets outside them. Tools installed only in the personal home directory and tests requiring network or host services may not work. CPU/memory quotas, mount provenance, actual namespace availability and ARM64 compatibility require separate host validation.
 
 ## Installer v2 foundation (Experimental)
 
