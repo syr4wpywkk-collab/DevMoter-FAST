@@ -536,7 +536,7 @@ export function assertExternalBackendExecutionAllowed(backend, options = {}) {
  */
 // projectMount: "read-write" (agent tools), "read-only", or "none" (a browser
 // has no business reading or writing the project's files).
-export function buildBubblewrapCommand({ projectPath, grants = [], command, args = [], allowNetwork = false, failClosed = false, projectMount = "read-write", unsharePid = false, chdir = null, env = process.env, spawn = spawnSync }) {
+export function buildBubblewrapCommand({ projectPath, grants = [], command, args = [], allowNetwork = false, failClosed = false, projectMount = "read-write", unsharePid = false, privateRuntime = false, chdir = null, env = process.env, spawn = spawnSync }) {
   if (!["read-write", "read-only", "none"].includes(projectMount)) throw new Error("Unknown sandbox project mount: " + projectMount);
   const status = sandboxStatus({ env, spawn });
   if (status.mode === "off") {
@@ -553,7 +553,11 @@ export function buildBubblewrapCommand({ projectPath, grants = [], command, args
   const bwrapArgs = ["--die-with-parent", "--new-session", "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp"];
   if (!allowNetwork) bwrapArgs.push("--unshare-net");
   if (unsharePid) bwrapArgs.push("--unshare-pid");
-  for (const systemPath of ["/usr", "/bin", "/lib", "/lib64", "/etc", "/run"]) bwrapArgs.push("--ro-bind-try", systemPath, systemPath);
+  if (privateRuntime) bwrapArgs.push("--unshare-ipc", "--unshare-uts");
+  const systemPaths = privateRuntime
+    ? ["/usr", "/bin", "/lib", "/lib64", "/etc/ld.so.cache", "/etc/localtime"]
+    : ["/usr", "/bin", "/lib", "/lib64", "/etc", "/run"];
+  for (const systemPath of systemPaths) bwrapArgs.push("--ro-bind-try", systemPath, systemPath);
   if (projectMount === "read-write") bwrapArgs.push("--bind", projectPath, projectPath);
   else if (projectMount === "read-only") bwrapArgs.push("--ro-bind", projectPath, projectPath);
   for (const grant of grants) {
