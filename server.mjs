@@ -2212,6 +2212,22 @@ async function opencodeSessionRoute(req, res, pathname) {
   return true;
 }
 
+// The event stream names no project (EventSource sends no headers), so it
+// listens to every registered project directory besides OPENCODE_DIRECTORY.
+async function openCodeProjectEventDirectories() {
+  const base = await realpath(OPENCODE_DIRECTORY).catch(() => resolve(OPENCODE_DIRECTORY));
+  const directories = new Set();
+  for (const project of await readProjectRegistry().catch(() => [])) {
+    try {
+      const actual = await normalizeExistingProjectPath(project.path);
+      if (actual !== base) directories.add(actual);
+    } catch {
+      // Skip projects whose folder is gone or no longer allowed.
+    }
+  }
+  return [...directories];
+}
+
 // The running generation's event stream, rewritten frame by frame into the
 // canonical vocabulary (server/opencode-adapter.mjs canonicalOpenCodeEvent).
 async function opencodeEvents(req, res) {
@@ -2230,13 +2246,30 @@ async function opencodeEvents(req, res) {
   req.on("aborted", abortUpstream);
   res.on("close", abortUpstream);
   try {
-    const upstream = await fetch(OPENCODE_ORIGIN + path, {
-      headers: await openCodeHeadersForRequest(req, { accept: "text/event-stream" }),
-      signal: upstreamAbort.signal
-    });
-    if (!upstream.ok || !upstream.body || !String(upstream.headers.get("content-type") || "").includes("text/event-stream")) {
-      json(res, 502, { error: `OpenCode event stream ${path} answered HTTP ${upstream.status}` });
+    // OpenCode publishes events per directory, and sessions run in their
+    // project's directory, so follow OPENCODE_DIRECTORY and every project.
+    const openStream = async headers => {
+      const upstream = await fetch(OPENCODE_ORIGIN + path, { headers, signal: upstreamAbort.signal });
+      const ok = upstream.ok && upstream.body && String(upstream.headers.get("content-type") || "").includes("text/event-stream");
+      if (!ok) upstream.body?.cancel().catch(() => {});
+      return { upstream, ok };
+    };
+    const primary = await openStream(await openCodeHeadersForRequest(req, { accept: "text/event-stream" }));
+    if (!primary.ok) {
+      json(res, 502, { error: `OpenCode event stream ${path} answered HTTP ${primary.upstream.status}` });
       return;
+    }
+    const streams = [primary.upstream];
+    if (!req.headers["x-pocket-project-id"]) {
+      for (const directory of await openCodeProjectEventDirectories()) {
+        try {
+          const extra = await openStream(openCodeHeaders({ "x-opencode-directory": directory, accept: "text/event-stream" }));
+          if (extra.ok) streams.push(extra.upstream);
+        } catch {
+          if (upstreamAbort.signal.aborted) throw new Error("aborted");
+          // A project whose stream fails must not take the others down.
+        }
+      }
     }
     if (endIfResponseStarted(res)) return;
     res.writeHead(200, {
@@ -2245,39 +2278,44 @@ async function opencodeEvents(req, res) {
       "cache-control": "no-cache, no-transform",
       connection: "keep-alive"
     });
-    const read = createSseReader();
-    const decoder = new TextDecoder();
-    const reader = upstream.body.getReader();
-    const emitFrames = chunk => {
-      for (const frame of read(chunk)) {
-        const event = canonicalOpenCodeEvent(generation, frame);
-        if (event && !res.writableEnded && !res.destroyed) {
-          if (event.type === "session.deleted") {
-            const deletedSessionId = String(
-              event.properties?.info?.id ??
-              event.properties?.sessionID ??
-              event.properties?.id ??
-              ""
-            );
-            if (deletedSessionId) openCodeSessionModes.delete(deletedSessionId);
+    const pump = async upstream => {
+      const read = createSseReader();
+      const decoder = new TextDecoder();
+      const reader = upstream.body.getReader();
+      const emitFrames = chunk => {
+        for (const frame of read(chunk)) {
+          const event = canonicalOpenCodeEvent(generation, frame);
+          if (event && !res.writableEnded && !res.destroyed) {
+            if (event.type === "session.deleted") {
+              const deletedSessionId = String(
+                event.properties?.info?.id ??
+                event.properties?.sessionID ??
+                event.properties?.id ??
+                ""
+              );
+              if (deletedSessionId) openCodeSessionModes.delete(deletedSessionId);
+            }
+            res.write("data: " + stringifyRedactedJson(event) + "\n\n");
           }
-          res.write("data: " + stringifyRedactedJson(event) + "\n\n");
         }
+      };
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done || res.writableEnded || res.destroyed) break;
+          emitFrames(decoder.decode(value, { stream: true }));
+        }
+        const tail = decoder.decode();
+        if (tail && !res.writableEnded && !res.destroyed) {
+          emitFrames(tail);
+        }
+      } finally {
+        reader.releaseLock();
       }
     };
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done || res.writableEnded || res.destroyed) break;
-        emitFrames(decoder.decode(value, { stream: true }));
-      }
-      const tail = decoder.decode();
-      if (tail && !res.writableEnded && !res.destroyed) {
-        emitFrames(tail);
-      }
-    } finally {
-      reader.releaseLock();
-    }
+    // The primary stream ends the response; extra project streams only add events.
+    for (const extra of streams.slice(1)) void pump(extra).catch(() => {});
+    await pump(primary.upstream);
     endIfResponseStarted(res);
   } catch (error) {
     if (upstreamAbort.signal.aborted) {
