@@ -8,8 +8,9 @@
 //! dependency cycle evaluate to [`CalcError::Circ`].
 //!
 //! The evaluation step budget ([`MAX_EVAL_STEPS`]) spans a whole
-//! `recalculate` call: exceeding it aborts with
-//! [`EngineError::Eval`], leaving un-evaluated cells dirty.
+//! `recalculate` call (a rerun of dynamic references gets its own):
+//! exceeding it aborts with [`EngineError::Eval`], leaving un-evaluated
+//! cells dirty.
 
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -402,6 +403,7 @@ impl CalcEngine {
         // A dynamic reference can read a formula evaluated after it in the
         // same pass (no static edge orders them): rerun those once more.
         let mut reran_dynamic = false;
+        let mut budget_base = 0;
         for _ in 0..MAX_RECALC_PASSES {
             if self.dirty.is_empty() {
                 return Ok(report);
@@ -446,7 +448,7 @@ impl CalcEngine {
                     (v, ctx.steps())
                 };
                 report.steps += steps;
-                if report.steps > crate::eval::MAX_EVAL_STEPS {
+                if report.steps - budget_base > crate::eval::MAX_EVAL_STEPS {
                     return Err(EngineError::Eval(EvalError::StepBudgetExceeded));
                 }
                 for c in self.apply_result(id, value, old) {
@@ -462,6 +464,7 @@ impl CalcEngine {
             }
             if evaluated_any && !reran_dynamic {
                 reran_dynamic = true;
+                budget_base = report.steps;
                 self.dirty.extend(early_dynamic);
             }
         }
