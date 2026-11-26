@@ -493,16 +493,42 @@ export function createOfficeAi({ store, prepareChat, authorize }) {
   // XLSX counterpart of projection(): the stored cells as {cell, text} where
   // text is the displayed content ("=formula" or the computed value), plus the
   // structured value/formula for Q&A. Same consent/secret/cap rules.
-  const cellProjection = (document, prepared) => {
-    let budget = 24000;
+  const cellProjection = (document, prepared, { includeSheets = false } = {}) => {
+    const maxBytes = 24000;
     let excluded = 0;
     let truncated = false;
     const cells = [];
-    outer: for (const sheet of document.sheets) {
+    const sheets = [];
+    const fits = (nextSheets, nextCells) => Buffer.byteLength(JSON.stringify(
+      includeSheets ? { sheets: nextSheets, cells: nextCells } : { cells: nextCells },
+    )) <= maxBytes;
+    const inspect = (value) => {
+      const text = safeText(value, prepared.secrets, 4000);
+      if (text === "[安全上、内容を除外]") {
+        excluded++;
+        return false;
+      }
+      if (text !== value) {
+        truncated = true;
+        return false;
+      }
+      return true;
+    };
+    for (const sheet of document.sheets) {
+      // Metadata is document content too. Do not share a name or its addresses
+      // if the name itself is outside the sharing policy.
+      if (!inspect(sheet.name)) continue;
+      if (includeSheets) {
+        if (sheets.length >= 200 || !fits([...sheets, sheet.name], cells)) {
+          truncated = true;
+          continue;
+        }
+        sheets.push(sheet.name);
+      }
       for (const cell of sheet.cells) {
         if (cells.length >= 200) {
           truncated = true;
-          break outer;
+          break;
         }
         const address = cellAddress(sheet.name, cell.ref);
         const raw =
@@ -511,25 +537,30 @@ export function createOfficeAi({ store, prepareChat, authorize }) {
             : cell.value === undefined
               ? ""
               : String(cell.value);
-        const text = safeText(raw, prepared.secrets, 4000);
-        if (text === "[安全上、内容を除外]") {
-          excluded++;
-          continue;
-        }
-        if (text !== raw || Buffer.byteLength(text) + Buffer.byteLength(address) > budget) {
+        if (!inspect(address) || !inspect(raw)) continue;
+        const entry = {
+          cell: address,
+          text: raw,
+          value: typeof cell.value === "number" || typeof cell.value === "boolean" ? cell.value : undefined,
+          formula: cell.formula,
+        };
+        // Scan the complete serialized entry and count metadata, JSON
+        // escaping and duplicate formula fields against the same envelope.
+        if (!inspectSerializedEntry(entry)) continue;
+        if (!fits(sheets, [...cells, entry])) {
           truncated = true;
           continue;
         }
-        budget -= Buffer.byteLength(text);
-        cells.push({
-          cell: address,
-          text,
-          value: typeof cell.value === "number" || typeof cell.value === "boolean" ? cell.value : undefined,
-          formula: cell.formula,
-        });
+        cells.push(entry);
       }
     }
-    return { cells, excluded, truncated };
+    return { cells, sheets, excluded, truncated };
+
+    function inspectSerializedEntry(entry) {
+      // Each string is checked before serialization so quoting cannot conceal
+      // a known secret or turn the exclusion marker into shared data.
+      return Object.values(entry).every(value => typeof value !== "string" || inspect(value));
+    }
   };
   const prepare = async (payload, identity) => {
     if (
@@ -572,8 +603,7 @@ export function createOfficeAi({ store, prepareChat, authorize }) {
    * ever becomes a proposal — the store writes nothing here.
    */
   const startCells = async (payload, identity, prepared, document) => {
-    const { cells, excluded, truncated } = cellProjection(document, prepared);
-    const sheets = document.sheets.map((sheet) => sheet.name);
+    const { cells, sheets, excluded, truncated } = cellProjection(document, prepared, { includeSheets: true });
     if (!sheets.length) throw new Error("AIへ共有できるシートがありません。");
     const id = randomUUID();
     const controller = new AbortController();
