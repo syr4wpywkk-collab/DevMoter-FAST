@@ -572,7 +572,7 @@ export function mountSettingsPanel() {
           ${trusted
             ? ""
             : diagnosticsUnavailable
-              ? `${hostFailureGuide()}<div class="devmoter-settings-actions"><button type="button" data-action="devices:retry">${escapeHtml(t("common.retry"))}</button></div>`
+              ? `${hostFailureGuide()}<div class="devmoter-settings-actions"><button type="button" data-action="devices:retry">${escapeHtml(t("common.refresh"))}</button></div>`
               : `<div class="devmoter-settings-note" data-device-guidance>${escapeHtml(untrustedGuidance)}</div>`}
         </div>
       </section>

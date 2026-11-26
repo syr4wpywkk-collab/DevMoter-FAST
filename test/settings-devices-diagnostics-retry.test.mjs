@@ -74,7 +74,7 @@ test("Trusted Devices shows loading, then a retry when diagnostics fail, then th
     await settle();
     const retry = scroll.querySelector('[data-action="devices:retry"]');
     assert.ok(retry, "retry offered when diagnostics fail");
-    assert.equal(retry.textContent, ja("common.retry"));
+    assert.equal(retry.textContent, ja("common.refresh"), "matches the failure guide, which says to press Refresh");
     assert.ok(scroll.querySelector("[data-diagnostics-host-guide]"), "the failure is explained");
     assert.equal(scroll.querySelector("[data-device-guidance]"), null, "no misleading guidance");
 
