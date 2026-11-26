@@ -288,6 +288,19 @@ impl CalcEngine {
                 self.dirty.insert(anchor);
             }
         }
+        // The cleared cell may have been what blocked an anchor's spill:
+        // re-evaluate `#SPILL!` anchors on this sheet so they can spill.
+        let blocked: Vec<CellId> = self
+            .values
+            .iter()
+            .filter(|(c, v)| {
+                c.sheet_id == sheet_id
+                    && matches!(v, Value::Error(CalcError::Spill))
+                    && self.parsed.contains_key(c)
+            })
+            .map(|(c, _)| *c)
+            .collect();
+        self.dirty.extend(blocked);
         // Clearing an anchor releases its whole spill.
         for c in self.release_spill(id).into_keys() {
             self.mark_dependents_dirty(c);

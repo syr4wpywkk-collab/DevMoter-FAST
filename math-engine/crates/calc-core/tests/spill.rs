@@ -340,3 +340,14 @@ fn spilled_cells_are_not_stored_inputs() {
     assert!(e.workbook().cell_a1("Sheet1", "C3").unwrap().is_none());
     assert_eq!(num(&get(&mut e, "C3")), 4.0);
 }
+
+#[test]
+fn clearing_obstruction_restores_spill() {
+    let mut e = engine();
+    set_num(&mut e, "C2", 99.0);
+    set(&mut e, "B2", "={1,2;3,4}");
+    assert_eq!(err(&get(&mut e, "B2")), CalcError::Spill);
+    e.clear_cell("Sheet1", "C2").unwrap();
+    assert_eq!(num(&get(&mut e, "B2")), 1.0);
+    assert_eq!(num(&get(&mut e, "C2")), 2.0);
+}
