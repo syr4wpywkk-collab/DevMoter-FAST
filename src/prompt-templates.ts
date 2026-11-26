@@ -101,14 +101,17 @@ export function openPromptTemplates() {
   function close() {
     sheet.remove();
     panel = null;
-    document.removeEventListener("keydown", onKeydown);
+    document.removeEventListener("keydown", onKeydown, true);
     if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
     returnFocus = null;
   }
   function onKeydown(event: KeyboardEvent) {
+    // Settings opened over the sheet (to register this device) handles its own Esc;
+    // capture runs before Settings closes, so that Esc never also closes this sheet.
+    if (document.body.classList.contains("devmoter-settings-open")) return;
     if (event.key === "Escape" && panel) close();
   }
-  document.addEventListener("keydown", onKeydown);
+  document.addEventListener("keydown", onKeydown, true);
 
   function say(message: string, kind: "info" | "error" = "info") {
     status.parentElement?.querySelector(".pt-inline-gate")?.remove();
