@@ -135,7 +135,9 @@ export class SubagentRuntime {
     this.policy = {
       maxDepth: Math.max(0, Math.min(8, positiveInt(policy.maxDepth, 3))),
       tokenBudget: Math.max(1, positiveInt(policy.tokenBudget, 12000)),
-      turnBudget: Math.max(1, positiveInt(policy.turnBudget, 8))
+      turnBudget: Math.max(1, positiveInt(policy.turnBudget, 8)),
+      maxActiveRuns: Math.min(32, positiveInt(policy.maxActiveRuns, 8)),
+      maxActiveFleets: Math.min(16, positiveInt(policy.maxActiveFleets, 8))
     };
     this.runs = new Map();
     this.fleets = new Map();
@@ -237,6 +239,9 @@ export class SubagentRuntime {
   async runFleet(specs, { id, concurrency = 2 } = {}) {
     if (!Array.isArray(specs) || specs.length === 0) throw new Error("Fleet requires at least one agent spec");
     if (specs.length > 24) throw new Error("Fleet is limited to 24 agents");
+    if ([...this.fleets.values()].filter(fleet => fleet.state === "running").length >= this.policy.maxActiveFleets) {
+      throw Object.assign(new Error("Host agent fleet limit reached"), { status: 429 });
+    }
     const fleetId = String(id || this.idFactory());
     if (this.fleets.has(fleetId)) throw new Error(`Duplicate fleet id: ${fleetId}`);
     const fleet = {
@@ -258,6 +263,8 @@ export class SubagentRuntime {
   async cancelFleet(id) {
     const fleet = this.fleets.get(String(id));
     if (!fleet) throw new Error(`Unknown fleet: ${String(id)}`);
+    // Stop scheduling before awaiting cancellation of active siblings.
+    fleet.state = "cancelled";
     fleet.queue = [];
     const active = fleet.runIds
       .map(runId => this.runs.get(runId))
@@ -306,6 +313,12 @@ export class SubagentRuntime {
       ? intersectCapabilityPolicies(parentRun.capabilityPolicy, spec.capabilityPolicy)
       : normalizeCapabilityPolicy(spec.capabilityPolicy);
 
+    // Admission is shared by direct, nested, second-opinion and fleet runs.
+    // Starting and approval-waiting runs also occupy a slot.
+    if (this.#activeRunCount() >= this.policy.maxActiveRuns) {
+      throw Object.assign(new Error("Host agent concurrency limit reached"), { status: 429 });
+    }
+
     // Validate the run identity before reserving any budget from its parent.
     const runId = String(spec.id || this.idFactory());
     if (this.runs.has(runId)) throw new Error(`Duplicate subagent run id: ${runId}`);
@@ -327,7 +340,6 @@ export class SubagentRuntime {
       parentRun.budget.tokensRemaining -= tokenLimit;
       parentRun.budget.turnsRemaining -= turnLimit;
       parentRun.updatedAt = Date.now();
-      this.#emit(parentRun);
     } else {
       tokenLimit = Math.min(positiveInt(spec.tokenBudget, this.policy.tokenBudget), this.policy.tokenBudget);
       turnLimit = Math.min(positiveInt(spec.turnBudget, this.policy.turnBudget), this.policy.turnBudget);
@@ -366,6 +378,8 @@ export class SubagentRuntime {
     };
 
     this.runs.set(run.id, run);
+    // Register the slot before callbacks can synchronously request another run.
+    if (parentRun) this.#emit(parentRun);
     this.#emit(run);
 
     try {
@@ -428,6 +442,8 @@ export class SubagentRuntime {
   update(id, patch = {}) {
     const run = this.runs.get(String(id));
     if (!run) throw new Error(`Unknown subagent run: ${String(id)}`);
+    // A terminal run must never become active again through a late callback.
+    if (TERMINAL_RUN_STATES.has(run.state)) return snapshot(run);
     if (patch.state && !RUN_STATES.has(patch.state)) {
       throw new Error(`Unknown subagent state: ${String(patch.state)}`);
     }
@@ -448,8 +464,11 @@ export class SubagentRuntime {
     ]) delete next[field];
     Object.assign(run, next, { updatedAt: Date.now() });
     this.#emit(run);
-    if (run.fleetId && TERMINAL_RUN_STATES.has(run.state)) {
-      void this.#pumpFleet(run.fleetId);
+    if (TERMINAL_RUN_STATES.has(run.state)) {
+      // A slot released by any run can unblock a different fleet.
+      for (const fleet of this.fleets.values()) {
+        if (fleet.state === "running") void this.#pumpFleet(fleet.id);
+      }
     }
     return snapshot(run);
   }
@@ -480,16 +499,24 @@ export class SubagentRuntime {
     this.listeners.clear();
   }
 
+  #activeRunCount() {
+    let active = 0;
+    for (const run of this.runs.values()) {
+      if (!TERMINAL_RUN_STATES.has(run.state)) active += 1;
+    }
+    return active;
+  }
+
   async #pumpFleet(id) {
     const fleet = this.fleets.get(String(id));
     if (!fleet || fleet.pumping || fleet.state !== "running") return;
     fleet.pumping = true;
     try {
-      while (fleet.queue.length) {
+      while (fleet.state === "running" && fleet.queue.length) {
         const activeCount = fleet.runIds
           .map(runId => this.runs.get(runId))
           .filter(run => run && !TERMINAL_RUN_STATES.has(run.state)).length;
-        if (activeCount >= fleet.concurrency) break;
+        if (activeCount >= fleet.concurrency || this.#activeRunCount() >= this.policy.maxActiveRuns) break;
 
         const spec = fleet.queue.shift();
         const runId = String(spec.id || this.idFactory());
@@ -508,7 +535,7 @@ export class SubagentRuntime {
       const activeCount = fleet.runIds
         .map(runId => this.runs.get(runId))
         .filter(run => run && !TERMINAL_RUN_STATES.has(run.state)).length;
-      if (fleet.queue.length === 0 && activeCount === 0) {
+      if (fleet.state === "running" && fleet.queue.length === 0 && activeCount === 0) {
         fleet.state = fleet.errors.length ? "completed_with_failures" : "completed";
         fleet.updatedAt = Date.now();
       }

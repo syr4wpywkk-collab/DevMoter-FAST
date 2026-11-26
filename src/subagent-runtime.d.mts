@@ -41,7 +41,7 @@ export class SubagentRuntime {
   constructor(options?: {
     adapters?: Record<string, SubagentAdapter>;
     idFactory?: () => string;
-    policy?: { maxDepth?: number; tokenBudget?: number; turnBudget?: number };
+    policy?: { maxDepth?: number; tokenBudget?: number; turnBudget?: number; maxActiveRuns?: number; maxActiveFleets?: number };
   });
   registerAdapter(name: string, adapter: SubagentAdapter): void;
   subscribe(listener: (run: SubagentRun) => void): () => boolean;
