@@ -890,6 +890,7 @@ async function projectsCreateOrAdd(req, res) {
 
     projects.unshift(project);
     await writeProjectRegistry(projects);
+    for (const follow of openCodeEventFollowers) follow(project.path);
     json(res, 201, { project, existed: false });
   } catch (error) {
     json(res, 400, { error: errorMessage(error) });
@@ -2217,6 +2218,9 @@ async function opencodeSessionRoute(req, res, pathname) {
 
 // The event stream names no project (EventSource sends no headers), so it
 // listens to every registered project directory besides OPENCODE_DIRECTORY.
+// Open OpenCode event streams that should also follow a newly added project.
+const openCodeEventFollowers = new Set();
+
 async function openCodeProjectEventDirectories() {
   const base = await realpath(OPENCODE_DIRECTORY).catch(() => resolve(OPENCODE_DIRECTORY));
   const directories = new Set();
@@ -2263,11 +2267,18 @@ async function opencodeEvents(req, res) {
       return;
     }
     const streams = [primary.upstream];
-    if (!req.headers["x-pocket-project-id"]) {
+    const followProjects = !req.headers["x-pocket-project-id"];
+    const followed = new Set();
+    const openExtra = async directory => {
+      followed.add(directory);
+      const extra = await openStream(openCodeHeaders({ "x-opencode-directory": directory, accept: "text/event-stream" }));
+      return extra.ok ? extra.upstream : null;
+    };
+    if (followProjects) {
       for (const directory of await openCodeProjectEventDirectories()) {
         try {
-          const extra = await openStream(openCodeHeaders({ "x-opencode-directory": directory, accept: "text/event-stream" }));
-          if (extra.ok) streams.push(extra.upstream);
+          const upstream = await openExtra(directory);
+          if (upstream) streams.push(upstream);
         } catch {
           if (upstreamAbort.signal.aborted) throw new Error("aborted");
           // A project whose stream fails must not take the others down.
@@ -2318,7 +2329,21 @@ async function opencodeEvents(req, res) {
     };
     // The primary stream ends the response; extra project streams only add events.
     for (const extra of streams.slice(1)) void pump(extra).catch(() => {});
-    await pump(primary.upstream);
+    const follow = directory => {
+      if (followed.has(directory) || res.writableEnded || res.destroyed) return;
+      void (async () => {
+        const base = await realpath(OPENCODE_DIRECTORY).catch(() => resolve(OPENCODE_DIRECTORY));
+        if (directory === base) return;
+        const upstream = await openExtra(directory);
+        if (upstream) await pump(upstream);
+      })().catch(() => {});
+    };
+    if (followProjects) openCodeEventFollowers.add(follow);
+    try {
+      await pump(primary.upstream);
+    } finally {
+      openCodeEventFollowers.delete(follow);
+    }
     endIfResponseStarted(res);
   } catch (error) {
     if (upstreamAbort.signal.aborted) {

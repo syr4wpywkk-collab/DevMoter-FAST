@@ -72,7 +72,11 @@ test("OpenCode event stream merges OPENCODE_DIRECTORY and registered project dir
   const authPassword = "event-directories-password-123";
   const fixture = JSON.parse(await readFile(new URL("./fixtures/opencode/opencode-v1.19.5.json", import.meta.url), "utf8"));
 
+  const addedDir = join(home, "added");
+  await mkdir(addedDir);
   const eventDirectories = [];
+  let holdDefault = false;
+  const heldDefault = [];
   const openCode = http.createServer((req, res) => {
     if (req.url === "/event") {
       const directory = String(req.headers["x-opencode-directory"] || "");
@@ -80,8 +84,10 @@ test("OpenCode event stream merges OPENCODE_DIRECTORY and registered project dir
       res.writeHead(200, { "content-type": "text/event-stream" });
       const event = { type: "session.updated", properties: { sessionID: `ses_${eventDirectories.length}`, info: { id: `ses_${eventDirectories.length}`, title: directory } } };
       res.write(`data: ${JSON.stringify(event)}\n\n`);
-      if (directory === defaultDir) setTimeout(() => res.end(), 300);
-      else res.end();
+      if (directory === defaultDir) {
+        if (holdDefault) heldDefault.push(res);
+        else setTimeout(() => res.end(), 300);
+      } else if (directory !== addedDir) res.end();
       return;
     }
     res.setHeader("content-type", "application/json");
@@ -109,18 +115,46 @@ test("OpenCode event stream merges OPENCODE_DIRECTORY and registered project dir
 
   try {
     await waitForReady(child);
-    const response = await rawGet(port, "/api/opencode/event", {
+    const headers = {
       authorization: `Basic ${Buffer.from(`devmoter:${authPassword}`).toString("base64")}`,
-      origin: `http://127.0.0.1:${port}`,
-      accept: "text/event-stream"
-    });
+      origin: `http://127.0.0.1:${port}`
+    };
+    const response = await rawGet(port, "/api/opencode/event", { ...headers, accept: "text/event-stream" });
     assert.equal(response.status, 200, response.body);
     assert.deepEqual([...eventDirectories].sort(), [defaultDir, projectDir].sort());
     const titles = response.body.split("\n")
       .filter(line => line.startsWith("data: "))
       .map(line => JSON.parse(line.slice(6)).properties?.info?.title);
     assert.deepEqual([...titles].sort(), [defaultDir, projectDir].sort());
+
+    // A project added while the stream is open is followed without reconnecting.
+    holdDefault = true;
+    let body = "";
+    const streamed = new Promise((resolveStream, reject) => {
+      const req = http.request({ host: "127.0.0.1", port, path: "/api/opencode/event", method: "GET", headers: { ...headers, accept: "text/event-stream" } }, res => {
+        res.on("data", chunk => {
+          body += chunk.toString();
+          if (body.includes(JSON.stringify(addedDir))) {
+            resolveStream();
+            req.destroy();
+          }
+        });
+      });
+      req.on("error", error => { if (!body.includes(JSON.stringify(addedDir))) reject(error); });
+      req.end();
+    });
+    const deadline = Date.now() + 5000;
+    while (!heldDefault.length && Date.now() < deadline) await new Promise(r => setTimeout(r, 20));
+    const added = await fetch(`http://127.0.0.1:${port}/api/projects`, {
+      method: "POST",
+      headers: { ...headers, "content-type": "application/json", "x-pocket-operation-id": "add-project-op-1" },
+      body: JSON.stringify({ path: addedDir })
+    });
+    assert.equal(added.status, 201, await added.clone().text());
+    await streamed;
+    assert.ok(eventDirectories.includes(addedDir));
   } finally {
+    for (const res of heldDefault) res.end();
     child.kill();
     openCode.close();
     await rm(home, { recursive: true, force: true });
