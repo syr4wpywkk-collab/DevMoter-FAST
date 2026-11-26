@@ -67,6 +67,10 @@ Do not place OpenCode, Codex, GitHub, provider, or DevMoter credentials in front
 
 The generated DevMoter password file and OpenCode password file are host-side secrets. Keep their filesystem permissions restricted and rotate them if they are disclosed.
 
+## MCP configuration privacy
+
+DevMoter's MCP management responses mask all non-empty configured environment values, regardless of variable name. A masked value is a keep-existing marker for that same server and key, not a new credential. Empty values remain empty. This protects configuration responses; it is not encrypted storage, an MCP tool authorization mechanism, or an operating-system sandbox. Treat configured MCP processes as privileged host integrations and grant only the credentials they require.
+
 ## Host integration boundary
 
 The Antigravity and Claude Code launchers are treated as privileged host integrations:

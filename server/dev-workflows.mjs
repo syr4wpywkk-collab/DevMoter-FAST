@@ -24,6 +24,7 @@ const DANGEROUS_MCP_ENV_KEYS = new Set([
   "PROMPT_COMMAND"
 ]);
 const SECRET_KEY = /(secret|token|password|api[_-]?key|authorization|credential)/i;
+const MASKED_ENV_VALUE = "••••••••";
 const MAX_DIFF = 220000;
 const MAX_RULE = 65536;
 const MAX_SKILL = 65536;
@@ -178,6 +179,29 @@ export function maskSecrets(value) {
     out[key] = SECRET_KEY.test(key) && item ? "••••••••" : maskSecrets(item);
   }
   return out;
+}
+
+// All MCP environment values are private configuration, irrespective of their names.
+function maskMcpServer(server) {
+  return {
+    ...maskSecrets(server),
+    env: Object.fromEntries(Object.entries(server.env).map(([key, value]) => [
+      key, value === "" ? "" : MASKED_ENV_VALUE
+    ]))
+  };
+}
+
+function maskWorkflowSettings(settings) {
+  return {
+    ...maskSecrets(settings),
+    mcp: { servers: settings.mcp.servers.map(maskMcpServer) }
+  };
+}
+
+function restoreMcpEnvValue(key, value, existingEnv = {}) {
+  if (value !== MASKED_ENV_VALUE) return value;
+  if (!Object.hasOwn(existingEnv, key)) throw new Error("Masked MCP environment value has no saved value");
+  return existingEnv[key];
 }
 
 export function validateExtensionManifest(input) {
@@ -636,7 +660,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
       negotiation: negotiateAdapter(adapters, "", []),
       mcp: settings.mcp.servers
         .filter(server => server.scope === "global" || server.projectId === project.id)
-        .map(maskSecrets)
+        .map(maskMcpServer)
     };
   }
 
@@ -1073,7 +1097,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     if (server.scope === "project" && server.projectId !== String(input.projectId || "")) {
       throw new Error("MCP server is outside the selected project scope");
     }
-    if (!server.enabled) return { ok: false, state: "disabled", server: maskSecrets(server) };
+    if (!server.enabled) return { ok: false, state: "disabled", server: maskMcpServer(server) };
 
     if (server.transport === "http") {
       try {
@@ -1087,14 +1111,14 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
           ok: response.status < 500,
           state: response.status < 500 ? "reachable" : "error",
           status: response.status,
-          server: maskSecrets(server)
+          server: maskMcpServer(server)
         };
       } catch (error) {
         return {
           ok: false,
           state: "error",
           error: errorMessage(error),
-          server: maskSecrets(server)
+          server: maskMcpServer(server)
         };
       }
     }
@@ -1105,14 +1129,14 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
         ok: true,
         state: "executable-found",
         executable: found.stdout.trim(),
-        server: maskSecrets(server)
+        server: maskMcpServer(server)
       };
     } catch (error) {
       return {
         ok: false,
         state: "missing",
         error: errorMessage(error),
-        server: maskSecrets(server)
+        server: maskMcpServer(server)
       };
     }
   }
@@ -1226,8 +1250,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     if (plain(payload.env)) {
       merged.env = Object.assign({}, existing?.env || {});
       for (const [key, value] of Object.entries(payload.env)) {
-        if (value === "••••••••" && key in merged.env) continue;
-        merged.env[key] = value;
+        merged.env[key] = restoreMcpEnvValue(key, value, existing?.env);
       }
     }
 
@@ -1235,7 +1258,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     if (existingIndex >= 0) settings.mcp.servers[existingIndex] = normalized;
     else settings.mcp.servers.push(normalized);
     await writeSettings(settings);
-    return { server: maskSecrets(normalized), created: existingIndex < 0 };
+    return { server: maskMcpServer(normalized), created: existingIndex < 0 };
   }
 
   async function setMcpEnabled(input) {
@@ -1245,7 +1268,7 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
     if (!server) throw new Error("MCP server not found");
     server.enabled = Boolean(input.enabled);
     await writeSettings(settings);
-    return { server: maskSecrets(server) };
+    return { server: maskMcpServer(server) };
   }
 
   async function removeMcpServer(input) {
@@ -1261,21 +1284,18 @@ export function createDevWorkflowService({ homeDir, codex, projectResolver, conf
   return {
     async getSettings(options = {}) {
       const settings = await readSettings();
-      return options.masked === false ? settings : maskSecrets(settings);
+      return options.masked === false ? settings : maskWorkflowSettings(settings);
     },
     async updateSettings(value) {
       const current = await readSettings();
       const next = normalizeDevWorkflowSettings(deepMerge(current, value));
       for (const server of next.mcp.servers) {
         const existing = current.mcp.servers.find(item => item.id === server.id);
-        if (!existing || !plain(server.env) || !plain(existing.env)) continue;
         for (const [key, envValue] of Object.entries(server.env)) {
-          if (envValue === "••••••••" && key in existing.env) {
-            server.env[key] = existing.env[key];
-          }
+          server.env[key] = restoreMcpEnvValue(key, envValue, existing?.env);
         }
       }
-      return maskSecrets(await writeSettings(next));
+      return maskWorkflowSettings(await writeSettings(next));
     },
     capabilities,
     sessionContext,
