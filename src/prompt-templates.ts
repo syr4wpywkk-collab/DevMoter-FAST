@@ -2,6 +2,7 @@ import "./prompt-templates.css";
 import { createSheetHeader } from "./sheet-header.mjs";
 import { t, translateServerMessage } from "./i18n";
 import { apiErrorMessage } from "./api-error.mjs";
+import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
 import {
   draftNeedsConfirmation,
   expandTemplate,
@@ -33,7 +34,7 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (deviceToken) headers.set("x-devmoter-device-token", deviceToken);
   const res = await fetch(path, { ...init, headers, cache: method === "GET" ? "no-store" : undefined });
   const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
+  if (!res.ok) throw responseError(res.status, apiErrorMessage(payload, res.status));
   return payload as T;
 }
 
@@ -113,7 +114,13 @@ export function openPromptTemplates() {
     status.textContent = message;
     status.dataset.kind = kind;
   }
+  // An unregistered browser gets the shared Trusted device gate, as in Knowledge.
   function report(error: unknown) {
+    if (isDeviceAuthError(error)) {
+      say("");
+      body.replaceChildren(createDeviceGate(document, { error, onRegister: close }));
+      return;
+    }
     say(error instanceof Error ? error.message : String(error), "error");
   }
   function projectLabel(id: string | null) {

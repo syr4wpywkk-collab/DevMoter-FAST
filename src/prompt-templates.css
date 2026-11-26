@@ -93,3 +93,5 @@
   overflow-wrap: anywhere;
 }
 @media (max-width: 520px) { .pt-toolbar { grid-template-columns: minmax(0, 1fr); } }
+.pt-body > .dm-device-gate { display: grid; gap: var(--space-2); justify-items: start; padding: var(--space-4); }
+.pt-body > .dm-device-gate small { color: var(--text-secondary); }
