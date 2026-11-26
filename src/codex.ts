@@ -1697,9 +1697,12 @@ export function mountCodexRemote(
       if (codexTurnStatusToExecutionState(turn.status) === "failed" && turn.id) {
         renderedFailedTurnIds.add(turn.id);
         const previous = failedCodexTurns.get(failedCodexTurnKey(threadId, turn.id));
+        // A turn that failed while the tab was hidden had no live turn/completed to keep its input.
+        const liveDraft = activeSendDraft?.threadId === threadId && activeTurnId === turn.id ? activeSendDraft : null;
+        if (liveDraft) activeSendDraft = null;
         const failure = {
           error: turn.error !== undefined ? normalizeCodexSendError(turn.error) : previous?.error ?? {},
-          draft: previous?.draft?.threadId === threadId ? previous.draft : null
+          draft: previous?.draft?.threadId === threadId ? previous.draft : liveDraft
         };
         rememberFailedCodexTurn(threadId, turn.id, failure);
         addCodexSendFailure(
