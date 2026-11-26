@@ -300,7 +300,9 @@ impl CalcEngine {
             })
             .map(|(c, _)| *c)
             .collect();
-        self.dirty.extend(blocked);
+        for c in blocked {
+            self.mark_dirty(c);
+        }
         // Clearing an anchor releases its whole spill.
         for c in self.release_spill(id).into_keys() {
             self.mark_dependents_dirty(c);

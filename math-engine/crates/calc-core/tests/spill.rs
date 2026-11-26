@@ -346,8 +346,11 @@ fn clearing_obstruction_restores_spill() {
     let mut e = engine();
     set_num(&mut e, "C2", 99.0);
     set(&mut e, "B2", "={1,2;3,4}");
+    set(&mut e, "A1", "=IFERROR(B2*10,-1)");
     assert_eq!(err(&get(&mut e, "B2")), CalcError::Spill);
+    assert_eq!(num(&get(&mut e, "A1")), -1.0);
     e.clear_cell("Sheet1", "C2").unwrap();
     assert_eq!(num(&get(&mut e, "B2")), 1.0);
+    assert_eq!(num(&get(&mut e, "A1")), 10.0);
     assert_eq!(num(&get(&mut e, "C2")), 2.0);
 }
