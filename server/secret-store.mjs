@@ -14,6 +14,7 @@ const KDF = "scrypt";
 const SCRYPT_OPTIONS = { N: 1 << 17, r: 8, p: 1, maxmem: 256 * 1024 * 1024 };
 const MAX_STORE_BYTES = 4 * 1024 * 1024;
 const MAX_SECRET_BYTES = 16 * 1024;
+const MAX_UNLOCK_MS = 30 * 60_000;
 const AAD = Buffer.from("devmoter-secret-store:v1", "utf8");
 
 function deriveKey(passphrase, salt) {
@@ -138,10 +139,15 @@ async function writePrivateFile(filePath, content) {
   }
 }
 
-export function createSecretStore({ filePath, now = Date.now } = {}) {
+export function createSecretStore({ filePath, now = Date.now, monotonicNow = () => performance.now(), maxUnlockMs = MAX_UNLOCK_MS } = {}) {
   if (!filePath) throw new Error("Secret store filePath is required.");
+  if (!Number.isSafeInteger(maxUnlockMs) || maxUnlockMs < 1 || maxUnlockMs > MAX_UNLOCK_MS) {
+    throw new Error("Invalid vault unlock lifetime.");
+  }
   let key = null;
   let secrets = [];
+  let unlockDeadline = 0;
+  let lockTimer = null;
   let queue = Promise.resolve();
 
   function serialize(operation) {
@@ -150,7 +156,41 @@ export function createSecretStore({ filePath, now = Date.now } = {}) {
     return result;
   }
 
+  function clearUnlockedState() {
+    clearTimeout(lockTimer);
+    lockTimer = null;
+    key?.fill(0);
+    key = null;
+    secrets = [];
+    unlockDeadline = 0;
+  }
+
+  function expireIfDue() {
+    if (key && monotonicNow() >= unlockDeadline) clearUnlockedState();
+  }
+
+  function installUnlockedState(nextKey, nextSecrets) {
+    clearUnlockedState();
+    key = nextKey;
+    secrets = nextSecrets;
+    unlockDeadline = monotonicNow() + maxUnlockMs;
+    // Absolute lifetime: status polling and secret use never extend the lease.
+    const schedule = () => {
+      lockTimer = setTimeout(() => {
+        void serialize(() => {
+          // An old timer must not lock a newly unlocked vault.
+          if (key !== nextKey) return;
+          expireIfDue();
+          if (key === nextKey) schedule();
+        });
+      }, Math.max(1, Math.ceil(unlockDeadline - monotonicNow())));
+      lockTimer.unref();
+    };
+    schedule();
+  }
+
   function requireUnlocked() {
+    expireIfDue();
     if (!key) throw new Error("Secret vault is locked.");
   }
 
@@ -186,8 +226,7 @@ export function createSecretStore({ filePath, now = Date.now } = {}) {
       const derived = await deriveKey(passphrase, salt);
       try {
         await encryptState([], salt, derived);
-        key = derived;
-        secrets = [];
+        installUnlockedState(derived, []);
       } catch (error) {
         derived.fill(0);
         throw error;
@@ -211,9 +250,7 @@ export function createSecretStore({ filePath, now = Date.now } = {}) {
         cleartext = Buffer.concat([decipher.update(parsed.ciphertext), decipher.final()]);
         const state = JSON.parse(cleartext.toString("utf8"));
         const nextSecrets = validateSecretState(state);
-        key?.fill(0);
-        key = derived;
-        secrets = nextSecrets;
+        installUnlockedState(derived, nextSecrets);
         return { initialized: true, unlocked: true, count: secrets.length };
       } catch {
         derived.fill(0);
@@ -227,9 +264,7 @@ export function createSecretStore({ filePath, now = Date.now } = {}) {
 
   async function lock() {
     return serialize(async () => {
-      key?.fill(0);
-      key = null;
-      secrets = [];
+      clearUnlockedState();
       return { locked: true };
     });
   }
@@ -306,6 +341,7 @@ export function createSecretStore({ filePath, now = Date.now } = {}) {
       if (!envelope) throw new Error("Secret vault file disappeared.");
       const { salt } = validateEnvelope(envelope);
       await encryptState(secrets, salt);
+      requireUnlocked();
       return record.value;
     });
   }
@@ -326,8 +362,11 @@ export function createSecretStore({ filePath, now = Date.now } = {}) {
   }
 
   async function status() {
-    const envelope = await readPrivateFile(filePath);
-    return { initialized: Boolean(envelope), unlocked: Boolean(key), count: key ? secrets.length : null };
+    return serialize(async () => {
+      const envelope = await readPrivateFile(filePath);
+      expireIfDue();
+      return { initialized: Boolean(envelope), unlocked: Boolean(key), count: key ? secrets.length : null };
+    });
   }
 
   return { initialize, unlock, lock, list, set, resolve, remove, status };

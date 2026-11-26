@@ -186,6 +186,8 @@ The authenticated `GET /api/host` endpoint exposes a versioned capability snapsh
 
 Host Protocol v1 is a **discovery contract**, not a universal replacement for all existing APIs. Some capability families are unavailable or only partially implemented on particular adapters; `browser` is `available` only when the remote browser opt-in, a Chromium/Chrome binary and bubblewrap are all present. For example, the current documentation identifies Linux support, constrained WSL behavior, and an unimplemented native macOS adapter. The Secret Vault management surface also has documented limits and is not yet a general provider/agent secret-injection system.
 
+For security, the API Vault locks after a maximum of 30 minutes from initialization or successful unlock, even during active use. Status polling and API key use do not extend this deadline. Unlock again to resume Vault-backed requests. Locking clears the store's key buffer and drops decrypted records; it cannot revoke API credentials already copied into running operations or sent upstream.
+
 See [Host Protocol v1](./docs/HOST_PROTOCOL.md) for the exact contract and limitations.
 
 ## Security model
