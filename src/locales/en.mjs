@@ -1499,7 +1499,7 @@ export const en = {
   "agentConsole.sheetSubtitle": "Runs through the normal DevMoter approval flow.",
   "agentConsole.modeLabel": "Mode",
   "agentConsole.detailsSummary": "Details",
-  "agentConsole.newModeBtn": "＋ Custom mode",
+  "agentConsole.newModeBtn": "+ Custom mode",
   "agentConsole.editModeBtn": "Edit selected",
   "agentConsole.modeIdLabel": "Mode id",
   "agentConsole.modeNameLabel": "Name",
