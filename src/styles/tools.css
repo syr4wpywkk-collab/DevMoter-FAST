@@ -1997,6 +1997,12 @@ textarea:focus-visible,
   padding-top: 10px;
 }
 
+.dm-control-body > details:first-child {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+
 .dm-control-body summary {
   min-height: 44px;
   display: flex;
