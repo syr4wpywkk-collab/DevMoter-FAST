@@ -1246,6 +1246,7 @@ export const zhHans = {
   "workspaceTools.cleanTree": "工作区干净，没有更改。",
   "workspaceTools.fileMeta.binary": "二进制",
   "workspaceTools.fileMeta.changed": "已更改",
+  "workspaceTools.fileMeta.untracked": "新文件",
   "workspaceTools.loadingDiff": "正在加载差异…",
   "workspaceTools.backToFiles": "← 文件列表",
   "workspaceTools.view.unified": "统一视图",
