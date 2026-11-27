@@ -1552,6 +1552,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       const value = await api<Json>("/location");
       directory = String(value?.directory || value?.location?.directory || "");
       sidebarDirectory.textContent = directory || t("opencode.sidebar.directoryFallback");
+      sidebarDirectory.title = directory || "";
     } catch {
       // The UI remains usable even if location metadata is unavailable.
     }
@@ -1867,6 +1868,7 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
 
     sessionTitle.textContent = sessionLabel(session);
     sidebarDirectory.textContent = sessionDirectory(session) || directory || t("opencode.sidebar.directoryFallback");
+    sidebarDirectory.title = sessionDirectory(session) || directory || "";
     updateContextUI();
     renderSessions();
     closeSidebar();
