@@ -1,4 +1,4 @@
-const CACHE = "devmoter-fast-v22";
+const CACHE = "devmoter-fast-v23";
 const SHELL = ["/", "/manifest.webmanifest"];
 
 function isSameOriginUrl(url) {
@@ -32,6 +32,50 @@ self.addEventListener("activate", event => {
   );
 });
 
+// event.respondWith() must always settle with a Response. A rejected network
+// fetch, a cache miss (caches.match resolves undefined) or a failing cache
+// lookup would otherwise surface as "Returned response is null" and leave the
+// app unable to start, so every failure path ends in an explicit 503.
+function unavailableResponse() {
+  return new Response("DevMoter FAST is temporarily unavailable. Please retry in a moment.", {
+    status: 503,
+    statusText: "Service Unavailable",
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "no-store",
+      "retry-after": "5"
+    }
+  });
+}
+
+async function cachedResponse(request) {
+  try {
+    return (await caches.match(request)) || null;
+  } catch {
+    return null;
+  }
+}
+
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request, { cache: "no-store" });
+    if (response) {
+      if (response.ok && !response.redirected) {
+        try {
+          const copy = response.clone();
+          caches.open(CACHE).then(cache => cache.put(request, copy)).catch(() => {});
+        } catch {
+          // Caching is best effort; the live response is still returned.
+        }
+      }
+      return response;
+    }
+  } catch {
+    // Fall through to the cached copy, then to the explicit 503.
+  }
+  return (await cachedResponse(request)) || unavailableResponse();
+}
+
 self.addEventListener("fetch", event => {
   const request = event.request;
   if (request.method !== "GET") return;
@@ -44,17 +88,7 @@ self.addEventListener("fetch", event => {
   if (!isSameOriginUrl(url)) return;
   if (url.pathname.startsWith("/api/") || url.pathname === "/login.html" || url.pathname === "/login.js") return;
 
-  event.respondWith(
-    fetch(request, { cache: "no-store" })
-      .then(response => {
-        if (response.ok && !response.redirected) {
-          const copy = response.clone();
-          caches.open(CACHE).then(cache => cache.put(request, copy)).catch(() => {});
-        }
-        return response;
-      })
-      .catch(() => caches.match(request))
-  );
+  event.respondWith(networkFirst(request));
 });
 
 
