@@ -36,7 +36,15 @@ export class HostAgentRuntime {
   constructor() {
     this.connectEvents();
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") this.resume();
+      if (document.visibilityState === "visible") {
+        this.resume();
+        return;
+      }
+      // A background tab holds no stream: HTTP/1.1 allows only six per host (#772).
+      if (this.reconnectTimer !== null) window.clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+      this.events?.close();
+      this.events = null;
     });
     window.addEventListener("pageshow", () => this.resume());
     window.addEventListener("devmoter:device-trust-changed", event => {
@@ -72,7 +80,8 @@ export class HostAgentRuntime {
   }
 
   private connectEvents() {
-    if (this.events || this.deviceBlocked || !navigator.onLine) return;
+    // A background tab holds no stream: HTTP/1.1 allows only six per host (#772).
+    if (this.events || this.deviceBlocked || !navigator.onLine || document.visibilityState === "hidden") return;
     const source = new EventSource("/api/agent-runs/events");
     this.events = source;
     source.addEventListener("state", event => {
@@ -124,6 +133,7 @@ export class HostAgentRuntime {
   // One request per return to the tab: another tab may have registered this device.
   private resume() {
     const wasBlocked = this.deviceBlocked;
+    if (!wasBlocked) this.connectEvents();
     void this.refresh().then(() => {
       if (!wasBlocked) return;
       this.deviceBlocked = false;

@@ -1697,9 +1697,12 @@ export function mountCodexRemote(
       if (codexTurnStatusToExecutionState(turn.status) === "failed" && turn.id) {
         renderedFailedTurnIds.add(turn.id);
         const previous = failedCodexTurns.get(failedCodexTurnKey(threadId, turn.id));
+        // A turn that failed while the tab was hidden had no live turn/completed to keep its input.
+        const liveDraft = activeSendDraft?.threadId === threadId && activeTurnId === turn.id ? activeSendDraft : null;
+        if (liveDraft) activeSendDraft = null;
         const failure = {
           error: turn.error !== undefined ? normalizeCodexSendError(turn.error) : previous?.error ?? {},
-          draft: previous?.draft?.threadId === threadId ? previous.draft : null
+          draft: previous?.draft?.threadId === threadId ? previous.draft : liveDraft
         };
         rememberFailedCodexTurn(threadId, turn.id, failure);
         addCodexSendFailure(
@@ -2367,6 +2370,8 @@ export function mountCodexRemote(
 
   function connectEvents() {
     if (!shouldOpenEventSource(online, Boolean(events))) return;
+    // A background tab holds no stream: HTTP/1.1 allows only six per host (#772).
+    if (document.visibilityState === "hidden") return;
     events = new EventSource("/api/codex/events");
 
     events.onopen = () => {
@@ -3654,7 +3659,16 @@ export function mountCodexRemote(
   window.addEventListener("devmoter:surface-changed", () => closeSidebar(false));
   window.addEventListener("devmoter:surface-changed", () => drafts.sync());
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") void resumeFromBackground();
+    if (document.visibilityState === "visible") {
+      void resumeFromBackground();
+      return;
+    }
+    if (reconnectTimer !== null) {
+      window.clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    events?.close();
+    events = null;
   });
   window.addEventListener("pageshow", () => void resumeFromBackground());
   window.addEventListener("online", () => void resumeFromBackground());
