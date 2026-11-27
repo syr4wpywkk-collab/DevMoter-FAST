@@ -2875,11 +2875,8 @@ export function mountOpenCodeRemote(root: HTMLElement): OpenCodeController {
       return;
     }
 
-    if (
-      sessionID &&
-      activeSession &&
-      sessionID !== activeSession.id
-    ) {
+    // With no conversation open, another session's events must not render here.
+    if (sessionID && sessionID !== activeSession?.id) {
       if (type.startsWith("session.")) void loadSessions();
       return;
     }
