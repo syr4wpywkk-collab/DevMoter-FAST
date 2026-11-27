@@ -130,3 +130,24 @@ test("Japanese locale translates Home, workspace navigation, and Review copy and
   assert.equal(home.querySelector(".dm-home-recent-card").getAttribute("aria-label"), "チャットをもう一度開く");
   assert.equal(home.querySelector("[data-home-app-count]").textContent, "1件");
 });
+
+test("Mission Control localizes the projects card and online KPI in all four locales", async t => {
+  const missionCode = await bundle("../src/mission-control.ts", "MissionControlUI");
+  const labels = {
+    en: ["Projects", "Projects online"],
+    ja: ["プロジェクト", "オンラインのプロジェクト"],
+    "zh-Hans": ["项目", "在线项目"],
+    "zh-Hant": ["專案", "線上專案"]
+  };
+  for (const [language, [projects, online]] of Object.entries(labels)) {
+    const dom = new JSDOM("<!doctype html><body></body>", { url: "https://devmoter.test/", runScripts: "outside-only" });
+    t.after(() => dom.window.close());
+    const { window } = dom;
+    window.localStorage.setItem("devmoter-language", language);
+    evaluate(window, missionCode, "MissionControlUI");
+    window.MissionControlUI.mountMissionControl();
+    const projectPanel = window.document.querySelector("[data-mission-projects]").closest("section");
+    assert.equal(projectPanel.querySelector("h2").textContent, projects, language + " projects heading");
+    assert.equal(window.document.querySelector("[data-kpi-projects]").previousElementSibling.textContent, online, language + " online label");
+  }
+});

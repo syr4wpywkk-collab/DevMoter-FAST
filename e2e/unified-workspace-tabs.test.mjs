@@ -14,7 +14,7 @@ const repo = path.resolve(import.meta.dirname, "..");
 function isReadOnlyApiRequest({ method, pathname, body, external = false }) {
   if (external) return false;
   if (method === "GET" || method === "HEAD") return [
-    "/api/projects", "/api/session-control/state", "/api/opencode/session",
+    "/api/projects", "/api/projects/fixture/git/status", "/api/session-control/state", "/api/opencode/session",
     "/api/opencode/session/active", "/api/tools-ai/context",
     "/api/workflow/projects/fixture/changes", "/api/workflow/projects/fixture/worktrees",
     "/api/workflow/projects/fixture/github/tasks"
@@ -28,6 +28,8 @@ test("history request guard rejects approvals, applies, executions and unknown R
   for (const method of ["thread/list", "thread/read"]) {
     assert.equal(isReadOnlyApiRequest({ method: "POST", pathname: "/api/codex/rpc", body: JSON.stringify({ method }) }), true);
   }
+  assert.equal(isReadOnlyApiRequest({ method: "GET", pathname: "/api/projects/fixture/git/status" }), true);
+  assert.equal(isReadOnlyApiRequest({ method: "POST", pathname: "/api/projects/fixture/git/status", body: "{}" }), false);
   for (const method of ["turn/start", "thread/start", "item/commandExecution/requestApproval", "unknown/method"]) {
     assert.equal(isReadOnlyApiRequest({ method: "POST", pathname: "/api/codex/rpc", body: JSON.stringify({ method }) }), false);
   }
@@ -75,6 +77,7 @@ async function fixtureServer() {
     if (url.pathname.startsWith("/api/")) {
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
       if (url.pathname === "/api/projects") res.end(JSON.stringify({ projects: [{ id: "fixture", name: "Fixture", path: "/synthetic/project", available: true }] }));
+      else if (url.pathname === "/api/projects/fixture/git/status") res.end(JSON.stringify({ isGit: true }));
       else if (url.pathname.endsWith("/changes")) res.end(JSON.stringify({ changes: [{
         id: "synthetic-change", status: "pending", source: "fixture", autoCommit: false, appliedFiles: [],
         files: [{ path: "synthetic.txt", decision: "accept", hunks: [],
@@ -231,6 +234,7 @@ for (const device of [
       }
     }
     const historyRequests = apiRequests.slice(historyStart);
+    assert.ok(historyRequests.some(request => request.pathname === "/api/projects/fixture/git/status"), "history refreshes Review repository state");
     assert.ok(historyRequests.some(request => request.pathname.endsWith("/changes")), "history really refreshes the populated Review panel");
     for (const method of ["thread/list", "thread/read"]) {
       assert.ok(historyRequests.some(request => request.pathname === "/api/codex/rpc" && JSON.parse(request.body).method === method), `history performs the allowed ${method} inventory read`);

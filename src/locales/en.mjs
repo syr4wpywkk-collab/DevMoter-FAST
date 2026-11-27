@@ -1790,6 +1790,7 @@ export const en = {
   "workflow.refreshing": "Refreshing…",
   "workflow.ready": "Ready",
   "workflow.noChangesToReview": "No changes to review",
+  "workflow.gitRequiredHint": "Open the Git app to check this project, or run git init in the project folder to enable Git features.",
   "workflow.filterAria": "Filter files by decision",
   "workflow.filterAll": "All",
   "workflow.filterPending": "Pending",
