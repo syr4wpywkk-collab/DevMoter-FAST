@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:http";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -137,6 +137,26 @@ test("Office real HTTP: owner/origin gates, edits, provider adapter, download an
     ).status,
     403,
   );
+  const missingId = "00000000-0000-0000-0000-000000000000";
+  for (const [suffix, method, payload] of [
+    ["", "GET"],
+    ["", "DELETE"],
+    ["/download", "GET"],
+    ["", "PATCH", { revision: missingId, blocks: [] }],
+    ["", "PATCH", { revision: missingId, ops: [] }],
+    ["", "PATCH", { revision: missingId, cells: [] }],
+    ["/rename", "POST", { name: "Missing.docx" }],
+    ["/restore", "POST", { revision: missingId, target: missingId }],
+    ["/pdf-op", "POST", { revision: missingId, op: { kind: "rotate", pages: [1], degrees: 90 } }],
+  ]) {
+    const path = `/api/office/documents/${missingId}${suffix}`;
+    const response = await request(path, method, payload);
+    assert.equal(response.status, 404, `${method} ${path}`);
+    const body = await response.text();
+    assert.doesNotMatch(body, /ENOENT/);
+    assert.ok(!body.includes(home), "response must not expose the server home path");
+    assert.deepEqual(JSON.parse(body), { error: "文書が見つかりません。" });
+  }
   let response = await request("/api/office/documents", "POST", {
     blank: true,
     name: "Integration.docx",
@@ -260,6 +280,15 @@ test("Office real HTTP: owner/origin gates, edits, provider adapter, download an
   assert.equal((await request(`/api/office/documents/${doc.id}/rename`, "POST", { name: "../x" })).status, 400);
   response = await request(`/api/office/documents/${doc.id}`, "DELETE");
   assert.equal(response.status, 200);
-  assert.equal((await request(`/api/office/documents/${doc.id}`)).status, 400);
+  assert.equal((await request(`/api/office/documents/${doc.id}`)).status, 404);
   assert.deepEqual(await (await request("/api/office/documents")).json(), []);
+  const officeRoot = join(home, ".config", "opencode-pocket", "office");
+  await rm(officeRoot, { recursive: true, force: true });
+  await writeFile(officeRoot, "not a directory", { mode: 0o600 });
+  response = await request(`/api/office/documents/${missingId}`);
+  assert.equal(response.status, 500);
+  const fsErrorBody = await response.text();
+  assert.doesNotMatch(fsErrorBody, /ENOTDIR|ENOENT/);
+  assert.ok(!fsErrorBody.includes(home), "response must not expose the server home path");
+  assert.deepEqual(JSON.parse(fsErrorBody), { error: "文書を処理できませんでした。" });
 });

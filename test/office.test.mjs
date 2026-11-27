@@ -34,6 +34,51 @@ async function fixture() {
   zip.file("customXml/item1.xml", "<custom>Unknown extension</custom>");
   return zip.generateAsync({ type: "uint8array" });
 }
+test("Office document lookups return a clean 404 for missing documents", async (t) => {
+  const { store } = await setup(t);
+  const id = "00000000-0000-0000-0000-000000000000";
+  for (const [method, args] of [
+    ["get", [id]],
+    ["open", [id]],
+    ["download", [id]],
+    ["save", [id, id, []]],
+    ["saveOps", [id, id, []]],
+    ["saveCells", [id, id, []]],
+    ["remove", [id]],
+    ["rename", [id, "Missing.docx"]],
+    ["restore", [id, id, id]],
+    ["pdfOp", [id, id, { kind: "rotate", pages: [1], degrees: 90 }]],
+    ["validate", [id, id, []]],
+    ["validateCells", [id, id, []]],
+    ["validateShapes", [id, id, []]],
+    ["validateOps", [id, id, []]],
+    ["validatePdfShapes", [id, id, []]],
+  ]) {
+    await t.test(method, async () => {
+      await assert.rejects(() => store[method](...args), {
+        status: 404,
+        message: "文書が見つかりません。",
+      });
+    });
+  }
+});
+test("Office missing metadata and revisions return a clean 404", async (t) => {
+  const { root, store } = await setup(t);
+  const missingMeta = await store.blank("Missing metadata.docx");
+  await rm(join(root, missingMeta.id, "metadata.json"));
+  await assert.rejects(store.open(missingMeta.id), {
+    status: 404,
+    message: "文書が見つかりません。",
+  });
+  const missingRevision = await store.blank("Missing revision.docx");
+  await rm(join(root, missingRevision.id, `${missingRevision.revision}.docx`));
+  for (const method of ["get", "download", "restore"]) {
+    await assert.rejects(() => store[method](missingRevision.id, missingRevision.revision, missingRevision.revision), {
+      status: 404,
+      message: "文書が見つかりません。",
+    });
+  }
+});
 test("Office opens, edits, preserves untouched parts and reloads after restart", async (t) => {
   const { root, store } = await setup(t);
   const bytes = await fixture();

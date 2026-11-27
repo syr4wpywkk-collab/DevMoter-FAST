@@ -3298,7 +3298,13 @@ const server = http.createServer(async (req, res) => {
         if (aiMatch && req.method === "GET" && !aiMatch[2]) { json(res, 200, officeAi.get(aiMatch[1], identity)); return; }
         if (aiMatch && req.method === "POST" && aiMatch[2]) { json(res, 200, officeAi.stop(aiMatch[1], identity)); return; }
         json(res, 404, { error: "Unknown Office endpoint" });
-      } catch (error) { json(res, error.status || 400, { error: safeText(error.message, REDACTED_SECRETS) }); }
+      } catch (error) {
+        const missing = error?.code === "ENOENT";
+        const fsError = missing || typeof error?.syscall === "string" || typeof error?.path === "string";
+        const status = missing ? 404 : fsError ? 500 : error.status || 400;
+        const message = missing ? "文書が見つかりません。" : fsError ? "文書を処理できませんでした。" : safeText(error.message, REDACTED_SECRETS);
+        json(res, status, { error: message });
+      }
       return;
     }
 
