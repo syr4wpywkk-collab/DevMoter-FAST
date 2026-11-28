@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Release-signing secrets are moved into unexported shell variables at once, so the
+# compiler, git and SDK tools started below never inherit them.
+release_keystore_b64="${ANDROID_KEYSTORE_BASE64:-}"
+release_password="${ANDROID_KEYSTORE_PASSWORD:-}"
+release_alias="${ANDROID_KEY_ALIAS:-}"
+expected_cert_sha256="${ANDROID_SIGNING_CERT_SHA256:-}"
+unset ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_SIGNING_CERT_SHA256
 cd "$(dirname "$0")"
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 : "${SDK:?Set ANDROID_HOME or ANDROID_SDK_ROOT}"
@@ -34,19 +41,42 @@ cp "$WORK/zxing/LICENSE" "$WORK/licenses/assets/licenses/zxing-LICENSE.txt"
 cp "$WORK/zxing/NOTICE" "$WORK/licenses/assets/licenses/zxing-NOTICE.txt"
 (cd "$WORK/licenses" && zip -q -r ../unsigned.apk assets)
 "$TOOLS/zipalign" -p -f 4 "$WORK/unsigned.apk" "$WORK/aligned.apk"
-KEYSTORE="${DEVMOTER_ANDROID_KEYSTORE:-$HOME/.android/debug.keystore}"
-if [[ -z "${DEVMOTER_ANDROID_KEYSTORE:-}" ]]; then
-  mkdir -p "$(dirname "$KEYSTORE")"
-  if [[ ! -e "$KEYSTORE" ]]; then
-    keytool -genkeypair -keystore "$KEYSTORE" -storepass android -keypass android -alias androiddebugkey -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 10000
+if [[ -n "$release_keystore_b64" ]]; then
+  : "${release_password:?ANDROID_KEYSTORE_PASSWORD is required with ANDROID_KEYSTORE_BASE64}"
+  : "${release_alias:?ANDROID_KEY_ALIAS is required with ANDROID_KEYSTORE_BASE64}"
+  KEYSTORE="$WORK/release.p12"
+  (umask 077 && printf '%s' "$release_keystore_b64" | base64 -d > "$KEYSTORE")
+  release_keystore_b64=""
+  echo "Signing with the persistent release key"
+  DEVMOTER_ANDROID_STORE_PASS="$release_password" DEVMOTER_ANDROID_KEY_PASS="$release_password" \
+    "$TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-key-alias "$release_alias" --ks-pass env:DEVMOTER_ANDROID_STORE_PASS --key-pass env:DEVMOTER_ANDROID_KEY_PASS --out build/DevMoter-FAST.apk "$WORK/aligned.apk"
+  release_password=""
+  rm -f "$KEYSTORE"
+else
+  KEYSTORE="${DEVMOTER_ANDROID_KEYSTORE:-$HOME/.android/debug.keystore}"
+  if [[ -z "${DEVMOTER_ANDROID_KEYSTORE:-}" ]]; then
+    echo "::warning::No persistent release key configured; signing with an ephemeral debug key. APKs from different builds will not update each other."
+    mkdir -p "$(dirname "$KEYSTORE")"
+    if [[ ! -e "$KEYSTORE" ]]; then
+      keytool -genkeypair -keystore "$KEYSTORE" -storepass android -keypass android -alias androiddebugkey -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 10000
+    fi
+    export DEVMOTER_ANDROID_STORE_PASS=android DEVMOTER_ANDROID_KEY_PASS=android
+    DEVMOTER_ANDROID_KEY_ALIAS=androiddebugkey
   fi
-  export DEVMOTER_ANDROID_STORE_PASS=android DEVMOTER_ANDROID_KEY_PASS=android
-  DEVMOTER_ANDROID_KEY_ALIAS=androiddebugkey
+  : "${DEVMOTER_ANDROID_STORE_PASS:?Set keystore password}"
+  : "${DEVMOTER_ANDROID_KEY_PASS:?Set key password}"
+  : "${DEVMOTER_ANDROID_KEY_ALIAS:?Set key alias}"
+  "$TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-key-alias "$DEVMOTER_ANDROID_KEY_ALIAS" --ks-pass env:DEVMOTER_ANDROID_STORE_PASS --key-pass env:DEVMOTER_ANDROID_KEY_PASS --out build/DevMoter-FAST.apk "$WORK/aligned.apk"
 fi
-: "${DEVMOTER_ANDROID_STORE_PASS:?Set keystore password}"
-: "${DEVMOTER_ANDROID_KEY_PASS:?Set key password}"
-: "${DEVMOTER_ANDROID_KEY_ALIAS:?Set key alias}"
-"$TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-key-alias "$DEVMOTER_ANDROID_KEY_ALIAS" --ks-pass env:DEVMOTER_ANDROID_STORE_PASS --key-pass env:DEVMOTER_ANDROID_KEY_PASS --out build/DevMoter-FAST.apk "$WORK/aligned.apk"
-"$TOOLS/apksigner" verify --verbose --print-certs build/DevMoter-FAST.apk
+CERTS="$("$TOOLS/apksigner" verify --verbose --print-certs build/DevMoter-FAST.apk)"
+echo "$CERTS"
+if [[ -n "$expected_cert_sha256" ]]; then
+  actual="$(echo "$CERTS" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | tr -d ':[:space:]' | tr 'A-F' 'a-f')"
+  expected="$(echo "$expected_cert_sha256" | tr -d ':[:space:]' | tr 'A-F' 'a-f')"
+  if [[ "$actual" != "$expected" ]]; then
+    echo "Signing certificate SHA-256 $actual does not match ANDROID_SIGNING_CERT_SHA256" >&2
+    exit 1
+  fi
+fi
 "$TOOLS/aapt2" dump badging build/DevMoter-FAST.apk
 (cd build && sha256sum DevMoter-FAST.apk > DevMoter-FAST.apk.sha256)

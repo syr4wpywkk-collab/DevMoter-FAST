@@ -51,6 +51,12 @@ jobs:
           test -f "$SDK/platforms/android-35/android.jar"
           test -x "$SDK/build-tools/35.0.0/aapt2"
       - name: Build and verify APK
+        env:
+          # Only main-branch builds (push or manual run) receive the release key; other branches and pull requests stay debug-signed.
+          ANDROID_KEYSTORE_BASE64: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && secrets.ANDROID_KEYSTORE_PASSWORD || '' }}
+          ANDROID_KEY_ALIAS: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && secrets.ANDROID_KEY_ALIAS || '' }}
+          ANDROID_SIGNING_CERT_SHA256: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.ANDROID_SIGNING_CERT_SHA256 || '' }}
         run: bash android/build-apk.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
