@@ -422,6 +422,13 @@ fn clearing_obstruction_updates_formulas_reading_it() {
 }
 
 #[test]
+fn uncalled_lambda_cell_is_calc_error() {
+    let mut e = engine();
+    set(&mut e, "A1", "=LAMBDA(x,x)");
+    assert_eq!(get(&mut e, "A1"), Value::Error(CalcError::Calc));
+}
+
+#[test]
 fn negative_zero_results_are_stored_as_zero() {
     let mut e = engine();
     set(&mut e, "A1", "a");

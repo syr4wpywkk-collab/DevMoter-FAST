@@ -28,8 +28,9 @@
 - Date/time text (`"2026-01-01"`, `"12:30"`) — Excel converts these to
   date serials; whether the initial subset supports them and under which
   fixed locale is undecided.
-- Currency symbols (`"$1,000"`, `"¥1000"`) — Excel accepts some; the
-  accepted set is locale-dependent and undecided.
+- Currency symbols: `$` after the optional sign is accepted (`"$1,000"`,
+  `"-$5"`), by `VALUE` and by implicit conversion alike. Other symbols
+  (`"¥1000"`) depend on the locale and stay undecided.
 - Thousands separator / decimal point for non-US locales — plan fixes
   one locale (§2, note 058: ロケール固定); which one is recorded here
   once decided.

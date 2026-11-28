@@ -4,7 +4,7 @@ import { after, before, describe, test } from 'node:test';
 
 import pg from 'pg';
 
-import { MAX_PARAMS, MAX_SQL_BYTES, copiesThroughClient, createPostgresqlAdapter, encodePostgresqlParam, postgresqlError, postgresqlTypes, validatePostgresqlRequest } from '../../src/engines/postgresql.ts';
+import { MAX_PARAMS, MAX_SQL_BYTES, checkPostgresqlReadOnly, copiesThroughClient, createPostgresqlAdapter, encodePostgresqlParam, postgresqlError, postgresqlTypes, validatePostgresqlRequest } from '../../src/engines/postgresql.ts';
 import { EngineError, MAX_QUERY_TIMEOUT_MS, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine, startPostgresql, type TestServer } from './helpers.ts';
 
@@ -205,10 +205,23 @@ describe('PostgreSQL adapter against the built engine', { skip }, () => {
     assert.deepEqual(row.b, { a: '0.1234567890123456789', b: `1${'0'.repeat(400)}`, c: 1.5, d: '12345678901234567890', e: [1.1, -0.0005, 7] });
   });
 
+  test('reports the rows a request inserted, updated or deleted', async () => {
+    assert.equal((await adapter.query('CREATE TABLE changes_probe (a int)', [])).changes, 0);
+    assert.equal((await adapter.query('INSERT INTO changes_probe VALUES ($1), ($2), ($3)', [1, 2, 3])).changes, 3);
+    const both = await adapter.query('UPDATE changes_probe SET a = a + 10 WHERE a > 1; DELETE FROM changes_probe WHERE a = 1; SELECT count(*)::int AS c FROM changes_probe', []);
+    assert.equal(both.changes, 3);
+    assert.deepEqual(both.results, [{ columns: ['c'], rows: [{ c: 2 }], rowCount: 1 }]);
+    assert.equal((await adapter.query('SELECT 1 AS x', [])).changes, 0);
+  });
+
   test('a read-only database starts every transaction read-only', async () => {
     const readOnly = createPostgresqlAdapter({ ...connection(), readOnly: true });
     assert.deepEqual((await readOnly.query('SELECT count(*)::int AS c FROM t', [])).results[0]?.rows, [{ c: 2 }]);
     await assert.rejects(readOnly.query('DELETE FROM t', []), rejectsWith('query_failed', /read-only transaction \(SQLSTATE 25006\)/));
+    for (const sql of ['BEGIN READ WRITE; DELETE FROM t; COMMIT', 'COMMIT; DELETE FROM t', "SET default_transaction_read_only = off; DELETE FROM t", "DO $$ BEGIN COMMIT; END $$"]) {
+      await assert.rejects(readOnly.query(sql, []), rejectsWith('invalid_request', /not available on a read-only database/), sql);
+    }
+    assert.deepEqual((await readOnly.query('SELECT count(*)::int AS c FROM t', [])).results[0]?.rows, [{ c: 2 }]);
     await readOnly.close();
   });
 
@@ -229,4 +242,13 @@ describe('PostgreSQL adapter against the built engine', { skip }, () => {
     await closed.close();
     await assert.rejects(closed.query('SELECT 1', []), rejectsWith('engine_unavailable'));
   });
+});
+
+test('a read-only database refuses the statements that would leave read-only mode', () => {
+  for (const sql of ['SELECT 1', "SELECT 'begin; commit'", 'WITH x AS (SELECT 1) SELECT * FROM x', 'EXPLAIN SELECT 1', 'SHOW transaction_read_only', '-- commit\nSELECT 1', 'UPDATE t SET a = 1']) {
+    assert.doesNotThrow(() => checkPostgresqlReadOnly(sql), sql);
+  }
+  for (const sql of ['BEGIN READ WRITE', 'begin; insert into t values (1)', 'START TRANSACTION READ WRITE', 'SELECT 1; COMMIT', 'END', 'ROLLBACK', 'ABORT', 'SET SESSION CHARACTERISTICS AS TRANSACTION READ WRITE', 'set transaction_read_only = off', 'RESET ALL', 'DO $$ BEGIN COMMIT; END $$', 'CALL p()', '/* x */ COMMIT']) {
+    assert.throws(() => checkPostgresqlReadOnly(sql), (error: unknown) => error instanceof EngineError && error.code === 'invalid_request', sql);
+  }
 });

@@ -94,10 +94,10 @@ fn value_to_cell(v: &Value) -> CellValue {
                 })
                 .collect(),
         },
-        // Lambdas become #VALUE! at the cell boundary; stay defensive in
+        // Lambdas become #CALC! at the cell boundary; stay defensive in
         // case one is observed through a future engine path.
         Value::Lambda(_) => CellValue::Error {
-            code: calc_core::CalcError::Value.code().to_owned(),
+            code: calc_core::CalcError::Calc.code().to_owned(),
         },
         // References are dereferenced by the evaluator before reaching a
         // cell boundary; same defensive handling as lambdas.
