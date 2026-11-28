@@ -49,6 +49,7 @@ npm run build:engines -- sqlite
 cp devmoter-base.config.example.json devmoter-base.config.json && mkdir -p data
 KEY=$(npm run -s keys -- create local | tail -n 1)   # サンプル設定は API キー認証が有効。キーはこの1回だけ表示される
 npm start &
+until curl -sf http://127.0.0.1:8787/v1/health >/dev/null; do sleep 0.5; done   # listening のログが出るまで待つ
 curl -s http://127.0.0.1:8787/v1/databases/app/query -H "Authorization: Bearer $KEY" -H 'Content-Type: application/json' -d '{"sql": "SELECT sqlite_version() AS v"}'
 ```
 
