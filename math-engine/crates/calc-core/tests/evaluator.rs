@@ -845,3 +845,22 @@ fn bool_cell_arithmetic() {
         .unwrap();
     assert_eq!(eval_num(&mut e, "=A1+5"), 6.0);
 }
+
+#[test]
+fn overflow_is_num_error_never_infinity() {
+    let mut e = engine();
+    for formula in [
+        "1E308*10",
+        "-1E308*10",
+        "1E308+1E308",
+        "10^400",
+        "-(1E308*10)",
+        "1E308/1E-10",
+        "EXP(1000)",
+        "SUM(1E308,1E308)",
+    ] {
+        assert_eq!(err(&eval(&mut e, formula)), CalcError::Num, "{formula}");
+    }
+    assert_eq!(eval_num(&mut e, "1E308*1"), 1e308);
+    assert_eq!(err(&eval(&mut e, "1/0")), CalcError::DivZero);
+}
