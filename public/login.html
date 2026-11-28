@@ -28,6 +28,7 @@
     :focus-visible { outline:3px solid #255f53; outline-offset:3px; }
     .divider { display:flex; align-items:center; gap:12px; margin:18px 0; color:#526159; font-size:12px; }
     .divider::before,.divider::after { content:""; flex:1; height:1px; background:#d6dfda; }
+    .divider[hidden] { display:none; }
     details { border-top:1px solid #e1e8e4; padding-top:15px; }
     summary { min-height:44px; display:flex; align-items:center; cursor:pointer; font-size:14px; font-weight:620; color:#33423a; border-radius:10px; }
     label { display:block; margin:12px 0 6px; font-size:12px; font-weight:600; color:#435049; }
@@ -83,7 +84,7 @@
         <p data-i18n="githubDevicePrompt">Enter this code on GitHub to finish signing in.</p><div id="userCode" class="code"></div>
         <div class="device-actions"><a id="verifyLink" class="action" target="_blank" rel="noopener noreferrer" data-i18n="openGithub">Open GitHub</a><button id="copyCode" class="copy" type="button" data-i18n="copyCode">Copy code</button></div>
       </div>
-      <div class="divider" data-i18n="otherOptions">Other options</div>
+      <div id="otherOptionsDivider" class="divider" data-i18n="otherOptions">Other options</div>
       <details id="recovery"><summary id="recoverySummary" data-i18n="useLocalRecovery">Use local recovery</summary>
         <label for="username" data-i18n="usernameLabel">Username</label><input id="username" autocomplete="username" value="devmoter" />
         <label for="password" data-i18n="recoveryPasswordLabel">Recovery password</label><input id="password" type="password" autocomplete="current-password" />
