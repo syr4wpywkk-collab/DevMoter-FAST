@@ -277,8 +277,10 @@ export function mountMissionControl() {
       sessionsNode.append(emptyState(t("mission.empty.sessions")));
       return;
     }
+    const projectNames = new Map(readProjects(state.projects).map(project => [stringValue(project.id, ""), stringValue(project.name, "")] as const));
     for (const session of sessions.slice(0, 6)) {
-      const meta = [stringValue(session.projectId, ""), formatTime(session.updatedAt)].filter(Boolean).join(" · ");
+      const projectId = stringValue(session.projectId, "");
+      const meta = [projectNames.get(projectId) || projectId, formatTime(session.updatedAt)].filter(Boolean).join(" · ");
       sessionsNode.append(dataRow(
         stringValue(session.title, t("mission.untitledSession")),
         `${stringValue(session.backend, t("common.unknown"))} · ${stringValue(session.agent, "agent")}`,
@@ -331,7 +333,7 @@ export function mountMissionControl() {
     for (const project of projects.slice(0, 6)) {
       projectsNode.append(dataRow(
         stringValue(project.name, t("mission.unnamedProject")),
-        stringValue(project.id, "-"),
+        stringValue(project.path, stringValue(project.id, "-")),
         project.available === true ? "available" : "unavailable"
       ));
     }
