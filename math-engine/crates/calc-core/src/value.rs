@@ -155,14 +155,12 @@ impl Value {
 /// `.` is the decimal point, `E` an exponent, and a trailing `%` divides by
 /// 100. Empty text, `NaN`/`inf` spellings and overflow are rejected.
 pub fn parse_number_text(s: &str) -> Option<f64> {
-    let mut t = s.trim();
+    let t = s.trim();
     if t.is_empty() {
         return None;
     }
-    let mut percent = false;
     if let Some(rest) = t.strip_suffix('%') {
-        t = rest.trim_end();
-        percent = true;
+        return parse_number_text(rest).map(|n| n / 100.0);
     }
     // Split off an exponent: at most one 'e'/'E', after which an
     // optional sign and a non-empty digit run are required.
@@ -244,11 +242,7 @@ pub fn parse_number_text(s: &str) -> Option<f64> {
         canonical.push('e');
         canonical.push_str(exp);
     }
-    canonical
-        .parse::<f64>()
-        .ok()
-        .filter(|n| n.is_finite())
-        .map(|n| if percent { n / 100.0 } else { n })
+    canonical.parse::<f64>().ok().filter(|n| n.is_finite())
 }
 
 /// Format a number roughly like Excel's General format: integers without a

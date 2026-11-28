@@ -427,8 +427,12 @@ pub fn ranged_operand(v: &Value) -> Option<Result<Complex, CalcError>> {
 
 /// Parse one coefficient; rejects empty, non-numeric and non-finite
 /// text (`1e999`, `"nan"` spellings are already excluded by
-/// [`parse_number_text`]).
+/// [`parse_number_text`]). Currency signs and `,` grouping are not
+/// part of a complex number's text.
 fn parse_coeff(s: &str) -> Result<f64, ComplexError> {
+    if s.contains(['$', ',']) {
+        return Err(ComplexError::Parse);
+    }
     match parse_number_text(s) {
         Some(n) if n.is_finite() => Ok(n),
         _ => Err(ComplexError::Parse),
@@ -462,6 +466,13 @@ mod tests {
         approx(p("3+4i") + p("5-3i"), z(8.0, 1.0));
         approx(p("13+4i") - p("5+3i"), z(8.0, 1.0));
         approx(p("1+2i") - p("1+2i"), Complex::ZERO);
+    }
+
+    #[test]
+    fn rejects_currency_and_grouping() {
+        for s in ["3+$4i", "$3", "1,000+2i", "3+1,000i"] {
+            assert_eq!(Complex::parse(s), Err(ComplexError::Parse), "{s}");
+        }
     }
 
     #[test]

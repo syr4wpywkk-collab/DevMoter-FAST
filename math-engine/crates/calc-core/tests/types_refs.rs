@@ -116,6 +116,10 @@ fn to_number_from_numeric_text() {
 fn to_number_from_percent_text() {
     assert_eq!(Value::Text("5%".into()).to_number().unwrap(), 0.05);
     assert_eq!(Value::Text("35%".into()).to_number().unwrap(), 35.0 / 100.0);
+    assert_eq!(
+        Value::Text("50%%".into()).to_number().unwrap(),
+        50.0 / 100.0 / 100.0
+    );
 }
 
 #[test]
