@@ -316,6 +316,16 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
     settings.after(row);
   }
 
+  async function resolveProjectName(projectId: string) {
+    const res = await fetch("/api/projects", { credentials: "same-origin" });
+    if (!res.ok) return null;
+    const payload = await res.json() as { projects?: Array<{ id?: unknown; name?: unknown; path?: unknown }> };
+    const project = payload.projects?.find(item => item.id === projectId);
+    if (!project) return null;
+    if (typeof project.name === "string" && project.name) return project.name;
+    return typeof project.path === "string" ? project.path.split("/").filter(Boolean).pop() || null : null;
+  }
+
   // The unified navigator is now the default on the existing URL.
   // ?unifiedUI=0 is an explicit emergency rollback for visual regressions.
   // The native providers retain all streaming, history, permissions and model
@@ -333,7 +343,8 @@ export function mountUnifiedFeatureShell(options: ShellOptions) {
         openTerminal: () => run(() => launchApp("terminal")),
         openBrowser: () => run(() => {
           void import("./remote-browser").then(module => { module.openRemoteBrowser(); }).catch(() => notify(t("shell.featureUnavailable")));
-        })
+        }),
+        resolveProjectName
       }))
       .catch(error => {
         // A missing/cached JS chunk or a partial mount must never leave the

@@ -92,7 +92,9 @@ export function sanitize(value: unknown, depth = 0, seen: WeakSet<object> = new 
     const out: LogFields = {};
     for (const [rawKey, item] of entries.slice(0, MAX_ITEMS)) {
       const key = String(rawKey);
-      out[key] = isSensitiveKey(key) && item !== undefined && item !== null ? REDACTED : sanitize(item, depth + 1, seen);
+      // A flag such as `apiKeys: true` says whether something is configured; it carries no secret.
+      const secret = isSensitiveKey(key) && item !== undefined && item !== null && typeof item !== 'boolean';
+      out[key] = secret ? REDACTED : sanitize(item, depth + 1, seen);
     }
     if (entries.length > MAX_ITEMS) out['…'] = `[${entries.length - MAX_ITEMS} more keys]`;
     return out;
