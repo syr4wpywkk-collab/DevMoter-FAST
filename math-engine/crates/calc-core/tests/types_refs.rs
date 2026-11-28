@@ -699,6 +699,25 @@ fn cell_input_from_typed() {
         CellInput::Value(Value::Text("hello".into()))
     );
     assert_eq!(CellInput::from_typed("="), CellInput::Formula("".into()));
+    for (typed, v) in [
+        ("42", Value::Number(42.0)),
+        ("-1000.5", Value::Number(-1000.5)),
+        ("5%", Value::Number(0.05)),
+        ("true", Value::Boolean(true)),
+        ("FALSE", Value::Boolean(false)),
+        ("'123", Value::Text("123".into())),
+        ("'=1", Value::Text("=1".into())),
+        ("", Value::Blank),
+        ("1/2/2024", Value::Text("1/2/2024".into())),
+        ("1e309", Value::Text("1e309".into())),
+        ("-1e309", Value::Text("-1e309".into())),
+    ] {
+        assert_eq!(
+            CellInput::from_typed(typed),
+            CellInput::Value(v),
+            "{typed:?}"
+        );
+    }
 }
 
 #[test]

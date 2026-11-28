@@ -39,12 +39,29 @@ pub enum CellInput {
 
 impl CellInput {
     /// Build an input the way a UI would: a leading `=` marks a formula,
-    /// anything else is stored as text.
+    /// a leading `'` forces the rest to text, `TRUE`/`FALSE` (any case)
+    /// are booleans, number text (`42`, `-1.5`, `5%`, `1e3`) is a
+    /// number, an empty string is a blank cell, and anything else is
+    /// text. Dates typed as text stay text.
     pub fn from_typed(s: &str) -> CellInput {
-        match s.strip_prefix('=') {
-            Some(f) => CellInput::Formula(f.to_string()),
-            None => CellInput::Value(Value::Text(s.to_string())),
+        if let Some(f) = s.strip_prefix('=') {
+            return CellInput::Formula(f.to_string());
         }
+        if let Some(t) = s.strip_prefix('\'') {
+            return CellInput::Value(Value::Text(t.to_string()));
+        }
+        let v = if s.is_empty() {
+            Value::Blank
+        } else if s.eq_ignore_ascii_case("TRUE") {
+            Value::Boolean(true)
+        } else if s.eq_ignore_ascii_case("FALSE") {
+            Value::Boolean(false)
+        } else if let Some(n) = crate::value::parse_number_text(s).filter(|n| n.is_finite()) {
+            Value::Number(n)
+        } else {
+            Value::Text(s.to_string())
+        };
+        CellInput::Value(v)
     }
 
     /// `Some(formula)` when this input is a formula.

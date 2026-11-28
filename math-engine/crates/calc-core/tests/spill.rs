@@ -381,6 +381,47 @@ fn spilled_cells_are_not_stored_inputs() {
 }
 
 #[test]
+fn clearing_obstruction_restores_spill() {
+    let mut e = engine();
+    set_num(&mut e, "C2", 99.0);
+    set(&mut e, "B2", "={1,2;3,4}");
+    set(&mut e, "A1", "=IFERROR(B2*10,-1)");
+    assert_eq!(err(&get(&mut e, "B2")), CalcError::Spill);
+    assert_eq!(num(&get(&mut e, "A1")), -1.0);
+    e.clear_cell("Sheet1", "C2").unwrap();
+    assert_eq!(num(&get(&mut e, "B2")), 1.0);
+    assert_eq!(num(&get(&mut e, "A1")), 10.0);
+    assert_eq!(num(&get(&mut e, "C2")), 2.0);
+}
+
+#[test]
+fn clearing_intersecting_array_restores_spill() {
+    let mut e = engine();
+    set(&mut e, "A3", "={1,2,3}"); // spills A3:C3, blocking B2's 2x2
+    assert_eq!(num(&get(&mut e, "C3")), 3.0);
+    set(&mut e, "B2", "={1,2;3,4}");
+    assert_eq!(err(&get(&mut e, "B2")), CalcError::Spill);
+    e.clear_cell("Sheet1", "A3").unwrap();
+    assert_eq!(num(&get(&mut e, "B2")), 1.0);
+    assert_eq!(num(&get(&mut e, "C3")), 4.0);
+}
+
+#[test]
+fn clearing_obstruction_updates_formulas_reading_it() {
+    let mut e = engine();
+    set_num(&mut e, "C2", 99.0);
+    set(&mut e, "B2", "={1,2;3,4}");
+    set(&mut e, "E1", "=C2+B2");
+    set(&mut e, "F1", "=E1*10");
+    set(&mut e, "G1", "=IFERROR(B2,0)+C2");
+    assert_eq!(err(&get(&mut e, "B2")), CalcError::Spill);
+    e.clear_cell("Sheet1", "C2").unwrap();
+    assert_eq!(num(&get(&mut e, "E1")), 3.0);
+    assert_eq!(num(&get(&mut e, "F1")), 30.0);
+    assert_eq!(num(&get(&mut e, "G1")), 3.0);
+}
+
+#[test]
 fn uncalled_lambda_cell_is_calc_error() {
     let mut e = engine();
     set(&mut e, "A1", "=LAMBDA(x,x)");
