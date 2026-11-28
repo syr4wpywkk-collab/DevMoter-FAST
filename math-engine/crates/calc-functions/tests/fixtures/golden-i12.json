@@ -2037,7 +2037,7 @@
       "formula": "=IMCOS(\"1+i\")",
       "inputs": {},
       "expected": {
-        "text": "0.8337300251311491-0.9888977057628651i"
+        "text": "0.833730025131149-0.988897705762865i"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2082,7 +2082,7 @@
       "formula": "=IMCOS(\"i\")",
       "inputs": {},
       "expected": {
-        "text": "1.5430806348152437"
+        "text": "1.54308063481524"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2097,7 +2097,7 @@
       "formula": "=IMCOS(\"1\")",
       "inputs": {},
       "expected": {
-        "text": "0.5403023058681398"
+        "text": "0.54030230586814"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2112,7 +2112,7 @@
       "formula": "=IMCOS(\"2i\")",
       "inputs": {},
       "expected": {
-        "text": "3.7621956910836314"
+        "text": "3.76219569108363"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2127,7 +2127,7 @@
       "formula": "=IMCOS(\"1+1j\")",
       "inputs": {},
       "expected": {
-        "text": "0.8337300251311491-0.9888977057628651j"
+        "text": "0.833730025131149-0.988897705762865j"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2187,7 +2187,7 @@
       "formula": "=IMCOSH(\"1+i\")",
       "inputs": {},
       "expected": {
-        "text": "0.8337300251311491+0.9888977057628651i"
+        "text": "0.833730025131149+0.988897705762865i"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2217,7 +2217,7 @@
       "formula": "=IMCOSH(\"1\")",
       "inputs": {},
       "expected": {
-        "text": "1.5430806348152437"
+        "text": "1.54308063481524"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2232,7 +2232,7 @@
       "formula": "=IMCOSH(\"i\")",
       "inputs": {},
       "expected": {
-        "text": "0.5403023058681398"
+        "text": "0.54030230586814"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2247,7 +2247,7 @@
       "formula": "=IMCOSH(\"2i\")",
       "inputs": {},
       "expected": {
-        "text": "-0.4161468365471424"
+        "text": "-0.416146836547142"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2262,7 +2262,7 @@
       "formula": "=IMCOSH(\"-1\")",
       "inputs": {},
       "expected": {
-        "text": "1.5430806348152437"
+        "text": "1.54308063481524"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2322,7 +2322,7 @@
       "formula": "=IMCOSH(\"1-1i\")",
       "inputs": {},
       "expected": {
-        "text": "0.8337300251311491-0.9888977057628651i"
+        "text": "0.833730025131149-0.988897705762865i"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2337,7 +2337,7 @@
       "formula": "=IMCOT(\"1+i\")",
       "inputs": {},
       "expected": {
-        "text": "0.21762156185440273-0.8680141428959249i"
+        "text": "0.217621561854403-0.868014142895925i"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2352,7 +2352,7 @@
       "formula": "=IMCOT(0.785398163397448)",
       "inputs": {},
       "expected": {
-        "text": "1.0000000000000009"
+        "text": "1"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2367,7 +2367,7 @@
       "formula": "=IMCOT(\"i\")",
       "inputs": {},
       "expected": {
-        "text": "-1.3130352854993312i"
+        "text": "-1.31303528549933i"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2382,7 +2382,7 @@
       "formula": "=IMCOT(\"2i\")",
       "inputs": {},
       "expected": {
-        "text": "-1.037314720727548i"
+        "text": "-1.03731472072755i"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2493,7 +2493,7 @@
       "formula": "=IMCSC(\"1+i\")",
       "inputs": {},
       "expected": {
-        "text": "0.6215180171704284-0.30393100162842646i"
+        "text": "0.621518017170428-0.303931001628426i"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2523,7 +2523,7 @@
       "formula": "=IMCSC(\"i\")",
       "inputs": {},
       "expected": {
-        "text": "-0.8509181282393216i"
+        "text": "-0.850918128239322i"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2538,7 +2538,7 @@
       "formula": "=IMCSC(\"2i\")",
       "inputs": {},
       "expected": {
-        "text": "-0.2757205647717832i"
+        "text": "-0.275720564771783i"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2553,7 +2553,7 @@
       "formula": "=IMCSC(\"-1\")",
       "inputs": {},
       "expected": {
-        "text": "-1.1883951057781212"
+        "text": "-1.18839510577812"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2647,7 +2647,7 @@
       "formula": "=IMCSCH(\"1+i\")",
       "inputs": {},
       "expected": {
-        "text": "0.30393100162842646-0.6215180171704284i"
+        "text": "0.303931001628426-0.621518017170428i"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2662,7 +2662,7 @@
       "formula": "=IMCSCH(\"1\")",
       "inputs": {},
       "expected": {
-        "text": "0.8509181282393216"
+        "text": "0.850918128239322"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2677,7 +2677,7 @@
       "formula": "=IMCSCH(\"-1\")",
       "inputs": {},
       "expected": {
-        "text": "-0.8509181282393216"
+        "text": "-0.850918128239322"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2692,7 +2692,7 @@
       "formula": "=IMCSCH(\"i\")",
       "inputs": {},
       "expected": {
-        "text": "-1.1883951057781212i"
+        "text": "-1.18839510577812i"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2707,7 +2707,7 @@
       "formula": "=IMCSCH(\"2i\")",
       "inputs": {},
       "expected": {
-        "text": "-1.0997501702946164i"
+        "text": "-1.09975017029462i"
       },
       "reference": {
         "implementation": "Microsoft Excel",
@@ -2816,7 +2816,7 @@
       "formula": "=IMDIV(\"-238+240i\",\"10+24i\")",
       "inputs": {},
       "expected": {
-        "text": "4.999999999999999+12i"
+        "text": "5+12i"
       },
       "reference": {
         "implementation": "Microsoft Excel",

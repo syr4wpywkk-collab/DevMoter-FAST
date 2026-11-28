@@ -6,25 +6,32 @@
 //! blank-vs-zero handling, shared so functions never hand-roll
 //! comparisons.
 
-use calc_core::value::Value;
+use calc_core::value::{Value, round_15};
 use std::cmp::Ordering;
 
 /// Scalar equality matching the `=` operator's rules (used by `SWITCH`):
-/// numbers by value, text case-insensitively, booleans strictly, blanks
+/// numbers at 15 significant digits, text case-insensitively, booleans strictly, blanks
 /// equal to blanks; different kinds are never equal. Mirrors
 /// `eval::compare_values`'s equality half.
 pub fn scalar_eq(l: &Value, r: &Value) -> bool {
     use Value::*;
     match (l, r) {
-        (Number(a), Number(b)) => a == b,
+        // Same 15-digit equality as the `=` operator.
+        (Number(a), Number(b)) => eq_15(*a, *b),
         (Text(a), Text(b)) => a.eq_ignore_ascii_case(b),
         (Boolean(a), Boolean(b)) => a == b,
         (Blank, Blank) => true,
         // Excel treats blank as 0 against numbers / "" against text.
-        (Blank, Number(b)) | (Number(b), Blank) => *b == 0.0,
+        (Blank, Number(b)) | (Number(b), Blank) => round_15(*b) == 0.0,
         (Blank, Text(b)) | (Text(b), Blank) => b.is_empty(),
         _ => false,
     }
+}
+
+/// 15-digit equality; values further apart than one unit in the 15th
+/// digit skip the (string-based) rounding, keeping `UNIQUE` fast.
+fn eq_15(a: f64, b: f64) -> bool {
+    a == b || ((a - b).abs() <= 1e-13 * a.abs().max(b.abs()) && round_15(a) == round_15(b))
 }
 
 /// Type rank for SORT's key ordering (v2 `docs/functions/SORT.md`):

@@ -78,3 +78,11 @@ test('SQLite reads a byte order mark as blank space where a token starts, and as
   assert.equal(sqlShape('SELECT\ufeff 1', SQLITE_SQL).firstKeyword, 'SELECT\ufeff');
   assert.equal(sqlShape('\ufeffSELECT 1', POSTGRESQL_SQL).firstKeyword, '\ufeffSELECT');
 });
+
+test('SQLite quotes identifiers in brackets and backticks, and has no dollar-quoted text', () => {
+  assert.deepEqual(sqlShape('SELECT [a;b], `c;d` FROM t', SQLITE_SQL), { statements: 1, firstKeyword: 'SELECT' });
+  assert.deepEqual(sqlShape('SELECT `a``;b`; DELETE FROM t', SQLITE_SQL), { statements: 2, firstKeyword: 'SELECT' });
+  assert.equal(sqlShape('SELECT $a$; DELETE FROM t $a$', SQLITE_SQL).statements, 2);
+  assert.equal(sqlShape('SELECT $a$; DELETE FROM t $a$', POSTGRESQL_SQL).statements, 1);
+  assert.equal(sqlShape('SELECT [a;b]', POSTGRESQL_SQL).statements, 2);
+});
