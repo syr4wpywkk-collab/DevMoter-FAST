@@ -381,6 +381,13 @@ fn spilled_cells_are_not_stored_inputs() {
 }
 
 #[test]
+fn uncalled_lambda_cell_is_calc_error() {
+    let mut e = engine();
+    set(&mut e, "A1", "=LAMBDA(x,x)");
+    assert_eq!(get(&mut e, "A1"), Value::Error(CalcError::Calc));
+}
+
+#[test]
 fn negative_zero_results_are_stored_as_zero() {
     let mut e = engine();
     set(&mut e, "A1", "a");

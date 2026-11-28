@@ -444,7 +444,7 @@ impl CalcEngine {
                     .then(|| self.values.get(&id).cloned());
                 let (value, steps) = {
                     let mut ctx = self.make_ctx(id);
-                    let v = ctx.eval(&expr)?;
+                    let v = cell_boundary_value(ctx.eval(&expr)?);
                     (v, ctx.steps())
                 };
                 report.steps += steps;
@@ -800,12 +800,22 @@ impl Default for CalcEngine {
     }
 }
 
-/// A lambda that reaches a cell boundary cannot be displayed; per the
-/// value-model spec (`docs/functions/LAMBDA.md`) it becomes `#VALUE!`
-/// (SPEC-OPEN: Excel shows `#CALC!` for an uncalled LAMBDA).
+/// A lambda that reaches a cell boundary (a cell or a spilled element)
+/// cannot be displayed; like Excel, an uncalled LAMBDA becomes `#CALC!`
+/// (`docs/functions/LAMBDA.md`).
 fn cell_boundary_value(v: Value) -> Value {
     match v {
-        Value::Lambda(_) => Value::Error(CalcError::Value),
+        Value::Lambda(_) => Value::Error(CalcError::Calc),
+        Value::Array(mut a) => {
+            for r in 0..a.rows() {
+                for c in 0..a.cols() {
+                    if let Some(cell) = a.get_mut(r, c) {
+                        *cell = cell_boundary_value(std::mem::replace(cell, Value::Blank));
+                    }
+                }
+            }
+            Value::Array(a)
+        }
         // The evaluator dereferences references before they can reach a
         // cell boundary; this arm is defensive for manually-constructed
         // evaluation paths.

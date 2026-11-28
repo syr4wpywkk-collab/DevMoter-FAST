@@ -12,8 +12,9 @@ MAP/REDUCE.
 
 ## Behavior
 - The result of `LAMBDA(...)` is a `Lambda` value (plan §3 value
-  model). Without a call site it evaluates to `#CALC!` in Excel
-  (displayed value cannot be a function) — see open questions.
+  model). Without a call site, a LAMBDA that becomes a cell's value
+  (or a spilled element) is `#CALC!`, as in Excel (a displayed value
+  cannot be a function).
 - Closure captures the enclosing LET scope: `LET(a,10,LAMBDA(x,x+a))(5)`
   -> `15`.
 - Arity mismatch at call -> `#VALUE!`.
@@ -34,8 +35,6 @@ MAP/REDUCE.
 - Budget exhaustion -> defined budget error.
 
 ## Open questions
-- Display/value of an uncalled LAMBDA result (`#CALC!` vs a printable
-  `<function>` text vs engine Lambda value).
 - Whether lambdas may be stored in cells/named ranges at all in v2.
 - Exact numeric budget constants (deferred to the evaluator budget ADR,
   PR13).
