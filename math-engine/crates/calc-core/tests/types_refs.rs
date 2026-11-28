@@ -115,6 +115,7 @@ fn to_number_from_numeric_text() {
 #[test]
 fn to_number_from_percent_text() {
     assert_eq!(Value::Text("5%".into()).to_number().unwrap(), 0.05);
+    assert_eq!(Value::Text("35%".into()).to_number().unwrap(), 35.0 / 100.0);
 }
 
 #[test]
@@ -133,7 +134,7 @@ fn to_number_from_grouped_and_currency_text() {
 #[test]
 fn to_number_from_bad_text_is_value_error() {
     for s in [
-        "", "   ", "abc", "12a", "1,00", "1,2,3", "$", "1e400", "inf",
+        "", "   ", "abc", "12a", "1,00", "1,2,3", "$", "1e400", "inf", "$$5", "$-$5", "-$$5",
     ] {
         assert_eq!(
             Value::Text(s.into()).to_number(),

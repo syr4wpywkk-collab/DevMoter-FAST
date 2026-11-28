@@ -298,6 +298,10 @@ fn boolean_coerces_in_arithmetic() {
 #[test]
 fn percent_text_coerces() {
     assert_eq!(eval_num(&mut engine(), r#"="5%"+0"#), 0.05);
+    assert_eq!(
+        eval(&mut engine(), r#"=("35%"+0)=35%"#),
+        Value::Boolean(true)
+    );
 }
 
 #[test]

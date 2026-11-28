@@ -159,10 +159,10 @@ pub fn parse_number_text(s: &str) -> Option<f64> {
     if t.is_empty() {
         return None;
     }
-    let mut scale = 1.0;
+    let mut percent = false;
     if let Some(rest) = t.strip_suffix('%') {
         t = rest.trim_end();
-        scale = 0.01;
+        percent = true;
     }
     // Split off an exponent: at most one 'e'/'E', after which an
     // optional sign and a non-empty digit run are required.
@@ -179,10 +179,18 @@ pub fn parse_number_text(s: &str) -> Option<f64> {
         }
         None => (t, None),
     };
-    let negative = mantissa.starts_with('-') || mantissa.starts_with("$-");
-    let m = mantissa.strip_prefix('$').unwrap_or(mantissa);
+    // At most one currency sign, before or after the optional sign.
+    let (dollar, m) = match mantissa.strip_prefix('$') {
+        Some(rest) => (true, rest),
+        None => (false, mantissa),
+    };
+    let negative = m.starts_with('-');
     let m = m.strip_prefix(|c| c == '+' || c == '-').unwrap_or(m);
-    let m = m.strip_prefix('$').unwrap_or(m);
+    let m = if dollar {
+        m
+    } else {
+        m.strip_prefix('$').unwrap_or(m)
+    };
     if m.is_empty() {
         return None;
     }
@@ -240,7 +248,7 @@ pub fn parse_number_text(s: &str) -> Option<f64> {
         .parse::<f64>()
         .ok()
         .filter(|n| n.is_finite())
-        .map(|n| n * scale)
+        .map(|n| if percent { n / 100.0 } else { n })
 }
 
 /// Format a number roughly like Excel's General format: integers without a
