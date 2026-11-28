@@ -1021,6 +1021,7 @@ async function githubOpen(req, res) {
   const repo = String(payload?.repo || "");
   const branch = String(payload?.branch || "");
   const result = await openGithubRepo(HOME_DIR, await githubProjectsApi(), owner, repo, branch);
+  if (result?.path) for (const follow of openCodeEventFollowers) follow(result.path);
   json(res, 200, result);
 }
 

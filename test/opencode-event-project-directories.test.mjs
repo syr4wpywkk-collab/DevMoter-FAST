@@ -160,3 +160,9 @@ test("OpenCode event stream merges OPENCODE_DIRECTORY and registered project dir
     await rm(home, { recursive: true, force: true });
   }
 });
+
+test("a project opened from GitHub is followed by open event streams", async () => {
+  const source = await readFile(new URL("../server.mjs", import.meta.url), "utf8");
+  const handler = source.slice(source.indexOf("async function githubOpen("), source.indexOf("async function githubFetch("));
+  assert.match(handler, /for \(const follow of openCodeEventFollowers\) follow\(result\.path\)/);
+});
