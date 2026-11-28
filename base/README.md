@@ -50,10 +50,10 @@ cp devmoter-base.config.example.json devmoter-base.config.json && mkdir -p data
 KEY=$(npm run -s keys -- create local | tail -n 1)   # サンプル設定は API キー認証が有効。キーはこの1回だけ表示される
 npm start &
 until curl -sf http://127.0.0.1:8787/v1/health >/dev/null; do sleep 0.5; done   # listening のログが出るまで待つ
-curl -s http://127.0.0.1:8787/v1/databases/app/query -H "Authorization: Bearer $KEY" -H 'Content-Type: application/json' -d '{"sql": "SELECT sqlite_version() AS v"}'
+printf 'header = "Authorization: Bearer %s"\n' "$KEY" | curl -s -K - http://127.0.0.1:8787/v1/databases/app/query -H 'Content-Type: application/json' -d '{"sql": "SELECT sqlite_version() AS v"}'
 ```
 
-`Authorization` ヘッダーが無い要求は `401 unauthorized` になります（`/v1/health` を除く）。キーごとの権限がまだ無いため、ループバックアドレスでしか起動しません（ローカル検証専用）。4エンジンすべてを同じ API から操作できます（SQLite・DuckDB・PostgreSQL は `/query`、Valkey は `/command`。PostgreSQL と Valkey は起動済みのサーバーに Unix ソケットかループバックで接続します）。エンドポイント、エラー形式、SQLite アダプターの制限は [`docs/api/v1.md`](docs/api/v1.md) にあります。
+キーはプロセス引数に載せず、`curl -K -` で標準入力から渡しています（同じマシンの他ユーザーから `ps` で見えないように）。`Authorization` ヘッダーが無い要求は `401 unauthorized` になります（`/v1/health` を除く）。キーごとの権限がまだ無いため、ループバックアドレスでしか起動しません（ローカル検証専用）。4エンジンすべてを同じ API から操作できます（SQLite・DuckDB・PostgreSQL は `/query`、Valkey は `/command`。PostgreSQL と Valkey は起動済みのサーバーに Unix ソケットかループバックで接続します）。エンドポイント、エラー形式、SQLite アダプターの制限は [`docs/api/v1.md`](docs/api/v1.md) にあります。
 
 API キー（`npm run keys -- create <名前>`）と操作監査ログ（`npm run audit:verify`）は設定ファイルの `auth`・`audit` で有効になります（サンプル設定ではどちらも有効）。`auth` を設定から外すとキー無しで呼べます。詳細は `docs/api/v1.md`。
 
