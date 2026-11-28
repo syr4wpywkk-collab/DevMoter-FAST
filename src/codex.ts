@@ -3268,7 +3268,7 @@ export function mountCodexRemote(
           found ? t("common.edit") : t("codex.projects.missingTapCreate");
 
         const arrow = document.createElement("span");
-        arrow.textContent = found ? "›" : "＋";
+        arrow.textContent = found ? "›" : "+";
         button.append(label, arrow);
         button.addEventListener("click", () =>
           void editProjectMarkdown(project, filename, !found)

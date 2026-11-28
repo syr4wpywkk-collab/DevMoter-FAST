@@ -383,7 +383,10 @@ export function mountWorkspaceTools() {
       const counts = file.additions === null || file.deletions === null
         ? ""
         : "+" + file.additions + " −" + file.deletions;
-      meta.textContent = counts || t(file.binary ? "workspaceTools.fileMeta.binary" : "workspaceTools.fileMeta.changed");
+      const fallbackMeta = file.binary
+        ? "workspaceTools.fileMeta.binary"
+        : file.status.includes("untracked") ? "workspaceTools.fileMeta.untracked" : "workspaceTools.fileMeta.changed";
+      meta.textContent = counts || t(fallbackMeta);
       copy.append(name, meta);
       const badges = document.createElement("span");
       badges.className = "pocket-git-file-badges";

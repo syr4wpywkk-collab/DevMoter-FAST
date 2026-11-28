@@ -519,6 +519,8 @@ export function mountSettingsPanel() {
     const canRevokeDevices = typeof diagSec?.canRevokeDevices === "boolean"
       ? Boolean(diagSec.canRevokeDevices) || trusted
       : trusted;
+    // Without diagnostics the bootstrap state is unknown: offer a retry instead of guessing.
+    const diagnosticsUnavailable = !diagSec && diagnosticsStale() && Boolean(diagnosticsFetch.failure);
     const untrustedGuidance = bootstrapAllowed
       ? t("settings.devices.guidanceLocal")
       : trustedDeviceCount === 0
@@ -567,7 +569,11 @@ export function mountSettingsPanel() {
             : bootstrapAllowed
               ? `<div class="devmoter-settings-actions"><button type="button" data-action="device:bootstrap">${escapeHtml(t("settings.devices.trustThisBrowser"))}</button></div>`
               : ""}
-          ${trusted ? "" : `<div class="devmoter-settings-note" data-device-guidance>${escapeHtml(untrustedGuidance)}</div>`}
+          ${trusted
+            ? ""
+            : diagnosticsUnavailable
+              ? `${hostFailureGuide()}<div class="devmoter-settings-actions"><button type="button" data-action="devices:retry">${escapeHtml(t("common.refresh"))}</button></div>`
+              : `<div class="devmoter-settings-note" data-device-guidance>${escapeHtml(untrustedGuidance)}</div>`}
         </div>
       </section>
 
@@ -987,7 +993,10 @@ export function mountSettingsPanel() {
     if (page === "appearance") return renderAppearance();
     if (page === "language") return renderLanguage();
     if (page === "account") return renderAccount();
-    if (page === "devices") return void renderDevices();
+    if (page === "devices") {
+      scroll.innerHTML = `<div class="devmoter-settings-loading">${escapeHtml(t("settings.loading"))}</div>`;
+      return void renderDevices();
+    }
     if (page === "vault") return void renderVault();
     if (page === "notifications") return void renderNotifications();
     if (page === "diagnostics") return renderDiagnostics();
@@ -1177,6 +1186,11 @@ export function mountSettingsPanel() {
             diagnostics, fetchState: diagnosticsFetch, fetchFailure: diagnosticsFetch.failure, clientBuild: CLIENT_BUILD, cliStatus
           });
           toast(await copyText(report) ? t("settings.diagnostics.copied") : t("common.copyFailed"));
+          return;
+        }
+        if (action === "devices:retry") {
+          scroll.innerHTML = `<div class="devmoter-settings-loading">${escapeHtml(t("settings.loading"))}</div>`;
+          await renderDevices();
           return;
         }
         if (action === "diagnostics:refresh") {

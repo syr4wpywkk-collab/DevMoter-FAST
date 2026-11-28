@@ -256,7 +256,7 @@ export function mountRemoteControlCenter() {
   // The sheet title is the label of the section that is showing, so it matches
   // the Settings row (ホスト一覧 / 自動化 / パスキー) that opened it.
   let runResultFilter: RunResultFilter = "all";
-  let automationRunsOpen = false;
+  let automationRunsOpen: boolean | null = null;
 
   async function render() {
     const generation = ++renderGeneration;
@@ -468,6 +468,7 @@ export function mountRemoteControlCenter() {
 
     const detailsTrigger = document.createElement("details");
     detailsTrigger.innerHTML = `<summary>${esc(t("remote.automation.triggers"))}</summary>`;
+    detailsTrigger.open = !(triggers.triggers || []).length;
     const triggerList = document.createElement("div");
     triggerList.className = "dm-list";
     for (const item of triggers.triggers || []) {
@@ -684,7 +685,7 @@ export function mountRemoteControlCenter() {
       runFilterBar.appendChild(item);
     }
     drawRuns();
-    detailsAutopilot.open = automationRunsOpen;
+    detailsAutopilot.open = automationRunsOpen ?? !(runs.runs || []).length;
     detailsAutopilot.addEventListener("toggle", () => { automationRunsOpen = detailsAutopilot.open; });
     detailsAutopilot.appendChild(runFilterBar);
     detailsAutopilot.appendChild(runList);
