@@ -215,6 +215,8 @@ mod tests {
         e.set_cell("Sheet1", "A1", CellInput::from_typed("=RANDARRAY(2,2)"))
             .unwrap();
         let first = e.get_value("Sheet1", "A1").unwrap();
+        assert_eq!(e.get_value("Sheet1", "A1").unwrap(), first);
+        e.recalculate().unwrap();
         let second = e.get_value("Sheet1", "A1").unwrap();
         assert_ne!(first, second);
     }

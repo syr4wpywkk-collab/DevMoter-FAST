@@ -1,9 +1,8 @@
 //! `UPPER(text)` — converts text to uppercase.
 //! Spec: `docs/functions/UPPER.md`.
 //!
-//! Uses full Unicode case mapping (`str::to_uppercase`), so `ß` maps
-//! to `SS`; Excel versions differ on such mappings — differences are
-//! recorded as fixtures per the spec doc's open questions.
+//! Maps one character at a time like Excel; characters whose Unicode
+//! uppercase is several characters (`ß` -> `SS`) are kept as they are.
 
 use crate::common::coercion;
 use calc_core::ast::Expr;
@@ -17,7 +16,7 @@ pub fn call(ctx: &mut EvalContext<'_>, args: &[Expr]) -> Result<Value, EvalError
     }
     match coercion::eval_text(ctx, &args[0])? {
         Err(e) => Ok(Value::Error(e)),
-        Ok(s) => Ok(Value::Text(s.to_uppercase())),
+        Ok(s) => Ok(Value::Text(s.chars().map(super::upper_char).collect())),
     }
 }
 
@@ -66,9 +65,9 @@ mod tests {
     }
 
     #[test]
-    fn unicode_sharp_s_full_mapping() {
-        // Unicode full case mapping: ß -> SS (Excel-version dependent).
-        assert_eq!(t(&eval(r#"=UPPER("straße")"#)), "STRASSE");
+    fn unicode_sharp_s_keeps_length() {
+        assert_eq!(t(&eval(r#"=UPPER("straße")"#)), "STRAßE");
+        assert_eq!(eval(r#"=LEN(UPPER("straße"))"#), Value::Number(6.0));
     }
 
     #[test]
