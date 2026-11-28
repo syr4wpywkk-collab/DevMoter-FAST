@@ -44,7 +44,9 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")" = com.devmoter.fast
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleSupportedPlatforms:0' "$APP/Info.plist")" = iPhoneOS
           BIN=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Info.plist")
-          xcrun lipo -verify_arch arm64 "$APP/$BIN"
+          test -f "$APP/$BIN"
+          xcrun lipo "$APP/$BIN" -verify_arch arm64
+          xcrun lipo "$APP/$BIN" -archs
           unzip -t build/DevMoter-AltStore.ipa
           cd build
           shasum -a 256 DevMoter-AltStore.ipa > DevMoter-AltStore.ipa.sha256
