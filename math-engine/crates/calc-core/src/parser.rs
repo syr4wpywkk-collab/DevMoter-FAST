@@ -107,10 +107,19 @@ impl std::error::Error for ParseError {}
 
 /// Parse formula source text (without a leading `=`) into an [`Expr`].
 ///
-/// A single leading `=` is stripped for convenience. Enforces
+/// A single leading `=` is stripped for convenience; error offsets
+/// still count it, so they index into `src` as given. Enforces
 /// [`MAX_FORMULA_LEN`], [`MAX_TOKENS`], [`MAX_AST_NODES`] and [`MAX_DEPTH`].
 pub fn parse(src: &str) -> Result<Expr, ParseError> {
-    let src = src.strip_prefix('=').unwrap_or(src);
+    let body = src.strip_prefix('=').unwrap_or(src);
+    let shift = src.len() - body.len();
+    parse_body(body).map_err(|mut e| {
+        e.offset += shift;
+        e
+    })
+}
+
+fn parse_body(src: &str) -> Result<Expr, ParseError> {
     if src.trim().is_empty() {
         return Err(ParseError::new(ParseErrorKind::EmptyFormula, 0));
     }
