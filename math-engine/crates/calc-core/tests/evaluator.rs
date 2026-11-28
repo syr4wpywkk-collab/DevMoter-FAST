@@ -652,10 +652,16 @@ fn range_scalar_use_gives_array() {
 }
 
 #[test]
-fn range_in_arithmetic_is_value_error() {
+fn range_in_arithmetic_applies_element_wise() {
     let mut e = engine();
     set_num(&mut e, "A1", 1.0);
-    assert_eq!(err(&eval(&mut e, "=A1:A2+1")), CalcError::Value);
+    match eval(&mut e, "=A1:A2+1") {
+        Value::Array(a) => assert_eq!(
+            a.iter().cloned().collect::<Vec<_>>(),
+            vec![Value::Number(2.0), Value::Number(1.0)]
+        ),
+        other => panic!("expected array, got {other:?}"),
+    }
 }
 
 #[test]
@@ -732,6 +738,31 @@ fn step_budget_counts_range_cells() {
     );
     ctx.set_max_steps(5);
     let expr = parse("A1:Z100").unwrap();
+    assert_eq!(ctx.eval(&expr), Err(EvalError::StepBudgetExceeded));
+}
+
+#[test]
+fn step_budget_counts_array_operation_cells() {
+    let mut wb = Workbook::new();
+    wb.add_sheet("Sheet1").unwrap();
+    let values = HashMap::new();
+    let clock = FixedClock(0);
+    let rng = calc_core::SplitMix64::new(0);
+    let registry = calc_core::EmptyRegistry;
+    let mut ctx = EvalContext::new(
+        &wb,
+        &values,
+        &clock,
+        &rng,
+        &registry,
+        calc_core::CellId {
+            sheet_id: 0,
+            row: 0,
+            col: 0,
+        },
+    );
+    ctx.set_max_steps(20);
+    let expr = parse("{1,2,3,4,5}*{1;2;3;4;5}").unwrap();
     assert_eq!(ctx.eval(&expr), Err(EvalError::StepBudgetExceeded));
 }
 
@@ -844,4 +875,35 @@ fn bool_cell_arithmetic() {
     e.set_cell("Sheet1", "A1", CellInput::Value(Value::Boolean(true)))
         .unwrap();
     assert_eq!(eval_num(&mut e, "=A1+5"), 6.0);
+}
+
+#[test]
+fn overflow_is_num_error_never_infinity() {
+    let mut e = engine();
+    for formula in [
+        "1E308*10",
+        "-1E308*10",
+        "1E308+1E308",
+        "10^400",
+        "-(1E308*10)",
+        "1E308/1E-10",
+        "EXP(1000)",
+        "SUM(1E308,1E308)",
+    ] {
+        assert_eq!(err(&eval(&mut e, formula)), CalcError::Num, "{formula}");
+    }
+    assert_eq!(eval_num(&mut e, "1E308*1"), 1e308);
+    assert_eq!(err(&eval(&mut e, "1/0")), CalcError::DivZero);
+}
+
+#[test]
+fn array_overflow_is_num_per_element() {
+    assert_eq!(
+        eval(&mut engine(), "=INDEX({1E308,1}*10,1,1)"),
+        Value::Error(CalcError::Num)
+    );
+    assert_eq!(
+        eval(&mut engine(), "=INDEX({1E308,1}*10,1,2)"),
+        Value::Number(10.0)
+    );
 }
