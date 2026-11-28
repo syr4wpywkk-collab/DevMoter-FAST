@@ -13,8 +13,8 @@ test("#326: both chat backends resume on visibility, pageshow and online", () =>
   for (const [name, source] of sources) {
     assert.match(
       source,
-      /document\.addEventListener\("visibilitychange", \(\) => \{\s*if \(document\.visibilityState === "visible"\) void resumeFromBackground\(\);\s*\}\);/,
-      `${name}: visibilitychange only resumes when the page becomes visible`
+      /document\.addEventListener\("visibilitychange", \(\) => \{\s*if \(document\.visibilityState === "visible"\) \{?\s*void resumeFromBackground\(\);/,
+      `${name}: visibilitychange resumes when the page becomes visible (#772 closes streams when hidden)`
     );
     assert.match(source, /window\.addEventListener\("pageshow", \(\) => void resumeFromBackground\(\)\);/, `${name}: pageshow`);
     assert.match(source, /window\.addEventListener\("online", \(\) => void resumeFromBackground\(\)\);/, `${name}: online`);

@@ -417,14 +417,14 @@ impl<'a> EvalContext<'a> {
             )),
             Expr::Unary { op, operand } => {
                 let v = self.eval(operand)?;
-                Ok(ArgValue::Scalar(unary_op(*op, &v)))
+                Ok(ArgValue::Scalar(finite(unary_op(*op, &v))))
             }
             Expr::Percent(operand) => {
                 let v = self.eval(operand)?;
                 Ok(ArgValue::Scalar(match v.error() {
                     Some(e) => Value::Error(e),
                     None => match v.to_number() {
-                        Ok(n) => Value::Number(n / 100.0),
+                        Ok(n) => finite(Value::Number(n / 100.0)),
                         Err(e) => Value::Error(e),
                     },
                 }))
@@ -438,10 +438,10 @@ impl<'a> EvalContext<'a> {
                 if let Some(e) = r.error() {
                     return Ok(ArgValue::Scalar(Value::Error(e)));
                 }
-                Ok(ArgValue::Scalar(binary_op(*op, &l, &r)))
+                Ok(ArgValue::Scalar(finite(binary_op(*op, &l, &r))))
             }
             Expr::Call { name, args } => match self.registry.dispatch(name, self, args) {
-                Some(result) => result.map(ArgValue::Scalar),
+                Some(result) => result.map(|v| ArgValue::Scalar(finite(v))),
                 // Not a registered function: a bound name holding a lambda
                 // is invoked (`LET(f,LAMBDA(x,x+1),f(5))`), else `#NAME?`.
                 None => match self.lookup_local(name).cloned() {
@@ -665,6 +665,31 @@ fn literal_value(l: &Literal) -> Value {
         Literal::Text(s) => Value::Text(s.clone()),
         Literal::Bool(b) => Value::Boolean(*b),
         Literal::Error(e) => Value::Error(*e),
+    }
+}
+
+/// A number that has no finite double form (an overflow, or NaN) is `#NUM!`,
+/// as in Excel: a `Value::Number` never holds infinity or NaN.
+fn finite(v: Value) -> Value {
+    match v {
+        Value::Number(n) if !n.is_finite() => Value::Error(CalcError::Num),
+        Value::Array(a)
+            if a.iter()
+                .any(|c| matches!(c, Value::Number(n) if !n.is_finite())) =>
+        {
+            let cells = a
+                .iter()
+                .map(|c| match c {
+                    Value::Number(n) if !n.is_finite() => Value::Error(CalcError::Num),
+                    other => other.clone(),
+                })
+                .collect();
+            match ArrayValue::new(a.rows(), a.cols(), cells) {
+                Ok(array) => Value::Array(array),
+                Err(e) => Value::Error(e),
+            }
+        }
+        other => other,
     }
 }
 
