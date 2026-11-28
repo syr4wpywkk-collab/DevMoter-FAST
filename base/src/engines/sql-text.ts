@@ -21,12 +21,16 @@ export interface SqlDialect {
   returnEndsComment?: boolean;
   /** A block comment ends at the first "*\/" (SQLite); elsewhere a "/*" inside it opens another that must end first. */
   flatComments?: boolean;
+  /** Text between "[" and "]", or between backticks, is a quoted identifier (SQLite). */
+  bracketIdentifiers?: boolean;
+  /** "$tag$ ... $tag$" is quoted text (PostgreSQL, DuckDB); SQLite reads "$name" as a parameter instead. */
+  dollarQuotes?: boolean;
 }
 
 /** What DuckDB's parser turns into a plain space before it reads the text. */
-export const DUCKDB_SQL: SqlDialect = { blanks: /[\u00a0\u2000-\u200b\u202f\u205f\u3000\ufeff]/, blanksEndWords: true, returnEndsComment: true };
-export const SQLITE_SQL: SqlDialect = { blanks: /\ufeff/, flatComments: true };
-export const POSTGRESQL_SQL: SqlDialect = { returnEndsComment: true };
+export const DUCKDB_SQL: SqlDialect = { blanks: /[\u00a0\u2000-\u200b\u202f\u205f\u3000\ufeff]/, blanksEndWords: true, returnEndsComment: true, dollarQuotes: true };
+export const SQLITE_SQL: SqlDialect = { blanks: /\ufeff/, flatComments: true, bracketIdentifiers: true, dollarQuotes: false };
+export const POSTGRESQL_SQL: SqlDialect = { returnEndsComment: true, dollarQuotes: true };
 
 const WORD_START = /[A-Za-z_\u0080-\uffff]/;
 const DOLLAR_TAG = /\$(?:[A-Za-z_\u0080-\uffff][A-Za-z0-9_\u0080-\uffff]*)?\$/y;
@@ -109,7 +113,15 @@ export function sqlShape(sql: string, dialect: SqlDialect = {}, onToken?: (token
       content();
       onToken?.(char);
       index = skipQuoted(sql, index, char, false);
-    } else if (char === '$' && ((DOLLAR_TAG.lastIndex = index), DOLLAR_TAG.test(sql))) {
+    } else if (dialect.bracketIdentifiers && (char === '[' || char === '`')) {
+      content();
+      onToken?.(char);
+      if (char === '`') index = skipQuoted(sql, index, char, false);
+      else {
+        const end = sql.indexOf(']', index + 1);
+        index = end === -1 ? sql.length : end + 1;
+      }
+    } else if (dialect.dollarQuotes !== false && char === '$' && ((DOLLAR_TAG.lastIndex = index), DOLLAR_TAG.test(sql))) {
       content();
       onToken?.(char);
       const tag = sql.slice(index, DOLLAR_TAG.lastIndex);

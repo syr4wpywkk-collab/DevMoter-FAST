@@ -285,6 +285,8 @@ test('refuses placeholders that have no parameter, and named ones', () => {
     ["SELECT ':name', '?3', \"@x\", $$ $$ -- ?9\n", 0],
     ['SELECT 1 /* :x */', 0],
     ['SELECT ?1', 2],
+    ['SELECT [?], [:name] FROM t', 0],
+    ['SELECT `?`, `:a``?` FROM t', 0],
   ] as const) {
     assert.doesNotThrow(() => checkSqliteParameters(sql, count), sql);
   }
@@ -293,6 +295,8 @@ test('refuses placeholders that have no parameter, and named ones', () => {
   assert.throws(() => checkSqliteParameters('SELECT ?1, ?2', 1), rejectsWith('invalid_request', /uses parameter \?2 but 1 parameter was given/));
   assert.throws(() => checkSqliteParameters('SELECT ?2, ?', 2), rejectsWith('invalid_request', /uses parameter \?3/));
   assert.throws(() => checkSqliteParameters('SELECT ?12', 2), rejectsWith('invalid_request', /uses parameter \?12/));
+  assert.throws(() => checkSqliteParameters('SELECT [a], ?', 0), unbound);
+  assert.throws(() => checkSqliteParameters('SELECT $foo$, ?2', 2), rejectsWith('invalid_request', /named parameters such as \$foo/));
   for (const sql of ['SELECT :name', 'SELECT @x', 'SELECT $v', 'UPDATE t SET a = 1 WHERE id = :id']) {
     assert.throws(() => checkSqliteParameters(sql, 1), rejectsWith('invalid_request', /named parameters/), sql);
   }
