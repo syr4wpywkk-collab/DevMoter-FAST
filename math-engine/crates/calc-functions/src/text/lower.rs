@@ -1,9 +1,8 @@
 //! `LOWER(text)` — converts text to lowercase.
 //! Spec: `docs/functions/LOWER.md`.
 //!
-//! Uses full Unicode case mapping (`str::to_lowercase`); Excel-version
-//! differences (e.g. `İ` → `i̇`) are recorded as fixtures per the spec
-//! doc's open questions.
+//! Maps one character at a time like Excel; characters whose Unicode
+//! lowercase is several characters (`İ` -> `i̇`) are kept as they are.
 
 use crate::common::coercion;
 use calc_core::ast::Expr;
@@ -17,7 +16,7 @@ pub fn call(ctx: &mut EvalContext<'_>, args: &[Expr]) -> Result<Value, EvalError
     }
     match coercion::eval_text(ctx, &args[0])? {
         Err(e) => Ok(Value::Error(e)),
-        Ok(s) => Ok(Value::Text(s.to_lowercase())),
+        Ok(s) => Ok(Value::Text(s.chars().map(super::lower_char).collect())),
     }
 }
 
@@ -67,8 +66,8 @@ mod tests {
 
     #[test]
     fn unicode_capital_i_with_dot() {
-        // Unicode full mapping: İ -> i + combining dot above.
-        assert_eq!(t(&eval(r#"=LOWER("İ")"#)), "i\u{307}");
+        // One-to-one mapping only: İ has no single-character lowercase.
+        assert_eq!(t(&eval(r#"=LOWER("İ")"#)), "İ");
     }
 
     #[test]

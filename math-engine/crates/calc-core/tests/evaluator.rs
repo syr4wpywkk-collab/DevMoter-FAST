@@ -878,6 +878,15 @@ fn bool_cell_arithmetic() {
 }
 
 #[test]
+fn comparison_uses_fifteen_significant_digits() {
+    let mut e = engine();
+    assert_eq!(eval(&mut e, "0.1+0.2=0.3"), Value::Boolean(true));
+    assert_eq!(eval(&mut e, "0.1+0.2<>0.3"), Value::Boolean(false));
+    assert_eq!(eval(&mut e, "1=1.0000000000001"), Value::Boolean(false));
+    assert_eq!(eval(&mut e, "(0.1+0.2)&\"\""), Value::Text("0.3".into()));
+}
+
+#[test]
 fn overflow_is_num_error_never_infinity() {
     let mut e = engine();
     for formula in [

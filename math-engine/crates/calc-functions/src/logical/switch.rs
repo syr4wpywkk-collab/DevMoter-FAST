@@ -156,6 +156,11 @@ mod tests {
     }
 
     #[test]
+    fn numbers_match_at_fifteen_digits() {
+        assert_eq!(t(&eval(r#"=SWITCH(0.1+0.2,0.3,"hit","miss")"#)), "hit");
+    }
+
+    #[test]
     fn arity_error() {
         assert_eq!(e(&eval("=SWITCH(1,2)")), CalcError::Value);
     }

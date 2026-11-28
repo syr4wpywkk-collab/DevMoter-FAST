@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 
-import { MAX_PARAMS, MAX_SQL_BYTES, createSqliteAdapter, encodeSqliteLiteral, sqliteErrorMessage, sqliteInvocation } from '../../src/engines/sqlite.ts';
+import { MAX_PARAMS, MAX_SQL_BYTES, checkSqliteParameters, createSqliteAdapter, encodeSqliteLiteral, sqliteErrorMessage, sqliteInvocation } from '../../src/engines/sqlite.ts';
 import { EngineError, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine } from './helpers.ts';
 
@@ -283,4 +283,34 @@ describe('SQLite adapter against the built engine', { skip: sqlite.skip }, () =>
     await outcome;
     assert.ok(performance.now() - begun < 5_000);
   });
+});
+
+test('refuses placeholders that have no parameter, and named ones', () => {
+  for (const [sql, count] of [
+    ['SELECT ?1, ?2', 2],
+    ['SELECT ?, ?', 2],
+    ['SELECT ?2, ?', 3],
+    ['SELECT ?1; SELECT ?1', 1],
+    ["SELECT ':name', '?3', \"@x\", '$$' -- ?9\n", 0],
+    ['SELECT 1 /* :x */', 0],
+    ['SELECT ?1', 2],
+    ['SELECT [?], [:name] FROM t', 0],
+    ['SELECT `?`, `:a``?` FROM t', 0],
+  ] as const) {
+    assert.doesNotThrow(() => checkSqliteParameters(sql, count), sql);
+  }
+  const unbound = rejectsWith('invalid_request', /uses parameter \?/);
+  assert.throws(() => checkSqliteParameters('SELECT ?', 0), unbound);
+  assert.throws(() => checkSqliteParameters('SELECT ?1, ?2', 1), rejectsWith('invalid_request', /uses parameter \?2 but 1 parameter was given/));
+  assert.throws(() => checkSqliteParameters('SELECT ?2, ?', 2), rejectsWith('invalid_request', /uses parameter \?3/));
+  assert.throws(() => checkSqliteParameters('SELECT ?12', 2), rejectsWith('invalid_request', /uses parameter \?12/));
+  assert.throws(() => checkSqliteParameters('SELECT [a], ?', 0), unbound);
+  assert.throws(() => checkSqliteParameters("SELECT 1 AS e'path\\', ?", 0), unbound);
+  assert.doesNotThrow(() => checkSqliteParameters("SELECT e'a\\', '?'", 0));
+  assert.throws(() => checkSqliteParameters('SELECT ?01', 1), rejectsWith('invalid_request', /\?01 is not supported/));
+  assert.throws(() => checkSqliteParameters('SELECT $foo$, ?2', 2), rejectsWith('invalid_request', /named parameters such as \$foo/));
+  for (const sql of ['SELECT :name', 'SELECT @x', 'SELECT $v', 'UPDATE t SET a = 1 WHERE id = :id', 'SELECT #label', 'SELECT $$', 'SELECT :$']) {
+    assert.throws(() => checkSqliteParameters(sql, 1), rejectsWith('invalid_request', /named parameters/), sql);
+  }
+  assert.throws(() => sqliteInvocation({ binary: '/x/sqlite3', file: '/data/app.sqlite' }, 'SELECT :name AS n', ['a']), rejectsWith('invalid_request', /named parameters such as :name/));
 });

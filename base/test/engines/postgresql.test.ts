@@ -4,7 +4,7 @@ import { after, before, describe, test } from 'node:test';
 
 import pg from 'pg';
 
-import { MAX_PARAMS, MAX_SQL_BYTES, copiesThroughClient, createPostgresqlAdapter, encodePostgresqlParam, postgresqlError, postgresqlTypes, validatePostgresqlRequest } from '../../src/engines/postgresql.ts';
+import { MAX_PARAMS, MAX_SQL_BYTES, checkPostgresqlReadOnly, copiesThroughClient, createPostgresqlAdapter, encodePostgresqlParam, postgresqlError, postgresqlTypes, validatePostgresqlRequest } from '../../src/engines/postgresql.ts';
 import { EngineError, MAX_QUERY_TIMEOUT_MS, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine, startPostgresql, type TestServer } from './helpers.ts';
 
@@ -218,6 +218,10 @@ describe('PostgreSQL adapter against the built engine', { skip }, () => {
     const readOnly = createPostgresqlAdapter({ ...connection(), readOnly: true });
     assert.deepEqual((await readOnly.query('SELECT count(*)::int AS c FROM t', [])).results[0]?.rows, [{ c: 2 }]);
     await assert.rejects(readOnly.query('DELETE FROM t', []), rejectsWith('query_failed', /read-only transaction \(SQLSTATE 25006\)/));
+    for (const sql of ['BEGIN READ WRITE; DELETE FROM t; COMMIT', 'COMMIT; DELETE FROM t', "SET default_transaction_read_only = off; DELETE FROM t", "DO $$ BEGIN COMMIT; END $$"]) {
+      await assert.rejects(readOnly.query(sql, []), rejectsWith('invalid_request', /not available on a read-only database/), sql);
+    }
+    assert.deepEqual((await readOnly.query('SELECT count(*)::int AS c FROM t', [])).results[0]?.rows, [{ c: 2 }]);
     await readOnly.close();
   });
 
@@ -238,4 +242,13 @@ describe('PostgreSQL adapter against the built engine', { skip }, () => {
     await closed.close();
     await assert.rejects(closed.query('SELECT 1', []), rejectsWith('engine_unavailable'));
   });
+});
+
+test('a read-only database refuses the statements that would leave read-only mode', () => {
+  for (const sql of ['SELECT 1', "SELECT 'begin; commit'", 'WITH x AS (SELECT 1) SELECT * FROM x', 'EXPLAIN SELECT 1', 'SHOW transaction_read_only', '-- commit\nSELECT 1', 'UPDATE t SET a = 1']) {
+    assert.doesNotThrow(() => checkPostgresqlReadOnly(sql), sql);
+  }
+  for (const sql of ['BEGIN READ WRITE', 'begin; insert into t values (1)', 'START TRANSACTION READ WRITE', 'SELECT 1; COMMIT', 'END', 'ROLLBACK', 'ABORT', 'SET SESSION CHARACTERISTICS AS TRANSACTION READ WRITE', 'set transaction_read_only = off', 'RESET ALL', 'DO $$ BEGIN COMMIT; END $$', 'CALL p()', '/* x */ COMMIT']) {
+    assert.throws(() => checkPostgresqlReadOnly(sql), (error: unknown) => error instanceof EngineError && error.code === 'invalid_request', sql);
+  }
 });
