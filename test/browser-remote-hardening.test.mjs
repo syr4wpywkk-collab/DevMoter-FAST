@@ -317,7 +317,11 @@ test("#715 legacy stop keeps the profile and refuses a restart while the browser
   assert.equal(children.length, 1);
   children[0].emit("exit", 0);
   children[0].emit("close", 0);
-  await sleep(20);
+  // The exit handler removes the profile asynchronously, which can take longer under suite load.
+  const cleanupDeadline = performance.now() + 10_000;
+  while (existsSync(children[0].profileDir) && performance.now() < cleanupDeadline) {
+    await sleep(20);
+  }
   assert.equal(existsSync(children[0].profileDir), false, "the profile is deleted once the browser finally exits");
   await manager.start("p1");
   assert.equal(children.length, 2);
