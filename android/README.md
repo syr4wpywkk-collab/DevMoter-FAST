@@ -18,7 +18,7 @@ Android only updates an installed app when the new APK has the same signing key,
 
 This stores `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS` as repository secrets and the certificate fingerprint as the `ANDROID_SIGNING_CERT_SHA256` variable. Back up the keystore and its password offline; losing them means installed APKs cannot be updated in place.
 
-`build-apk.sh` moves the secrets into unexported shell variables at start, so build tools never inherit them; it writes the keystore to the private build directory only for the `apksigner` call, passes the password only to that process, then clears the variables and deletes the keystore. The build fails if the signing certificate does not match the fingerprint. Push and manual builds use the release key; pull request builds never receive it and stay debug-signed. Without the secrets, builds fall back to an ephemeral debug key with a warning.
+`build-apk.sh` moves the secrets into unexported shell variables at start, so build tools never inherit them; it writes the keystore to the private build directory only for the `apksigner` call, passes the password only to that process, then clears the variables and deletes the keystore. The build fails if the signing certificate does not match the fingerprint. Only builds of `main` (push or manual run) receive the release key; other branches and pull requests stay debug-signed. Without the secrets, builds fall back to an ephemeral debug key with a warning.
 
 GitHub Actions: Android APK → successful run → Artifacts → DevMoter-FAST-Android-APK. Extract the ZIP and install the APK on an Android test device.
 
