@@ -91,6 +91,15 @@ test('redacts values under sensitive keys at any depth', () => {
   for (const secret of ['hunter2', 'abcdefghijkl', 's3cret', 'zzz']) assert.ok(!lines[0]!.includes(secret));
 });
 
+test('keeps boolean flags under sensitive keys, which carry no secret', () => {
+  const { logger, records } = capture();
+  logger.info('listening', { apiKeys: true, password: false, token: 'abc' });
+  const record = records()[0]!;
+  assert.equal(record.apiKeys, true);
+  assert.equal(record.password, false);
+  assert.equal(record.token, '[REDACTED]');
+});
+
 test('masks credentials inside strings: URLs, bearer tokens and API keys', () => {
   const { logger, lines, records } = capture();
   logger.error(`connect failed for postgres://app:p%40ss@db.internal:5432/app using ${fakeApiKey}`, {

@@ -194,15 +194,17 @@ export function parseConfig(value: unknown, baseDir: string, configFile?: string
   const keysFile = fileSetting('auth', 'keysFile');
   const auditFile = fileSetting('audit', 'file');
   // Each of these files has one writer with its own format; two settings naming one file would have one destroy the other.
-  const used = new Map<string, string>();
-  const claim = (file: string | undefined, setting: string) => {
+  // SQLite databases are the exception among themselves: SQLite's own locking lets several connections share a file,
+  // so a read-only entry can serve the same database as a writable one.
+  const used = new Map<string, { setting: string; shareable: boolean }>();
+  const claim = (file: string | undefined, setting: string, shareable = false) => {
     if (file === undefined) return;
     const other = used.get(file);
-    if (other !== undefined) throw new ConfigError(`${setting}: ${file} is also ${other}; each needs its own file`);
-    used.set(file, setting);
+    if (other !== undefined && !(shareable && other.shareable)) throw new ConfigError(`${setting}: ${file} is also ${other.setting}; each needs its own file`);
+    if (other === undefined) used.set(file, { setting, shareable });
   };
   claim(configFile === undefined ? undefined : path.resolve(configFile), 'the configuration file');
-  databases.forEach((database, index) => claim('file' in database ? database.file : undefined, `databases[${index}].file`));
+  databases.forEach((database, index) => claim('file' in database ? database.file : undefined, `databases[${index}].file`, database.engine === 'sqlite'));
   claim(keysFile, 'auth.keysFile');
   claim(auditFile, 'audit.file');
   return { server: { host, port }, databases, ...(keysFile === undefined ? {} : { auth: { keysFile } }), ...(auditFile === undefined ? {} : { audit: { file: auditFile } }) };
