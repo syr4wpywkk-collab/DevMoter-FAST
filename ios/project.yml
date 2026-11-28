@@ -19,4 +19,5 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: Connect to your private DevMoter server.
         MARKETING_VERSION: '0.2.0'
-        CURRENT_PROJECT_VERSION: '1'
+        INFOPLIST_KEY_NSCameraUsageDescription: Scan a DevMoter connection QR code on your trusted server.
+        CURRENT_PROJECT_VERSION: '3'
