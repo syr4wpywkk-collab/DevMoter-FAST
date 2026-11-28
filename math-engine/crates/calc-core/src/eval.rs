@@ -417,13 +417,13 @@ impl<'a> EvalContext<'a> {
             )),
             Expr::Unary { op, operand } => {
                 let v = self.eval(operand)?;
-                Ok(ArgValue::Scalar(finite(unary_op(*op, &v))))
+                self.charged(finite(lift_unary(&v, |x| unary_op(*op, x))))
             }
             Expr::Percent(operand) => {
                 let v = self.eval(operand)?;
-                Ok(ArgValue::Scalar(match v.error() {
+                self.charged(lift_unary(&v, |x| match x.error() {
                     Some(e) => Value::Error(e),
-                    None => match v.to_number() {
+                    None => match x.to_number() {
                         Ok(n) => finite(Value::Number(n / 100.0)),
                         Err(e) => Value::Error(e),
                     },
@@ -431,14 +431,14 @@ impl<'a> EvalContext<'a> {
             }
             Expr::Binary { op, left, right } => {
                 let l = self.eval(left)?;
-                if let Some(e) = l.error() {
-                    return Ok(ArgValue::Scalar(Value::Error(e)));
-                }
                 let r = self.eval(right)?;
-                if let Some(e) = r.error() {
-                    return Ok(ArgValue::Scalar(Value::Error(e)));
+                let is_array = |v: &Value| matches!(v, Value::Array(_));
+                if !is_array(&l) && !is_array(&r) {
+                    if let Some(e) = l.error().or_else(|| r.error()) {
+                        return Ok(ArgValue::Scalar(Value::Error(e)));
+                    }
                 }
-                Ok(ArgValue::Scalar(finite(binary_op(*op, &l, &r))))
+                self.charged(finite(lift_binary(*op, &l, &r)))
             }
             Expr::Call { name, args } => match self.registry.dispatch(name, self, args) {
                 Some(result) => result.map(|v| ArgValue::Scalar(finite(v))),
@@ -649,6 +649,17 @@ impl<'a> EvalContext<'a> {
         args.iter().map(|a| self.eval(a)).collect()
     }
 
+    /// Count each cell of an element-wise array result against the budget.
+    fn charged(&mut self, v: Value) -> Result<ArgValue, EvalError> {
+        if let Value::Array(a) = &v {
+            self.steps = self.steps.saturating_add(a.len());
+            if self.steps > self.max_steps {
+                return Err(EvalError::StepBudgetExceeded);
+            }
+        }
+        Ok(ArgValue::Scalar(v))
+    }
+
     /// Count one unit of work against the budget.
     pub fn step(&mut self) -> Result<(), EvalError> {
         self.steps += 1;
@@ -665,6 +676,67 @@ fn literal_value(l: &Literal) -> Value {
         Literal::Text(s) => Value::Text(s.clone()),
         Literal::Bool(b) => Value::Boolean(*b),
         Literal::Error(e) => Value::Error(*e),
+    }
+}
+
+/// Apply a unary operator to each element of an array operand.
+fn lift_unary(v: &Value, f: impl Fn(&Value) -> Value) -> Value {
+    match v {
+        Value::Array(a) => {
+            let cells = a.iter().map(&f).collect();
+            match ArrayValue::new(a.rows(), a.cols(), cells) {
+                Ok(array) => Value::Array(array),
+                Err(e) => Value::Error(e),
+            }
+        }
+        other => f(other),
+    }
+}
+
+/// Apply a binary operator element-wise when either operand is an array.
+///
+/// As in Excel, a scalar, a single row or a single column is repeated to the
+/// other operand's size; positions outside a smaller operand are `#N/A`.
+fn lift_binary(op: BinaryOp, l: &Value, r: &Value) -> Value {
+    if !matches!(l, Value::Array(_)) && !matches!(r, Value::Array(_)) {
+        return binary_op(op, l, r);
+    }
+    let dims = |v: &Value| match v {
+        Value::Array(a) => (a.rows(), a.cols()),
+        _ => (1, 1),
+    };
+    let (lr, lc) = dims(l);
+    let (rr, rc) = dims(r);
+    let (rows, cols) = (lr.max(rr), lc.max(rc));
+    if u64::from(rows) * u64::from(cols) > crate::array::MAX_ARRAY_CELLS as u64 {
+        return Value::Error(CalcError::Value);
+    }
+    let at = |v: &Value, (vr, vc): (u32, u32), row: u32, col: u32| -> Option<Value> {
+        let row = if vr == 1 { 0 } else { row };
+        let col = if vc == 1 { 0 } else { col };
+        match v {
+            Value::Array(a) => a.get(row, col).cloned(),
+            other if row == 0 && col == 0 => Some(other.clone()),
+            _ => None,
+        }
+    };
+    let mut cells = Vec::with_capacity(rows as usize * cols as usize);
+    for row in 0..rows {
+        for col in 0..cols {
+            cells.push(
+                match (at(l, (lr, lc), row, col), at(r, (rr, rc), row, col)) {
+                    (Some(a), Some(b)) => match (a.error(), b.error()) {
+                        (Some(e), _) | (None, Some(e)) => Value::Error(e),
+                        (None, None) => binary_op(op, &a, &b),
+                    },
+                    _ => Value::Error(CalcError::NA),
+                },
+            );
+        }
+    }
+    match ArrayValue::new(rows, cols, cells) {
+        Ok(array) => Value::Array(array),
+        Err(e) => Value::Error(e),
     }
 }
 
