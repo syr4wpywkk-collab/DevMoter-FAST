@@ -1790,6 +1790,7 @@ export const zhHans = {
   "workflow.refreshing": "正在刷新…",
   "workflow.ready": "就绪",
   "workflow.noChangesToReview": "暂无待审查变更",
+  "workflow.gitRequiredHint": "在 Git 应用中检查此项目，或在项目文件夹中运行 git init 以启用 Git 功能。",
   "workflow.filterAria": "按判定状态筛选文件",
   "workflow.filterAll": "全部",
   "workflow.filterPending": "待定",
