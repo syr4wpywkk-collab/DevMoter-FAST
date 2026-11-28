@@ -243,7 +243,7 @@
 
     const $ = selector => document.querySelector(selector);
     const providerRoot = $("#providers"), localLogin = $("#localLogin"), username = $("#username"), password = $("#password");
-    const recovery = $("#recovery"), recoverySummary = $("#recoverySummary"), loginCard = $("#loginCard"), langSelect = $("#languageSelect");
+    const recovery = $("#recovery"), otherOptionsDivider = $("#otherOptionsDivider"), recoverySummary = $("#recoverySummary"), loginCard = $("#loginCard"), langSelect = $("#languageSelect");
     const device = $("#device"), userCode = $("#userCode"), verifyLink = $("#verifyLink"), copyCode = $("#copyCode"), message = $("#message");
     let authStatus = null, activeFlow = "", pollTimer = 0;
     const icons = {
@@ -318,6 +318,7 @@
       providerRoot.replaceChildren(...methods.map(item => makeButton(...item)));
       providerRoot.hidden = methods.length === 0;
       recovery.hidden = Boolean(authStatus.stepUpRequired);
+      if (otherOptionsDivider) otherOptionsDivider.hidden = methods.length === 0 || recovery.hidden;
       needsSetupRecoverySummary = !authStatus.stepUpRequired && !methods.length;
     }
     function applyTranslations() {
