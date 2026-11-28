@@ -3,24 +3,24 @@
   "summary": {
     "own": {
       "files": 30,
-      "lines": 4387,
+      "lines": 4391,
       "blank": 382,
-      "comment": 549,
-      "code": 3456
+      "comment": 552,
+      "code": 3457
     },
     "tests": {
       "files": 22,
-      "lines": 3368,
-      "blank": 354,
+      "lines": 3402,
+      "blank": 357,
       "comment": 50,
-      "code": 2964
+      "code": 2995
     },
     "docs": {
       "files": 7,
-      "lines": 620,
+      "lines": 622,
       "blank": 149,
       "comment": 0,
-      "code": 471
+      "code": 473
     },
     "config": {
       "files": 8,
@@ -38,28 +38,28 @@
     },
     "total": {
       "files": 30788,
-      "lines": 9882912,
-      "blank": 1124871,
-      "comment": 1088011,
-      "code": 7670030
+      "lines": 9882952,
+      "blank": 1124874,
+      "comment": 1088014,
+      "code": 7670064
     }
   },
   "categories": {
     "own": {
       "total": {
         "files": 30,
-        "lines": 4387,
+        "lines": 4391,
         "blank": 382,
-        "comment": 549,
-        "code": 3456
+        "comment": 552,
+        "code": 3457
       },
       "languages": {
         "TypeScript": {
           "files": 24,
-          "lines": 4196,
+          "lines": 4200,
           "blank": 371,
-          "comment": 506,
-          "code": 3319
+          "comment": 509,
+          "code": 3320
         },
         "Shell": {
           "files": 5,
@@ -80,36 +80,36 @@
     "tests": {
       "total": {
         "files": 22,
-        "lines": 3368,
-        "blank": 354,
+        "lines": 3402,
+        "blank": 357,
         "comment": 50,
-        "code": 2964
+        "code": 2995
       },
       "languages": {
         "TypeScript": {
           "files": 22,
-          "lines": 3368,
-          "blank": 354,
+          "lines": 3402,
+          "blank": 357,
           "comment": 50,
-          "code": 2964
+          "code": 2995
         }
       }
     },
     "docs": {
       "total": {
         "files": 7,
-        "lines": 620,
+        "lines": 622,
         "blank": 149,
         "comment": 0,
-        "code": 471
+        "code": 473
       },
       "languages": {
         "Markdown": {
           "files": 7,
-          "lines": 620,
+          "lines": 622,
           "blank": 149,
           "comment": 0,
-          "code": 471
+          "code": 473
         }
       }
     },

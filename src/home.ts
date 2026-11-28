@@ -114,6 +114,12 @@ function recentTime(time: number): string {
   return formatDateTime(time, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+function searchShortcutLabel(): string {
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+  const platform = nav.userAgentData?.platform || nav.platform || nav.userAgent || "";
+  return /mac|iphone|ipad|ipod/i.test(platform) ? "⌘ K" : "Ctrl K";
+}
+
 export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
   // Keep the pre-existing isolated React quick-switch owner and tear down
   // global listeners if the vanilla home is ever re-mounted.
@@ -141,7 +147,7 @@ export function mountHomeSurface(target: HTMLElement, options: HomeOptions) {
         '<div class="dm-home-header-actions">',
           `<span class="dm-home-health" data-home-health data-state="checking" role="status" aria-live="polite"><span class="dm-home-health-dot" aria-hidden="true"></span><span data-home-health-label>${escapeHtml(t("home.healthChecking"))}</span></span>`,
           `<button class="dm-home-search-trigger" type="button" data-home-search-toggle aria-controls="dmHomeSearchPanel" aria-expanded="false" aria-label="${escapeHtml(t("home.searchAppsAria"))}">`,
-          `<span class="dm-home-search-trigger-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.5"></circle><path d="m15.6 15.6 4.1 4.1"></path></svg></span><strong>${escapeHtml(t("home.searchTrigger"))}</strong><kbd>⌘ K</kbd>`,
+          `<span class="dm-home-search-trigger-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.5"></circle><path d="m15.6 15.6 4.1 4.1"></path></svg></span><strong>${escapeHtml(t("home.searchTrigger"))}</strong><kbd>${escapeHtml(searchShortcutLabel())}</kbd>`,
           '</button>',
         '</div>',
       '</header>',
