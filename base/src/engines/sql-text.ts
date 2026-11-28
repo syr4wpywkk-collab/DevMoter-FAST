@@ -25,11 +25,13 @@ export interface SqlDialect {
   bracketIdentifiers?: boolean;
   /** "$tag$ ... $tag$" is quoted text (PostgreSQL, DuckDB); SQLite reads "$name" as a parameter instead. */
   dollarQuotes?: boolean;
+  /** E'...' is text in which a backslash escapes the quote (PostgreSQL, DuckDB); SQLite reads "e" as a word before an ordinary string. */
+  escapeStrings?: boolean;
 }
 
 /** What DuckDB's parser turns into a plain space before it reads the text. */
 export const DUCKDB_SQL: SqlDialect = { blanks: /[\u00a0\u2000-\u200b\u202f\u205f\u3000\ufeff]/, blanksEndWords: true, returnEndsComment: true, dollarQuotes: true };
-export const SQLITE_SQL: SqlDialect = { blanks: /\ufeff/, flatComments: true, bracketIdentifiers: true, dollarQuotes: false };
+export const SQLITE_SQL: SqlDialect = { blanks: /\ufeff/, flatComments: true, bracketIdentifiers: true, dollarQuotes: false, escapeStrings: false };
 export const POSTGRESQL_SQL: SqlDialect = { returnEndsComment: true, dollarQuotes: true };
 
 const WORD_START = /[A-Za-z_\u0080-\uffff]/;
@@ -135,7 +137,7 @@ export function sqlShape(sql: string, dialect: SqlDialect = {}, onToken?: (token
       onToken?.(word);
       index = end;
       // E'...' is the one string form in which a backslash escapes the quote.
-      if ((word === 'e' || word === 'E') && sql[index] === "'") index = skipQuoted(sql, index, "'", true);
+      if (dialect.escapeStrings !== false && (word === 'e' || word === 'E') && sql[index] === "'") index = skipQuoted(sql, index, "'", true);
     } else {
       content();
       onToken?.(char);
