@@ -712,6 +712,14 @@ fn err_reports_offset() {
     assert_eq!(e.offset, 1);
 }
 
+#[test]
+fn err_offset_counts_leading_equals() {
+    assert_eq!(parse("==1").unwrap_err().offset, 1);
+    assert_eq!(parse("=1+").unwrap_err().offset, 3);
+    assert_eq!(parse("=SUM(1,").unwrap_err().offset, 7);
+    assert_eq!(parse("=1@2").unwrap_err().offset, 2);
+}
+
 // ---------- limits ----------
 
 #[test]
