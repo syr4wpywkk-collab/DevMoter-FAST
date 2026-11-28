@@ -381,6 +381,28 @@ fn spilled_cells_are_not_stored_inputs() {
 }
 
 #[test]
+fn uncalled_lambda_cell_is_calc_error() {
+    let mut e = engine();
+    set(&mut e, "A1", "=LAMBDA(x,x)");
+    assert_eq!(get(&mut e, "A1"), Value::Error(CalcError::Calc));
+}
+
+#[test]
+fn negative_zero_results_are_stored_as_zero() {
+    let mut e = engine();
+    set(&mut e, "A1", "a");
+    set(&mut e, "B1", "=SUM(A5:A6)");
+    set(&mut e, "B2", "=SUM(A1:A2)");
+    set(&mut e, "B3", "=0*-1");
+    for addr in ["B1", "B2", "B3"] {
+        match get(&mut e, addr) {
+            Value::Number(n) => assert!(n == 0.0 && n.is_sign_positive(), "{addr}: {n:?}"),
+            v => panic!("{addr}: {v:?}"),
+        }
+    }
+}
+
+#[test]
 fn scalar_error_operand_broadcasts_over_array() {
     let mut e = engine();
     for formula in ["#N/A+{1,2}", "{1,2}+#N/A"] {

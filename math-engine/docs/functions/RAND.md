@@ -11,7 +11,9 @@ seed in tests.
 ## Behavior
 - **Volatile**: recalculates on every recalculation pass, like `NOW()`
   and `TODAY()`. Must be registered as volatile so the dependency
-  scheduler does not cache it.
+  scheduler does not cache it. A pass is an explicit `recalculate()` or
+  a read after a cell edit; repeated reads with no change return the
+  same value.
 - RNG lives in the workbook/evaluation context, not in the function —
   enables deterministic seeding per workbook and per test fixture.
 - Range: `0 <= r < 1`. `1.0` must never be produced.

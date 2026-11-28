@@ -125,6 +125,22 @@ export function quoteNonFinite(source: string): string {
   return parts.join('');
 }
 
+// Anchored to a line feed only: a JSON string may hold a raw U+2028, which a /m "^" would also match after.
+const CHANGES_LINE = /(?<![^\n])changes: +\d+ +total_changes: +(\d+)\n?/g;
+
+/**
+ * Takes out the lines the shell prints after each statement with ".changes on". They cannot be
+ * mistaken for rows: JSON output has no line that starts with a bare word.
+ */
+export function takeChanges(stdout: string): { text: string; total: number | undefined } {
+  let total: number | undefined;
+  const text = stdout.replace(CHANGES_LINE, (_line, count: string) => {
+    total = Number(count);
+    return '';
+  });
+  return { text, total };
+}
+
 export function parseResultSets(text: string, options: { nonFinite?: boolean } = {}): ResultSet[] {
   return splitJsonValues(text).map((value) => {
     const source = options.nonFinite ? quoteNonFinite(value) : value;

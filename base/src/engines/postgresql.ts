@@ -28,8 +28,8 @@ export interface PostgresqlAdapterOptions {
   user: string;
   password?: string;
   /**
-   * Starts every transaction read-only. This guards against accidents only: a
-   * query can turn it off again. To enforce it, connect as a role without write privileges.
+   * Starts every transaction read-only and refuses the statements that would leave it
+   * (see checkPostgresqlReadOnly). To enforce it, also connect as a role without write privileges.
    */
   readOnly?: boolean;
 }
@@ -99,6 +99,29 @@ export function validatePostgresqlRequest(sql: string, params: readonly QueryPar
   if (!Array.isArray(params)) throw new EngineError('invalid_request', 'params must be an array');
   if (params.length > MAX_PARAMS) throw new EngineError('invalid_request', `more than ${MAX_PARAMS} parameters`);
   return params.map((param, index) => encodePostgresqlParam(param, index + 1));
+}
+
+/** Statements that end the read-only transaction or change the setting that starts the next one. */
+const TRANSACTION_STATEMENTS = new Set(['abort', 'begin', 'call', 'commit', 'do', 'end', 'reset', 'rollback', 'set', 'start']);
+
+/**
+ * Refuses, for a read-only database, the statements a query could use to leave read-only mode:
+ * the setting only starts each transaction read-only, so ending the transaction (or a procedure
+ * or DO block that commits) or changing the setting would let later statements write.
+ */
+export function checkPostgresqlReadOnly(sql: string): void {
+  const words: string[] = [];
+  let atStart = true;
+  sqlShape(sql, POSTGRESQL_SQL, (token) => {
+    if (token === ';') atStart = true;
+    else if (atStart && /^[A-Za-z_]/.test(token)) {
+      words.push(token.toLowerCase());
+      atStart = false;
+    } else if (!/^\s+$/.test(token)) atStart = false;
+  });
+  for (const word of words) {
+    if (TRANSACTION_STATEMENTS.has(word)) throw new EngineError('invalid_request', `${word.toUpperCase()} is not available on a read-only database`);
+  }
 }
 
 const OID = { bool: 16, int2: 21, int4: 23, oid: 26, json: 114, float4: 700, float8: 701, jsonb: 3802 } as const;
@@ -185,6 +208,17 @@ export function postgresqlError(error: unknown): EngineError {
   return new EngineError('engine_unavailable', `cannot reach the PostgreSQL server (${reason})`, { cause: error });
 }
 
+const CHANGING_COMMANDS = new Set(['INSERT', 'UPDATE', 'DELETE', 'MERGE']);
+
+/** Rows inserted, updated or deleted, from the command tags. */
+function countChanges(result: pg.QueryResult | pg.QueryResult[]): number {
+  let changes = 0;
+  for (const one of Array.isArray(result) ? result : [result]) {
+    if (CHANGING_COMMANDS.has(one.command) && typeof one.rowCount === 'number') changes += one.rowCount;
+  }
+  return changes;
+}
+
 function toResultSets(result: pg.QueryResult | pg.QueryResult[]): ResultSet[] {
   const sets: ResultSet[] = [];
   for (const one of Array.isArray(result) ? result : [result]) {
@@ -240,6 +274,7 @@ export function createPostgresqlAdapter(options: PostgresqlAdapterOptions): SqlA
     async query(sql: string, params: readonly QueryParam[], queryOptions: QueryOptions = {}): Promise<QueryResult> {
       if (closed) throw new EngineError('engine_unavailable', 'the database is closed');
       const values = validatePostgresqlRequest(sql, params);
+      if (options.readOnly) checkPostgresqlReadOnly(sql);
       const timeoutMs = resolveTimeout(queryOptions.timeoutMs);
       const { signal } = queryOptions;
       if (signal?.aborted) throw new EngineError('cancelled', 'the query was cancelled');
@@ -290,7 +325,8 @@ export function createPostgresqlAdapter(options: PostgresqlAdapterOptions): SqlA
         );
         // Without parameters the simple protocol is used, which accepts several statements.
         const result = await Promise.race([values.length > 0 ? client.query(sql, values) : client.query(sql), stopped]);
-        return { results: toResultSets(result as pg.QueryResult | pg.QueryResult[]), durationMs: Math.round(performance.now() - started) };
+        const replies = result as pg.QueryResult | pg.QueryResult[];
+        return { results: toResultSets(replies), changes: countChanges(replies), durationMs: Math.round(performance.now() - started) };
       } catch (error) {
         throw postgresqlError(error);
       } finally {

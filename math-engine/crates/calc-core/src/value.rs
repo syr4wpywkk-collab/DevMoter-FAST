@@ -52,6 +52,15 @@ pub enum ValueKind {
 }
 
 impl Value {
+    /// Excel has no negative zero: `-0.0` (e.g. from an empty `SUM`)
+    /// becomes `0.0`.
+    pub fn normalize_zero(self) -> Value {
+        match self {
+            Value::Number(0.0) => Value::Number(0.0),
+            other => other,
+        }
+    }
+
     /// Classify this value.
     pub fn kind(&self) -> ValueKind {
         match self {
@@ -149,54 +158,152 @@ impl Value {
     }
 }
 
-/// Parse text into a number the way Excel's implicit conversion does for
-/// direct arguments: surrounding whitespace is ignored, a leading `+`/`-` is
-/// allowed, and decimal/exponent forms are accepted. A trailing `%` divides
-/// by 100 (Excel allows `="5%"+0`). Empty/whitespace-only text is rejected.
+/// Parse text into a number the way Excel (en-US) does for both `VALUE` and
+/// implicit conversion (`"1,000"+0`): surrounding whitespace is ignored, an
+/// optional sign and `$` may lead, `,` separators must sit in 3-digit groups,
+/// `.` is the decimal point, `E` an exponent, and a trailing `%` divides by
+/// 100. Empty text, `NaN`/`inf` spellings and overflow are rejected.
 pub fn parse_number_text(s: &str) -> Option<f64> {
-    let t = s.trim();
+    let mut t = s.trim();
+    // Each trailing `%` divides by 100 once more ("50%%" is 0.005).
+    let mut percents = 0;
+    while let Some(rest) = t.strip_suffix('%') {
+        t = rest.trim_end();
+        percents += 1;
+    }
     if t.is_empty() {
         return None;
     }
-    if let Some(rest) = t.strip_suffix('%') {
-        return parse_number_text(rest).map(|n| n / 100.0);
-    }
-    // Reject spellings Rust accepts but Excel formulas cannot produce as
-    // literals ("NaN", "inf") — except that typed input may still create
-    // them via number formatting; implicit text->number rejects them.
-    if t.eq_ignore_ascii_case("nan")
-        || t.eq_ignore_ascii_case("inf")
-        || t.eq_ignore_ascii_case("infinity")
-        || t.eq_ignore_ascii_case("+inf")
-        || t.eq_ignore_ascii_case("-inf")
-        || t.eq_ignore_ascii_case("+infinity")
-        || t.eq_ignore_ascii_case("-infinity")
-    {
+    // Split off an exponent: at most one 'e'/'E', after which an
+    // optional sign and a non-empty digit run are required.
+    let is_exp = |c: char| c == 'e' || c == 'E';
+    let exp_index = t.find(is_exp);
+    let (mantissa, exp) = match exp_index {
+        Some(i) => {
+            let exp = &t[i + 1..];
+            let digits = exp.strip_prefix(|c| c == '+' || c == '-').unwrap_or(exp);
+            if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+                return None;
+            }
+            (&t[..i], Some(exp))
+        }
+        None => (t, None),
+    };
+    // At most one currency sign, before or after the optional sign.
+    let (dollar, m) = match mantissa.strip_prefix('$') {
+        Some(rest) => (true, rest),
+        None => (false, mantissa),
+    };
+    let negative = m.starts_with('-');
+    let m = m.strip_prefix(|c| c == '+' || c == '-').unwrap_or(m);
+    let m = if dollar {
+        m
+    } else {
+        m.strip_prefix('$').unwrap_or(m)
+    };
+    if m.is_empty() {
         return None;
     }
-    t.parse::<f64>().ok()
+    let (int, frac) = match m.split_once('.') {
+        Some((i, f)) => (i, Some(f)),
+        None => (m, None),
+    };
+    // Validate `,` grouping in the integer part: first group 1-3
+    // digits, every later group exactly 3.
+    let mut int_digits = String::new();
+    if int.contains(',') {
+        let mut groups = int.split(',');
+        let first = groups.next().unwrap();
+        if first.is_empty() || first.len() > 3 || !first.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        int_digits.push_str(first);
+        for g in groups {
+            if g.len() != 3 || !g.bytes().all(|b| b.is_ascii_digit()) {
+                return None;
+            }
+            int_digits.push_str(g);
+        }
+    } else if int.bytes().all(|b| b.is_ascii_digit()) {
+        int_digits.push_str(int);
+    } else {
+        return None;
+    }
+    let frac_digits = frac.unwrap_or("");
+    if !frac_digits.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    if int_digits.is_empty() && frac_digits.is_empty() {
+        return None;
+    }
+    // Rebuild without commas: sign + int_digits + optional fraction.
+    let mut canonical = String::new();
+    if negative {
+        canonical.push('-');
+    }
+    canonical.push_str(if int_digits.is_empty() {
+        "0"
+    } else {
+        &int_digits
+    });
+    if frac.is_some() {
+        canonical.push('.');
+        canonical.push_str(frac_digits);
+    }
+    if let Some(exp) = exp {
+        canonical.push('e');
+        canonical.push_str(exp);
+    }
+    canonical
+        .parse::<f64>()
+        .ok()
+        .filter(|n| n.is_finite())
+        .map(|n| (0..percents).fold(n, |n, _| n / 100.0))
 }
 
-/// Format a number roughly like Excel's General format: integers without a
-/// decimal point, non-integers with the shortest round-trip representation.
-/// Scientific notation is used for very large/small magnitudes.
+/// Round to the 15 significant digits Excel keeps when it shows or compares a number.
+pub fn round_15(n: f64) -> f64 {
+    if n == 0.0 || !n.is_finite() {
+        return n;
+    }
+    format!("{n:.14e}").parse().unwrap_or(n)
+}
+
+/// Format a number the way Excel's General format turns it into text (`&`,
+/// display): 15 significant digits, no trailing zeros, and scientific notation
+/// (`1E+20`, `1.5E-10`) when the decimal exponent is at least 15 or below -9.
 ///
-/// SPEC-OPEN: Excel switches to scientific notation based on column width;
-/// the engine picks fixed thresholds (>= 1e15 shows the 15-significant-digit
-/// style Excel uses internally). Exact parity is a compatibility-fixture item.
+/// SPEC-OPEN: Excel's cell display also depends on column width; this is the
+/// width-independent text form.
 pub fn format_number(n: f64) -> String {
     if n == 0.0 {
-        "0".to_string()
-    } else if n == n.trunc() && n.abs() < 1e15 {
-        format!("{n:.0}")
+        return "0".to_string();
+    }
+    if !n.is_finite() {
+        return format!("{n}");
+    }
+    let sci = format!("{:.14e}", n.abs());
+    let (mantissa, exponent) = sci.split_once('e').unwrap_or((&sci, "0"));
+    let exponent: i32 = exponent.parse().unwrap_or(0);
+    let digits: String = mantissa.chars().filter(char::is_ascii_digit).collect();
+    let digits = digits.trim_end_matches('0');
+    let digits = if digits.is_empty() { "0" } else { digits };
+    let sign = if n < 0.0 { "-" } else { "" };
+    if !(-9..15).contains(&exponent) {
+        let (first, rest) = digits.split_at(1);
+        let point = if rest.is_empty() { "" } else { "." };
+        let exp_sign = if exponent < 0 { '-' } else { '+' };
+        return format!("{sign}{first}{point}{rest}E{exp_sign}{:02}", exponent.abs());
+    }
+    if exponent < 0 {
+        let zeros = "0".repeat((-exponent - 1) as usize);
+        return format!("{sign}0.{zeros}{digits}");
+    }
+    let int_len = exponent as usize + 1;
+    if digits.len() <= int_len {
+        format!("{sign}{digits}{}", "0".repeat(int_len - digits.len()))
     } else {
-        // Shortest representation that round-trips (Rust's default Display).
-        let mut s = format!("{n}");
-        // Rust never emits "E+..." for Display; leave as-is.
-        if s == "-0" {
-            s = "0".to_string();
-        }
-        s
+        format!("{sign}{}.{}", &digits[..int_len], &digits[int_len..])
     }
 }
 
@@ -244,5 +351,34 @@ impl fmt::Display for Value {
             Value::Lambda(_) => f.write_str("<lambda>"),
             Value::Reference(r) => write!(f, "<ref {}>", r.range.to_a1()),
         }
+    }
+}
+
+#[cfg(test)]
+mod general_format_tests {
+    use super::{format_number, round_15};
+
+    #[test]
+    fn general_format_matches_excel_text() {
+        let cases = [
+            (0.1 + 0.2, "0.3"),
+            (1.0 / 7.0, "0.142857142857143"),
+            (123456789012345678.0, "1.23456789012346E+17"),
+            (123456789012345.0, "123456789012345"),
+            (1e20, "1E+20"),
+            (1e-20, "1E-20"),
+            (1.5e-10, "1.5E-10"),
+            (1e-9, "0.000000001"),
+            (7.257415615307999e306, "7.257415615308E+306"),
+            (-2.5, "-2.5"),
+            (-0.0, "0"),
+            (42.0, "42"),
+            (1000.0, "1000"),
+            (0.000123, "0.000123"),
+        ];
+        for (n, text) in cases {
+            assert_eq!(format_number(n), text, "{n:e}");
+        }
+        assert_eq!(round_15(0.1 + 0.2), 0.3);
     }
 }

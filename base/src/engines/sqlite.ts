@@ -15,8 +15,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import { parseResultSets } from './json-results.ts';
+import { parseResultSets, takeChanges } from './json-results.ts';
 import { runEngineProcess } from './process.ts';
+import { SQLITE_SQL, sqlShape } from './sql-text.ts';
 import { EngineError, resolveTimeout, sqlHealth, type QueryOptions, type QueryParam, type QueryResult, type SqlAdapter } from './types.ts';
 
 export const MAX_SQL_BYTES = 64 * 1024;
@@ -76,6 +77,34 @@ export function encodeSqliteLiteral(param: QueryParam, position: number): string
   throw new EngineError('invalid_request', `parameter ${position} must be null, a boolean, a number, a string or {"$base64": "..."}`);
 }
 
+/**
+ * Checks the placeholders of `sql` against the parameters given: the shell binds a placeholder
+ * it has no value for to NULL, so a missing parameter or a named one (:name, @name, $name, which
+ * the API cannot pass) would silently run as NULL.
+ */
+export function checkSqliteParameters(sql: string, count: number): void {
+  const tokens: string[] = [];
+  sqlShape(sql, SQLITE_SQL, (token) => tokens.push(token));
+  let highest = 0; // the largest index used in the current statement: a bare "?" takes the next one
+  let needed = 0;
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index] as string;
+    if (token === ';') {
+      highest = 0;
+    } else if (token === '?') {
+      let digits = '';
+      while (/^\d$/.test(tokens[index + 1] ?? '')) digits += tokens[(index += 1)];
+      // The shell binds ?1, ?2, ... by name, so "?01" would match none of them.
+      if (digits.startsWith('0')) throw new EngineError('invalid_request', `parameter ?${digits} is not supported; use ?1, ?2, ...`);
+      highest = digits === '' ? highest + 1 : Math.max(highest, Number(digits));
+      needed = Math.max(needed, digits === '' ? highest : Number(digits));
+    } else if (':@$#'.includes(token) && /^[A-Za-z0-9_$\u0080-\uffff]/.test(tokens[index + 1] ?? '')) {
+      throw new EngineError('invalid_request', `named parameters such as ${token}${tokens[index + 1]} are not supported; use ?1, ?2, ...`);
+    }
+  }
+  if (needed > count) throw new EngineError('invalid_request', `the sql uses parameter ?${needed} but ${count === 1 ? '1 parameter was' : `${count} parameters were`} given`);
+}
+
 export interface SqliteInvocation {
   /** Program arguments: options and the database file only, nothing of the request. */
   args: string[];
@@ -97,6 +126,7 @@ export function sqliteInvocation(options: SqliteAdapterOptions, sql: string, par
   }
   if (!Array.isArray(params)) throw new EngineError('invalid_request', 'params must be an array');
   if (params.length > MAX_PARAMS) throw new EngineError('invalid_request', `more than ${MAX_PARAMS} parameters`);
+  checkSqliteParameters(sql, params.length);
 
   // -bail: stop at the first error, as the caller expects of one request.
   const args = ['-safe', '-batch', '-noinit', '-bail', '-json'];
@@ -109,7 +139,8 @@ export function sqliteInvocation(options: SqliteAdapterOptions, sql: string, par
     if (values.length > MAX_PARAMS_BYTES) throw new EngineError('invalid_request', `the parameters are larger than ${MAX_PARAMS_BYTES} bytes once encoded`);
     lines.push('.parameter init', `INSERT INTO temp.sqlite_parameters(key,value) VALUES${values};`);
   }
-  lines.push(sql, '');
+  // ".changes on": the shell reports the rows each statement changed, which -json alone leaves out.
+  lines.push('.changes on', sql, '');
   // The shell drops one carriage return before each line feed it reads. Doubling it keeps a
   // CRLF inside a string literal as it was sent; outside a literal it is blank space either way.
   return { args, input: lines.join('\n').replaceAll('\r\n', '\r\r\n') };
@@ -158,7 +189,10 @@ export function createSqliteAdapter(options: SqliteAdapterOptions): SqlAdapter {
       const run = await child.finally(() => running.delete(child));
       if (run.code !== 0 || run.stderr.trim() !== '') throw new EngineError('query_failed', sqliteErrorMessage(run.stderr));
       try {
-        return { results: parseResultSets(run.stdout), durationMs: Math.round(performance.now() - started) };
+        const { text, total } = takeChanges(run.stdout);
+        // The count covers the whole connection, so it includes the parameters stored before the caller's SQL.
+        const changes = total === undefined ? 0 : Math.max(0, total - params.length);
+        return { results: parseResultSets(text), changes, durationMs: Math.round(performance.now() - started) };
       } catch (error) {
         throw new EngineError('query_failed', 'the engine returned output that could not be read', { cause: error });
       }

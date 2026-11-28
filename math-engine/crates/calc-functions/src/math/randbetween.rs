@@ -151,6 +151,8 @@ mod tests {
         )
         .unwrap();
         let first = e.get_value("Sheet1", "A1").unwrap();
+        assert_eq!(e.get_value("Sheet1", "A1").unwrap(), first);
+        e.recalculate().unwrap();
         let second = e.get_value("Sheet1", "A1").unwrap();
         assert_ne!(first, second);
     }
