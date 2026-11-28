@@ -94,9 +94,11 @@ export function checkSqliteParameters(sql: string, count: number): void {
     } else if (token === '?') {
       let digits = '';
       while (/^\d$/.test(tokens[index + 1] ?? '')) digits += tokens[(index += 1)];
+      // The shell binds ?1, ?2, ... by name, so "?01" would match none of them.
+      if (digits.startsWith('0')) throw new EngineError('invalid_request', `parameter ?${digits} is not supported; use ?1, ?2, ...`);
       highest = digits === '' ? highest + 1 : Math.max(highest, Number(digits));
       needed = Math.max(needed, digits === '' ? highest : Number(digits));
-    } else if ((token === ':' || token === '@' || token === '$') && /^[A-Za-z0-9_\u0080-\uffff]/.test(tokens[index + 1] ?? '')) {
+    } else if (':@$#'.includes(token) && /^[A-Za-z0-9_$\u0080-\uffff]/.test(tokens[index + 1] ?? '')) {
       throw new EngineError('invalid_request', `named parameters such as ${token}${tokens[index + 1]} are not supported; use ?1, ?2, ...`);
     }
   }
