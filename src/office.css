@@ -218,6 +218,7 @@
 .office-layout {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr) 296px;
+  grid-row: 4;
   min-height: 0;
 }
 .office-side,
@@ -246,10 +247,24 @@
 }
 .office-section-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2, 8px);
   margin-bottom: 4px;
+}
+.office-section-head > h2 {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.office-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2, 8px);
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
 }
 .office-side h2,
 .office-ai h2,
@@ -443,6 +458,7 @@
   width: auto !important;
 }
 .office-scroll {
+  grid-row: 4;
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;

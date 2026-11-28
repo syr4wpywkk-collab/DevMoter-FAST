@@ -61,13 +61,19 @@ function reviewChanges() {
 async function setupReview(t, options={}) {
  const dom=new JSDOM('<body><div id="workflowMount"></div></body>',{url:'http://localhost',runScripts:'outside-only'});
  t.after(()=>dom.window.close());
- const state={changes:reviewChanges(),failChanges:false,requests:[],copied:[],pendingChanges:null};
+ const projects=options.projects??[{id:'p1',name:'Demo',path:'/demo'}];
+ const state={changes:options.changes??reviewChanges(),isGit:options.isGit??true,failGit:false,failChanges:false,requests:[],copied:[],pendingChanges:null,pendingGit:null};
  dom.window.exports={};dom.window.require=name=>{if(name==='./project-labels.mjs')return projectLabels;if(name==='./sheet-header.mjs')return sheetHeader;if(name==='./i18n')return i18nCore;if(name==='./api-error.mjs')return apiError;throw new Error('unexpected module '+name);};
  dom.window.fetch=async(url,init={})=>{
   const method=String(init.method||'GET').toUpperCase();
   state.requests.push(method+' '+url);
   const json=(body,status=200)=>new Response(JSON.stringify(body),{status});
-  if(url==='/api/projects')return json({projects:[{id:'p1',name:'Demo',path:'/demo'}]});
+  if(url==='/api/projects')return json({projects});
+  if(String(url).endsWith('/git/status')){
+   if(state.failGit)return json({error:'boom'},500);
+   if(state.pendingGit){const captured=state.isGit;const gate=state.pendingGit;state.pendingGit=null;await gate;return json({isGit:captured});}
+   return json({isGit:state.isGit});
+  }
   if(String(url).endsWith('/changes')){
    if(state.failChanges)return json({error:'boom'},500);
    if(state.pendingChanges){const gate=state.pendingChanges;state.pendingChanges=null;const stale=structuredClone(state.changes);await gate;return json({changes:stale});}
@@ -209,4 +215,124 @@ test('Review refresh keeps the current list on failure and never lets a stale re
  await settle();
  assert.equal(doc.querySelector('.wf-file[data-path="src/alpha.ts"]').dataset.decision,'reject');
  assert.equal(doc.querySelector('[data-wf-count="reject"]').textContent,'2');
+});
+test('Non-Git project shows a shared repository notice and disables only Git-dependent controls',async t=>{
+ const {doc,mutations}=await setupReview(t,{changes:[],isGit:false});
+ const notice=doc.querySelector('#wfRepositoryNotice');
+ assert.equal(notice.classList.contains('hidden'),false);
+ assert.match(notice.textContent,/not a Git repository/);
+ assert.match(notice.textContent,/git init/);
+ assert.equal(doc.querySelector('#wfStatus').textContent,'');
+ assert.equal(doc.querySelector('#wfChanges .wf-empty'),null);
+ assert.equal(doc.querySelector('#wfWorktrees .wf-empty'),null);
+ assert.equal(doc.querySelector('#wfLoadDiff').disabled,true);
+ for(const control of doc.querySelectorAll('#wfWorktreeForm input, #wfWorktreeForm button, #wfPrForm input, #wfPrForm select, #wfPrForm textarea, #wfPrForm button'))
+  assert.equal(control.disabled,true);
+ for(const control of doc.querySelectorAll('#wfIssueForm input, #wfIssueForm textarea, #wfIssueForm button'))
+  assert.equal(control.disabled,false);
+ for(const tab of ['worktrees','github','changes']){
+  doc.querySelector(`[data-wf-tab="${tab}"]`).click();
+  assert.equal(notice.classList.contains('hidden'),false);
+ }
+ assert.deepEqual(mutations(),[]);
+});
+test('Git project with no changes hides the notice and keeps standard empty states',async t=>{
+ const {doc}=await setupReview(t,{changes:[],isGit:true});
+ assert.equal(doc.querySelector('#wfRepositoryNotice').classList.contains('hidden'),true);
+ assert.match(doc.querySelector('#wfChanges').textContent,/No changes to review/);
+ assert.match(doc.querySelector('#wfWorktrees').textContent,/No worktrees/);
+ assert.equal(doc.querySelector('#wfStatus').textContent,'Ready');
+ assert.equal(doc.querySelector('#wfLoadDiff').disabled,false);
+ assert.equal(doc.querySelector('#wfWorktreeForm button[type="submit"]').disabled,false);
+ assert.equal(doc.querySelector('#wfPrForm button[type="submit"]').disabled,false);
+});
+test('Git status refreshes toggle the notice and a status failure keeps the previous state',async t=>{
+ const {doc,state,settle}=await setupReview(t,{changes:[],isGit:false});
+ const notice=doc.querySelector('#wfRepositoryNotice');
+ assert.equal(notice.classList.contains('hidden'),false);
+ assert.equal(doc.querySelector('#wfLoadDiff').disabled,true);
+ // Same-project refresh after `git init`: the notice clears and controls re-enable.
+ state.isGit=true;
+ doc.querySelector('#wfRefresh').click();
+ await settle();
+ assert.equal(notice.classList.contains('hidden'),true);
+ assert.equal(doc.querySelector('#wfLoadDiff').disabled,false);
+ assert.equal(doc.querySelector('#wfStatus').textContent,'Ready');
+ assert.match(doc.querySelector('#wfChanges').textContent,/No changes to review/);
+ state.isGit=false;
+ doc.querySelector('#wfRefresh').click();
+ await settle();
+ assert.equal(notice.classList.contains('hidden'),false);
+ assert.equal(doc.querySelector('#wfLoadDiff').disabled,true);
+ assert.equal(doc.querySelector('#wfStatus').textContent,'');
+ // A failing status request must not classify a known Git project as non-Git.
+ state.isGit=true;
+ doc.querySelector('#wfRefresh').click();
+ await settle();
+ assert.equal(notice.classList.contains('hidden'),true);
+ state.failGit=true;
+ doc.querySelector('#wfRefresh').click();
+ await settle();
+ assert.equal(notice.classList.contains('hidden'),true);
+ assert.equal(doc.querySelector('#wfLoadDiff').disabled,false);
+ assert.equal(doc.querySelector('#wfStatus').classList.contains('error'),true);
+ assert.match(doc.querySelector('#wfStatus').textContent,/Refresh failed/);
+});
+test('Switching projects resets repository state and a stale status response cannot override the newer project',async t=>{
+ const projects=[{id:'p1',name:'One',path:'/one'},{id:'p2',name:'Two',path:'/two'}];
+ const {dom,doc,state,settle}=await setupReview(t,{changes:[],isGit:false,projects});
+ const notice=doc.querySelector('#wfRepositoryNotice');
+ const select=doc.querySelector('#wfProject');
+ assert.equal(notice.classList.contains('hidden'),false);
+ assert.equal(doc.querySelector('#wfLoadDiff').disabled,true);
+ // p2 is a Git project: switching clears the notice and re-enables controls.
+ state.isGit=true;
+ select.value='p2';
+ select.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ assert.equal(notice.classList.contains('hidden'),true);
+ assert.equal(doc.querySelector('#wfStatus').textContent,'Refreshing…');
+ await settle();
+ assert.equal(notice.classList.contains('hidden'),true);
+ assert.equal(doc.querySelector('#wfLoadDiff').disabled,false);
+ assert.equal(doc.querySelector('#wfStatus').textContent,'Ready');
+ // A slow p1 status response must not mark the now-active p2 as non-Git.
+ state.isGit=false;
+ let release;
+ state.pendingGit=new Promise(resolve=>{release=resolve;});
+ select.value='p1';
+ select.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ await settle();
+ state.isGit=true;
+ select.value='p2';
+ select.dispatchEvent(new dom.window.Event('change',{bubbles:true}));
+ await settle();
+ release();
+ await settle();
+ assert.equal(notice.classList.contains('hidden'),true);
+ assert.equal(doc.querySelector('#wfLoadDiff').disabled,false);
+ assert.equal(select.value,'p2');
+});
+test('Non-Git project still lists agent proposals and keeps review/apply and issue-to-task usable',async t=>{
+ const {doc,settle,mutations}=await setupReview(t,{isGit:false});
+ assert.equal(doc.querySelector('#wfRepositoryNotice').classList.contains('hidden'),false);
+ assert.equal(doc.querySelectorAll('.wf-file').length,3);
+ assert.equal(doc.querySelector('[data-wf-action="apply"]').disabled,false);
+ assert.equal(doc.querySelector('[data-wf-action="file-accept"]').disabled,false);
+ assert.equal(doc.querySelector('#wfIssueForm button[type="submit"]').disabled,false);
+ doc.querySelector('.wf-file[data-path="src/beta.ts"] [data-wf-action="file-accept"]').click();
+ await settle();
+ assert.equal(doc.querySelector('.wf-file[data-path="src/beta.ts"]').dataset.decision,'accept');
+ assert.equal(mutations().some(entry=>entry.includes('/review')),true);
+});
+test('Non-Git applied proposals disable commit controls until Git is available',async t=>{
+ const changes=reviewChanges();
+ changes[0].status='applied';
+ const {doc,state,settle}=await setupReview(t,{changes,isGit:false});
+ const controls=()=>Array.from(doc.querySelectorAll('[data-wf-action="generate-message"], [data-wf-action="commit"]'));
+ assert.equal(controls().length,2);
+ assert.equal(controls().every(control=>control.disabled),true);
+ state.isGit=true;
+ doc.querySelector('#wfRefresh').click();
+ await settle();
+ assert.equal(controls().every(control=>!control.disabled),true);
 });

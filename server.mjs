@@ -2,7 +2,7 @@ import { createOfficeStore, OFFICE_LIMITS } from "./server/office/store.mjs";
 import { createOfficeAi } from "./server/office/ai.mjs";
 import http from "node:http";
 import { accessSync, constants as fsConstants } from "node:fs";
-import { lstat, mkdir, open, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import { lstat, mkdir, open, readFile, readdir, realpath, rename, stat, writeFile } from "node:fs/promises";
 import { basename, delimiter, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash, randomUUID } from "node:crypto";
@@ -663,7 +663,9 @@ async function readProjectRegistry() {
     // Bootstrap the registry below.
   }
 
-  const candidates = [process.env.CODEX_CWD, process.cwd()]
+  // Seed from the configured workspace; DevMoter's own install dir only when none is set.
+  const configured = [process.env.CODEX_CWD, process.env.OPENCODE_DIRECTORY].filter(Boolean);
+  const candidates = (configured.length ? configured : [process.cwd()])
     .filter(Boolean)
     .map(value => resolve(String(value)))
     .filter(value => value !== resolve(HOME_DIR));
@@ -671,9 +673,8 @@ async function readProjectRegistry() {
   const projects = [];
   for (const candidate of [...new Set(candidates)]) {
     try {
-      const actual = await realpath(candidate);
-      const info = await stat(actual);
-      if (!info.isDirectory()) continue;
+      const actual = await normalizeExistingProjectPath(candidate);
+      if (projects.some(project => project.path === actual)) continue;
       projects.push({
         id: randomUUID(),
         name: basename(actual) || actual,
@@ -681,7 +682,7 @@ async function readProjectRegistry() {
         addedAt: Date.now()
       });
     } catch {
-      // Ignore unavailable bootstrap paths.
+      // Skip paths a project could not be registered at.
     }
   }
 
@@ -691,11 +692,14 @@ async function readProjectRegistry() {
 
 async function writeProjectRegistry(projects) {
   await mkdir(PROJECT_CONFIG_DIR, { recursive: true, mode: 0o700 });
+  // Write then rename, so a concurrent reader never sees a half-written registry.
+  const temporary = `${PROJECTS_FILE}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(
-    PROJECTS_FILE,
+    temporary,
     JSON.stringify({ version: 1, projects }, null, 2),
     { mode: 0o600 }
   );
+  await rename(temporary, PROJECTS_FILE);
 }
 
 async function normalizeExistingProjectPath(input) {
@@ -887,6 +891,7 @@ async function projectsCreateOrAdd(req, res) {
 
     projects.unshift(project);
     await writeProjectRegistry(projects);
+    for (const follow of openCodeEventFollowers) follow(project.path);
     json(res, 201, { project, existed: false });
   } catch (error) {
     json(res, 400, { error: errorMessage(error) });
@@ -2212,6 +2217,25 @@ async function opencodeSessionRoute(req, res, pathname) {
   return true;
 }
 
+// The event stream names no project (EventSource sends no headers), so it
+// listens to every registered project directory besides OPENCODE_DIRECTORY.
+// Open OpenCode event streams that should also follow a newly added project.
+const openCodeEventFollowers = new Set();
+
+async function openCodeProjectEventDirectories() {
+  const base = await realpath(OPENCODE_DIRECTORY).catch(() => resolve(OPENCODE_DIRECTORY));
+  const directories = new Set();
+  for (const project of await readProjectRegistry().catch(() => [])) {
+    try {
+      const actual = await normalizeExistingProjectPath(project.path);
+      if (actual !== base) directories.add(actual);
+    } catch {
+      // Skip projects whose folder is gone or no longer allowed.
+    }
+  }
+  return [...directories];
+}
+
 // The running generation's event stream, rewritten frame by frame into the
 // canonical vocabulary (server/opencode-adapter.mjs canonicalOpenCodeEvent).
 async function opencodeEvents(req, res) {
@@ -2230,13 +2254,37 @@ async function opencodeEvents(req, res) {
   req.on("aborted", abortUpstream);
   res.on("close", abortUpstream);
   try {
-    const upstream = await fetch(OPENCODE_ORIGIN + path, {
-      headers: await openCodeHeadersForRequest(req, { accept: "text/event-stream" }),
-      signal: upstreamAbort.signal
-    });
-    if (!upstream.ok || !upstream.body || !String(upstream.headers.get("content-type") || "").includes("text/event-stream")) {
-      json(res, 502, { error: `OpenCode event stream ${path} answered HTTP ${upstream.status}` });
+    // OpenCode publishes events per directory, and sessions run in their
+    // project's directory, so follow OPENCODE_DIRECTORY and every project.
+    const openStream = async headers => {
+      const upstream = await fetch(OPENCODE_ORIGIN + path, { headers, signal: upstreamAbort.signal });
+      const ok = upstream.ok && upstream.body && String(upstream.headers.get("content-type") || "").includes("text/event-stream");
+      if (!ok) upstream.body?.cancel().catch(() => {});
+      return { upstream, ok };
+    };
+    const primary = await openStream(await openCodeHeadersForRequest(req, { accept: "text/event-stream" }));
+    if (!primary.ok) {
+      json(res, 502, { error: `OpenCode event stream ${path} answered HTTP ${primary.upstream.status}` });
       return;
+    }
+    const streams = [primary.upstream];
+    const followProjects = !req.headers["x-pocket-project-id"];
+    const followed = new Set();
+    const openExtra = async directory => {
+      followed.add(directory);
+      const extra = await openStream(openCodeHeaders({ "x-opencode-directory": directory, accept: "text/event-stream" }));
+      return extra.ok ? extra.upstream : null;
+    };
+    if (followProjects) {
+      for (const directory of await openCodeProjectEventDirectories()) {
+        try {
+          const upstream = await openExtra(directory);
+          if (upstream) streams.push(upstream);
+        } catch {
+          if (upstreamAbort.signal.aborted) throw new Error("aborted");
+          // A project whose stream fails must not take the others down.
+        }
+      }
     }
     if (endIfResponseStarted(res)) return;
     res.writeHead(200, {
@@ -2245,38 +2293,57 @@ async function opencodeEvents(req, res) {
       "cache-control": "no-cache, no-transform",
       connection: "keep-alive"
     });
-    const read = createSseReader();
-    const decoder = new TextDecoder();
-    const reader = upstream.body.getReader();
-    const emitFrames = chunk => {
-      for (const frame of read(chunk)) {
-        const event = canonicalOpenCodeEvent(generation, frame);
-        if (event && !res.writableEnded && !res.destroyed) {
-          if (event.type === "session.deleted") {
-            const deletedSessionId = String(
-              event.properties?.info?.id ??
-              event.properties?.sessionID ??
-              event.properties?.id ??
-              ""
-            );
-            if (deletedSessionId) openCodeSessionModes.delete(deletedSessionId);
+    const pump = async upstream => {
+      const read = createSseReader();
+      const decoder = new TextDecoder();
+      const reader = upstream.body.getReader();
+      const emitFrames = chunk => {
+        for (const frame of read(chunk)) {
+          const event = canonicalOpenCodeEvent(generation, frame);
+          if (event && !res.writableEnded && !res.destroyed) {
+            if (event.type === "session.deleted") {
+              const deletedSessionId = String(
+                event.properties?.info?.id ??
+                event.properties?.sessionID ??
+                event.properties?.id ??
+                ""
+              );
+              if (deletedSessionId) openCodeSessionModes.delete(deletedSessionId);
+            }
+            res.write("data: " + stringifyRedactedJson(event) + "\n\n");
           }
-          res.write("data: " + stringifyRedactedJson(event) + "\n\n");
         }
+      };
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done || res.writableEnded || res.destroyed) break;
+          emitFrames(decoder.decode(value, { stream: true }));
+        }
+        const tail = decoder.decode();
+        if (tail && !res.writableEnded && !res.destroyed) {
+          emitFrames(tail);
+        }
+      } finally {
+        reader.releaseLock();
       }
     };
+    // The primary stream ends the response; extra project streams only add events.
+    for (const extra of streams.slice(1)) void pump(extra).catch(() => {});
+    const follow = directory => {
+      if (followed.has(directory) || res.writableEnded || res.destroyed) return;
+      void (async () => {
+        const base = await realpath(OPENCODE_DIRECTORY).catch(() => resolve(OPENCODE_DIRECTORY));
+        if (directory === base) return;
+        const upstream = await openExtra(directory);
+        if (upstream) await pump(upstream);
+      })().catch(() => {});
+    };
+    if (followProjects) openCodeEventFollowers.add(follow);
     try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done || res.writableEnded || res.destroyed) break;
-        emitFrames(decoder.decode(value, { stream: true }));
-      }
-      const tail = decoder.decode();
-      if (tail && !res.writableEnded && !res.destroyed) {
-        emitFrames(tail);
-      }
+      await pump(primary.upstream);
     } finally {
-      reader.releaseLock();
+      openCodeEventFollowers.delete(follow);
     }
     endIfResponseStarted(res);
   } catch (error) {
@@ -2395,16 +2462,25 @@ async function proxy(req, res, { upstreamUrl, policyPath }) {
   res.on("close", onClientClosed);
 
   try {
-    const upstream = await fetch(upstreamUrl, {
-      method: req.method,
-      headers: await openCodeHeadersForRequest(req, {
-        "content-type": req.headers["content-type"] || "application/json",
-        "accept": req.headers["accept"] || "*/*"
-      }, policyPath),
-      body,
-      redirect: "error",
-      signal: upstreamAbort.signal
-    });
+    const requestHeaders = await openCodeHeadersForRequest(req, {
+      "content-type": req.headers["content-type"] || "application/json",
+      "accept": req.headers["accept"] || "*/*"
+    }, policyPath);
+    let upstream;
+    try {
+      upstream = await fetch(upstreamUrl, {
+        method: req.method,
+        headers: requestHeaders,
+        body,
+        redirect: "error",
+        signal: upstreamAbort.signal
+      });
+    } catch (error) {
+      if (endIfResponseStarted(res)) return;
+      console.warn("OpenCode upstream unavailable", redactLog(`${req.method} ${policyPath}: ${errorMessage(error)}`));
+      json(res, 502, { error: "OpenCode upstream is unavailable. Check that OpenCode is running and try again." });
+      return;
+    }
 
     const { headers, rawContentType, mediaType } = buildProxyResponseHeaders(
       upstream.headers,
@@ -3298,7 +3374,13 @@ const server = http.createServer(async (req, res) => {
         if (aiMatch && req.method === "GET" && !aiMatch[2]) { json(res, 200, officeAi.get(aiMatch[1], identity)); return; }
         if (aiMatch && req.method === "POST" && aiMatch[2]) { json(res, 200, officeAi.stop(aiMatch[1], identity)); return; }
         json(res, 404, { error: "Unknown Office endpoint" });
-      } catch (error) { json(res, error.status || 400, { error: safeText(error.message, REDACTED_SECRETS) }); }
+      } catch (error) {
+        const missing = error?.code === "ENOENT";
+        const fsError = missing || typeof error?.syscall === "string" || typeof error?.path === "string";
+        const status = missing ? 404 : fsError ? 500 : error.status || 400;
+        const message = missing ? "文書が見つかりません。" : fsError ? "文書を処理できませんでした。" : safeText(error.message, REDACTED_SECRETS);
+        json(res, status, { error: message });
+      }
       return;
     }
 

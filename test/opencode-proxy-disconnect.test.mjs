@@ -141,3 +141,92 @@ test("OpenCode proxy survives an upstream stream disconnect and aborts the upstr
   assert.doesNotMatch(stderr, /ERR_HTTP_HEADERS_SENT/);
   assert.doesNotMatch(stderr, /uncaughtException|Unhandled/);
 });
+
+test("OpenCode session list reports upstream unavailability without server-error stacks (#764)", async () => {
+  const home = await mkdtemp(join(tmpdir(), "devmoter-proxy-offline-"));
+  const authPassword = "proxy-offline-password-123";
+  const sessions = { data: [{ id: "ses_764", title: "Test session" }] };
+  let upstreamStatus = 200;
+  const upstreamHits = [];
+  const openCode = http.createServer((req, res) => {
+    upstreamHits.push(req.url);
+    res.writeHead(upstreamStatus, { "content-type": "application/json" });
+    res.end(JSON.stringify(upstreamStatus === 200 ? sessions : { error: "upstream rejected request" }));
+  });
+  const openCodePort = await listen(openCode);
+  const port = await freePort();
+  const child = spawn(process.execPath, ["server.mjs"], {
+    cwd: repoRoot,
+    env: {
+      ...process.env,
+      HOME: home,
+      POCKET_HOST: "127.0.0.1",
+      POCKET_PORT: String(port),
+      OPENCODE_URL: `http://127.0.0.1:${openCodePort}`,
+      CODEX_BIN: "__devmoter_test_codex_not_started__",
+      DEVMOTER_AUTH_PASSWORD: authPassword
+    },
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  let stderr = "";
+  child.stderr.on("data", chunk => { stderr += chunk.toString(); });
+
+  try {
+    await waitForReady(child);
+    const baseUrl = `http://127.0.0.1:${port}`;
+    const headers = {
+      authorization: `Basic ${Buffer.from(`devmoter:${authPassword}`).toString("base64")}`,
+      origin: baseUrl
+    };
+    const get = path => fetch(`${baseUrl}/api/opencode${path}`, {
+      headers,
+      signal: AbortSignal.timeout(5000)
+    });
+    const listPath = "/session?limit=80&order=desc";
+    const online = await get(listPath);
+    assert.equal(online.status, 200);
+    assert.deepEqual(await online.json(), sessions);
+    assert.equal(upstreamHits.at(-1), "/api/session?limit=80&order=desc");
+
+    upstreamStatus = 401;
+    const rejected = await get(listPath);
+    assert.equal(rejected.status, 401);
+    assert.deepEqual(await rejected.json(), { error: "upstream rejected request" });
+    upstreamStatus = 200;
+    await new Promise(resolve => openCode.close(resolve));
+
+    for (const path of ["/session", listPath]) {
+      const offline = await get(path);
+      assert.equal(offline.status, 502, path);
+      assert.match(offline.headers.get("content-type"), /^application\/json\b/);
+      assert.equal(offline.headers.get("cache-control"), "no-store");
+      assert.deepEqual(await offline.json(), {
+        error: "OpenCode upstream is unavailable. Check that OpenCode is running and try again."
+      });
+    }
+    const active = await get("/session/active");
+    assert.equal(active.status, 502);
+    assert.match((await active.json()).error, /Could not detect the OpenCode API version/);
+    assert.equal(child.exitCode, null);
+
+    openCode.listen(openCodePort, "127.0.0.1");
+    await once(openCode, "listening");
+    const recovered = await get(listPath);
+    assert.equal(recovered.status, 200);
+    assert.deepEqual(await recovered.json(), sessions);
+    assert.equal(upstreamHits.at(-1), "/api/session?limit=80&order=desc");
+  } finally {
+    child.kill("SIGTERM");
+    await Promise.race([once(child, "exit"), new Promise(resolve => setTimeout(resolve, 1500))]);
+    if (child.exitCode === null) child.kill("SIGKILL");
+    if (openCode.listening) await new Promise(resolve => openCode.close(resolve));
+    await rm(home, { recursive: true, force: true });
+  }
+
+  const warnings = stderr.trim().split(/\r?\n/).filter(line => line.startsWith("OpenCode upstream unavailable "));
+  assert.equal(warnings.length, 2, stderr);
+  for (const warning of warnings) {
+    assert.match(warning, /^OpenCode upstream unavailable GET \/api\/session: fetch failed$/);
+  }
+  assert.doesNotMatch(stderr, /TypeError: fetch failed|\bat (?:async |proxy\b|fetch\b)|DevMoter server error|uncaughtException|Unhandled|ERR_HTTP_HEADERS_SENT/);
+});

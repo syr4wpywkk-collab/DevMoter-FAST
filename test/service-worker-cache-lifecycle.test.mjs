@@ -6,7 +6,7 @@ import vm from "node:vm";
 const ORIGIN = "https://devmoter.test";
 const source = readFileSync(new URL("../public/sw.js", import.meta.url), "utf8");
 
-function loadWorker({ cacheNames = [], network, windows = [] } = {}) {
+function loadWorker({ cacheNames = [], network, windows = [], matchFails = false } = {}) {
   const listeners = new Map();
   const stores = new Map(cacheNames.map(name => [name, new Map()]));
   const deleted = [];
@@ -28,6 +28,7 @@ function loadWorker({ cacheNames = [], network, windows = [] } = {}) {
     async match(request) {
       const key = String(request.url ?? request);
       matchCalls.push(key);
+      if (matchFails) throw new Error("cache storage unavailable");
       for (const store of stores.values()) if (store.has(key)) return store.get(key);
       return undefined;
     }
@@ -50,7 +51,7 @@ function loadWorker({ cacheNames = [], network, windows = [] } = {}) {
     if (network) return network(request, init);
     throw new Error("offline");
   };
-  const context = vm.createContext({ self, caches, URL, fetch: fetchImpl, console });
+  const context = vm.createContext({ self, caches, URL, Response, fetch: fetchImpl, console });
   vm.runInContext(source, context);
   const cacheName = vm.runInContext("CACHE", context);
   return {
@@ -171,6 +172,59 @@ test("offline requests fall back to the cached copy", async () => {
   await dispatch(worker.listeners.get("install"));
   const response = await dispatch(worker.listeners.get("fetch"), { request: { method: "GET", url: `${ORIGIN}/` } });
   assert.equal(response.shell, true);
+});
+
+async function assertUnavailable(response, label) {
+  assert.ok(response, `${label}: respondWith must settle with a Response`);
+  assert.equal(response.status, 503, label);
+  assert.equal(response.headers.get("cache-control"), "no-store", label);
+  assert.equal(response.headers.get("retry-after"), "5", label);
+  assert.match(await response.text(), /temporarily unavailable/, label);
+}
+
+test("network failure with a cache miss answers an explicit 503, never undefined", async () => {
+  const worker = loadWorker();
+  const { intercepted, response } = await dispatchFetch(worker, { method: "GET", url: `${ORIGIN}/assets/missing.js` });
+  assert.equal(intercepted, true);
+  await assertUnavailable(response, "cache miss");
+});
+
+test("network failure with a failing cache lookup answers an explicit 503", async () => {
+  const worker = loadWorker({ matchFails: true });
+  const { response } = await dispatchFetch(worker, { method: "GET", url: `${ORIGIN}/` });
+  assert.deepEqual(worker.matchCalls, [`${ORIGIN}/`]);
+  await assertUnavailable(response, "cache rejection");
+});
+
+test("a network fetch that resolves with nothing still falls back to a valid Response", async () => {
+  const worker = loadWorker({ network: async () => undefined });
+  const { response } = await dispatchFetch(worker, { method: "GET", url: `${ORIGIN}/page` });
+  await assertUnavailable(response, "empty fetch result");
+});
+
+test("network failure serves a cached copy when one exists", async () => {
+  const worker = loadWorker();
+  await dispatch(worker.listeners.get("install"));
+  const { response } = await dispatchFetch(worker, { method: "GET", url: `${ORIGIN}/manifest.webmanifest` });
+  assert.equal(response.shell, true);
+});
+
+test("HTTP error responses pass through unchanged and are not cached", async () => {
+  const notFound = { ok: false, redirected: false, status: 404, clone() { return { body: "copy" }; }, body: "nope" };
+  const worker = loadWorker({ network: async () => notFound });
+  const request = { method: "GET", url: `${ORIGIN}/gone.js` };
+  const { response } = await dispatchFetch(worker, request);
+  assert.equal(response, notFound);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(worker.stores.get(worker.cacheName)?.has(request.url) ?? false, false);
+  assert.deepEqual(worker.matchCalls, []);
+});
+
+test("a throwing response clone does not lose the live response", async () => {
+  const live = { ok: true, redirected: false, clone() { throw new Error("body used"); }, body: "live" };
+  const worker = loadWorker({ network: async () => live });
+  const { response } = await dispatchFetch(worker, { method: "GET", url: `${ORIGIN}/page` });
+  assert.equal(response, live);
 });
 
 test("API, login, and non-GET requests are never intercepted or cached", async () => {

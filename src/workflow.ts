@@ -163,6 +163,10 @@ export function mountTaskWorkflow(root: HTMLElement) {
         </nav>
         <div id="wfStatus" class="wf-status" role="status" aria-live="polite"></div>
         <main class="wf-body">
+          <div id="wfRepositoryNotice" class="wf-notice hidden" role="note">
+            <strong>${escapeHtml(t("workspaceTools.notGitRepo"))}</strong>
+            <div>${escapeHtml(t("workflow.gitRequiredHint"))}</div>
+          </div>
           <section id="wfChangesPanel" data-wf-panel="changes">
             <div class="wf-section-head">
               <div><strong>${escapeHtml(t("workflow.reviewedChangesHeading"))}</strong><small>${escapeHtml(t("workflow.reviewedChangesSubheading"))}</small></div>
@@ -272,6 +276,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
   const modal = root.querySelector<HTMLDivElement>("#wfModal")!;
   const projectSelect = root.querySelector<HTMLSelectElement>("#wfProject")!;
   const status = root.querySelector<HTMLDivElement>("#wfStatus")!;
+  const repositoryNotice = root.querySelector<HTMLDivElement>("#wfRepositoryNotice")!;
   const changesBox = root.querySelector<HTMLDivElement>("#wfChanges")!;
   const worktreesBox = root.querySelector<HTMLDivElement>("#wfWorktrees")!;
   const tasksBox = root.querySelector<HTMLDivElement>("#wfTasks")!;
@@ -293,6 +298,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
   let worktrees: Worktree[] = [];
   let tasks: Task[] = [];
   let activeProjectId = "";
+  let isGit: boolean | null = null;
   let diffOffset = 0;
   let fileWindow: { path: string; offset: number; returned: number } | null = null;
   // View-only review state: none of it is sent to the server or changes a decision.
@@ -309,6 +315,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
     status.textContent = message;
     status.classList.toggle("error", error);
   };
+  const setReadyStatus = () => setStatus(isGit === false ? "" : t("workflow.ready"));
 
   const project = () => projects.find(item => item.id === activeProjectId) || null;
 
@@ -337,18 +344,21 @@ export function mountTaskWorkflow(root: HTMLElement) {
     const request = ++dataRequest;
     const projectId = activeProjectId;
     if (!activeProjectId) {
+      isGit = null;
       changes = []; worktrees = []; tasks = [];
       render();
       return;
     }
     const prefix = `/api/workflow/projects/${encodeURIComponent(activeProjectId)}`;
-    const [changePayload, worktreePayload, taskPayload] = await Promise.all([
+    const [changePayload, worktreePayload, taskPayload, gitPayload] = await Promise.all([
       api<{ changes: ChangeSet[] }>(prefix + "/changes"),
       api<{ worktrees: Worktree[] }>(prefix + "/worktrees"),
-      api<{ tasks: Task[] }>(prefix + "/github/tasks").catch(() => ({ tasks: [] }))
+      api<{ tasks: Task[] }>(prefix + "/github/tasks").catch(() => ({ tasks: [] })),
+      api<{ isGit: boolean }>(`/api/projects/${encodeURIComponent(projectId)}/git/status`)
     ]);
     // A slower, older response must not replace decisions loaded by a newer request.
     if (request !== dataRequest || projectId !== activeProjectId) return;
+    isGit = gitPayload.isGit;
     changes = changePayload.changes;
     worktrees = worktreePayload.worktrees;
     tasks = taskPayload.tasks;
@@ -360,7 +370,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
     try {
       await refreshProjects();
       await refreshData();
-      setStatus(t("workflow.ready"));
+      setReadyStatus();
     } catch (error) {
       setStatus(t("workflow.refreshFailedKept", { error: wfError(error) }), true);
     }
@@ -472,7 +482,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
 
   function renderChanges() {
     if (!changes.length) {
-      changesBox.innerHTML = `<div class="wf-empty">${escapeHtml(t("workflow.noChangesToReview"))}</div>`;
+      changesBox.innerHTML = isGit === false ? "" : `<div class="wf-empty">${escapeHtml(t("workflow.noChangesToReview"))}</div>`;
       return;
     }
     changesBox.innerHTML = changes.map(change => {
@@ -567,7 +577,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
   }
 
   function renderWorktrees() {
-    worktreesBox.innerHTML = worktrees.length ? worktrees.map(item => `
+    worktreesBox.innerHTML = isGit === false ? "" : worktrees.length ? worktrees.map(item => `
       <article class="wf-worktree">
         <div>
           <strong>${escapeHtml(item.branch)}</strong>
@@ -607,11 +617,24 @@ export function mountTaskWorkflow(root: HTMLElement) {
     ` : "";
   }
 
+  function renderRepositoryState() {
+    const unavailable = isGit === false;
+    repositoryNotice.classList.toggle("hidden", !unavailable);
+    root.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | HTMLButtonElement>(
+      '#wfLoadDiff, #wfWorktreeForm input, #wfWorktreeForm button, #wfPrForm input, #wfPrForm select, #wfPrForm textarea, #wfPrForm button, #wfChanges [data-wf-action="generate-message"], #wfChanges [data-wf-action="commit"]'
+    ).forEach(control => { control.disabled = unavailable; });
+    if (unavailable) {
+      diffBox.classList.add("hidden");
+      prPreview.classList.add("hidden");
+    }
+  }
+
   function render() {
     renderChanges();
     applyReviewView();
     renderWorktrees();
     renderTasks();
+    renderRepositoryState();
   }
 
   async function reviewFile(changeId: string, path: string, decision: "accept" | "reject") {
@@ -633,7 +656,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
   }
 
   async function loadDiff(reset = false) {
-    if (!activeProjectId) return;
+    if (!activeProjectId || isGit === false) return;
     if (reset) diffOffset = 0;
     const params = new URLSearchParams({ offset: String(diffOffset), lines: "600", bytes: String(128 * 1024) });
     const payload = await api<{ content: string; returnedLines: number; truncated: boolean; notice?: string }>(
@@ -725,7 +748,12 @@ export function mountTaskWorkflow(root: HTMLElement) {
     const prRepo = root.querySelector<HTMLInputElement>("#wfPrRepo")!;
     issueRepo.value = current?.github || "";
     prRepo.value = current?.github || "";
-    void refreshData();
+    isGit = null;
+    changes = []; worktrees = []; tasks = [];
+    render();
+    setStatus(t("workflow.refreshing"));
+    void refreshData().then(setReadyStatus)
+      .catch(error => setStatus(t("workflow.refreshFailedKept", { error: wfError(error) }), true));
   });
 
   root.querySelector<HTMLButtonElement>("#wfLoadDiff")!.addEventListener("click", () => {
@@ -772,7 +800,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
         );
         setStatus(t("workflow.appliedExactly", { files: result.change.appliedFiles.join(", ") }));
 
-        if (selectedChange?.autoCommit) {
+        if (selectedChange?.autoCommit && isGit !== false) {
           const preview = await api<{ preview: { files: string[]; message: string } }>(
             endpoint + "/commit",
             { method: "POST", body: jsonBody({}) }
@@ -829,7 +857,7 @@ export function mountTaskWorkflow(root: HTMLElement) {
         );
         await refreshData();
       }
-      setStatus(t("workflow.ready"));
+      setReadyStatus();
     };
     void run().catch(error => setStatus(wfError(error), true));
   });
