@@ -208,6 +208,17 @@ export function postgresqlError(error: unknown): EngineError {
   return new EngineError('engine_unavailable', `cannot reach the PostgreSQL server (${reason})`, { cause: error });
 }
 
+const CHANGING_COMMANDS = new Set(['INSERT', 'UPDATE', 'DELETE', 'MERGE']);
+
+/** Rows inserted, updated or deleted, from the command tags. */
+function countChanges(result: pg.QueryResult | pg.QueryResult[]): number {
+  let changes = 0;
+  for (const one of Array.isArray(result) ? result : [result]) {
+    if (CHANGING_COMMANDS.has(one.command) && typeof one.rowCount === 'number') changes += one.rowCount;
+  }
+  return changes;
+}
+
 function toResultSets(result: pg.QueryResult | pg.QueryResult[]): ResultSet[] {
   const sets: ResultSet[] = [];
   for (const one of Array.isArray(result) ? result : [result]) {
@@ -314,7 +325,8 @@ export function createPostgresqlAdapter(options: PostgresqlAdapterOptions): SqlA
         );
         // Without parameters the simple protocol is used, which accepts several statements.
         const result = await Promise.race([values.length > 0 ? client.query(sql, values) : client.query(sql), stopped]);
-        return { results: toResultSets(result as pg.QueryResult | pg.QueryResult[]), durationMs: Math.round(performance.now() - started) };
+        const replies = result as pg.QueryResult | pg.QueryResult[];
+        return { results: toResultSets(replies), changes: countChanges(replies), durationMs: Math.round(performance.now() - started) };
       } catch (error) {
         throw postgresqlError(error);
       } finally {

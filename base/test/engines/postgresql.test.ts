@@ -205,6 +205,15 @@ describe('PostgreSQL adapter against the built engine', { skip }, () => {
     assert.deepEqual(row.b, { a: '0.1234567890123456789', b: `1${'0'.repeat(400)}`, c: 1.5, d: '12345678901234567890', e: [1.1, -0.0005, 7] });
   });
 
+  test('reports the rows a request inserted, updated or deleted', async () => {
+    assert.equal((await adapter.query('CREATE TABLE changes_probe (a int)', [])).changes, 0);
+    assert.equal((await adapter.query('INSERT INTO changes_probe VALUES ($1), ($2), ($3)', [1, 2, 3])).changes, 3);
+    const both = await adapter.query('UPDATE changes_probe SET a = a + 10 WHERE a > 1; DELETE FROM changes_probe WHERE a = 1; SELECT count(*)::int AS c FROM changes_probe', []);
+    assert.equal(both.changes, 3);
+    assert.deepEqual(both.results, [{ columns: ['c'], rows: [{ c: 2 }], rowCount: 1 }]);
+    assert.equal((await adapter.query('SELECT 1 AS x', [])).changes, 0);
+  });
+
   test('a read-only database starts every transaction read-only', async () => {
     const readOnly = createPostgresqlAdapter({ ...connection(), readOnly: true });
     assert.deepEqual((await readOnly.query('SELECT count(*)::int AS c FROM t', [])).results[0]?.rows, [{ c: 2 }]);

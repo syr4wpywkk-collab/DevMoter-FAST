@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
 
-import { MAX_PARAMS, MAX_SQL_BYTES, createDuckdbAdapter, duckdbErrorMessage, duckdbInvocation, encodeDuckdbLiteral } from '../../src/engines/duckdb.ts';
+import { MAX_PARAMS, MAX_SQL_BYTES, createDuckdbAdapter, duckdbErrorMessage, duckdbInvocation, encodeDuckdbLiteral, isReturningWrite } from '../../src/engines/duckdb.ts';
 import { createSqliteAdapter } from '../../src/engines/sqlite.ts';
 import { EngineError, type QueryParam, type SqlAdapter } from '../../src/engines/types.ts';
 import { builtEngine } from './helpers.ts';
@@ -30,13 +30,13 @@ test('the shell runs in safe mode and nothing of the request is a program argume
   const options = { binary: '/x/duckdb', file: '/data/a.duckdb' };
   assert.deepEqual(duckdbInvocation(options, "SELECT 'sql-secret'", []), {
     args: ['-safe', '-batch', '-no-init', '-bail', '-json', '/data/a.duckdb'],
-    input: "SELECT 'sql-secret'\n",
+    input: ".changes on\nSELECT 'sql-secret'\n",
     explain: false,
   });
   assert.deepEqual(duckdbInvocation({ ...options, readOnly: true }, 'SELECT 1', []).args, ['-safe', '-batch', '-no-init', '-bail', '-json', '-readonly', '/data/a.duckdb']);
   const prepared = duckdbInvocation(options, 'SELECT ?, ? -- note ;\n', ['a', 2]);
   assert.deepEqual(prepared.args, ['-safe', '-batch', '-no-init', '-bail', '-json', '/data/a.duckdb']);
-  assert.equal(prepared.input, "PREPARE devmoter_base_request AS SELECT ?, ? -- note\n; EXECUTE devmoter_base_request(decode(from_hex('61')),2);\n");
+  assert.equal(prepared.input, ".changes on\nPREPARE devmoter_base_request AS SELECT ?, ? -- note\n; EXECUTE devmoter_base_request(decode(from_hex('61')),2);\n");
 });
 
 test('the SQL can never be a dot-command of the shell', () => {
@@ -44,7 +44,7 @@ test('the SQL can never be a dot-command of the shell', () => {
   for (const sql of ['.shell id', 'SELECT 1;\n.open /tmp/x', "SELECT '\n.text'"]) {
     assert.throws(() => duckdbInvocation(options, sql, []), rejectsWith('invalid_request', /must not start with "\."/), sql);
   }
-  for (const sql of ['SELECT 1;\n .5 + 1', 'SELECT t\n  .id FROM t', '-init x']) assert.equal(duckdbInvocation(options, sql, []).input, `${sql}\n`);
+  for (const sql of ['SELECT 1;\n .5 + 1', 'SELECT t\n  .id FROM t', '-init x']) assert.equal(duckdbInvocation(options, sql, []).input, `.changes on\n${sql}\n`);
   assert.doesNotMatch(duckdbInvocation(options, 'SELECT ?', ['a\n.shell id']).input, /^\.shell/m);
 });
 
@@ -210,6 +210,17 @@ describe('DuckDB adapter against the built engine', { skip: duckdb.skip }, () =>
     for (const suffix of ['', '.duckdb', '.csv']) assert.equal(existsSync(outside + suffix), false);
   });
 
+  test('reports the rows a request inserted, updated or deleted', async () => {
+    assert.equal((await adapter.query('CREATE TABLE changes_probe (a int)', [])).changes, 0);
+    assert.equal((await adapter.query('INSERT INTO changes_probe VALUES (?), (?), (?)', [1, 2, 3])).changes, 3);
+    const both = await adapter.query('UPDATE changes_probe SET a = a + 10 WHERE a > 1; DELETE FROM changes_probe WHERE a = 1; SELECT count(*)::int AS c FROM changes_probe', []);
+    assert.equal(both.changes, 3);
+    assert.deepEqual(both.results, [{ columns: ['c'], rows: [{ c: 2 }], rowCount: 1 }]);
+    assert.equal((await adapter.query('SELECT 1 AS x', [])).changes, 0);
+    assert.equal((await adapter.query('INSERT INTO changes_probe VALUES (7), (8) RETURNING a', [])).changes, 2);
+    assert.equal((await adapter.query('INSERT INTO changes_probe VALUES (?) RETURNING a', [9])).changes, 1);
+  });
+
   test('a read-only database refuses writes', async () => {
     const readOnly = createDuckdbAdapter({ binary: duckdb.binary, file: path.join(dir, 'a.duckdb'), readOnly: true });
     try {
@@ -263,4 +274,12 @@ describe('SQLite health check against the built engine', { skip: sqlite.skip }, 
       await rm(dir, { recursive: true, force: true });
     }
   });
+});
+
+test('isReturningWrite finds a single write with RETURNING', () => {
+  assert.equal(isReturningWrite('INSERT INTO t VALUES (1) RETURNING a;'), true);
+  assert.equal(isReturningWrite('delete from t returning *'), true);
+  assert.equal(isReturningWrite("SELECT 'returning' AS returning"), false);
+  assert.equal(isReturningWrite('UPDATE t SET a = 1 -- returning'), false);
+  assert.equal(isReturningWrite('INSERT INTO t VALUES (1) RETURNING a; SELECT 1'), false);
 });
