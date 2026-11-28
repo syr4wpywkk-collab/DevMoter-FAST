@@ -1246,6 +1246,7 @@ export const en = {
   "workspaceTools.cleanTree": "Working tree is clean.",
   "workspaceTools.fileMeta.binary": "binary",
   "workspaceTools.fileMeta.changed": "changed",
+  "workspaceTools.fileMeta.untracked": "new file",
   "workspaceTools.loadingDiff": "Loading diff…",
   "workspaceTools.backToFiles": "← Files",
   "workspaceTools.view.unified": "Unified",
