@@ -430,7 +430,7 @@ impl CalcEngine {
         mut old: HashMap<CellId, Value>,
     ) -> Vec<CellId> {
         let Value::Array(a) = value else {
-            self.values.insert(id, value);
+            self.values.insert(id, value.normalize_zero());
             return old.into_keys().collect();
         };
 
@@ -459,8 +459,13 @@ impl CalcEngine {
         }
 
         self.spills.insert(id, (rows, cols));
-        self.values
-            .insert(id, a.get(0, 0).cloned().unwrap_or(Value::Blank));
+        self.values.insert(
+            id,
+            a.get(0, 0)
+                .cloned()
+                .unwrap_or(Value::Blank)
+                .normalize_zero(),
+        );
         let mut changed = Vec::new();
         for dr in 0..rows {
             for dc in 0..cols {
@@ -472,7 +477,11 @@ impl CalcEngine {
                     row: id.row + dr,
                     col: id.col + dc,
                 };
-                let v = a.get(dr, dc).cloned().unwrap_or(Value::Blank);
+                let v = a
+                    .get(dr, dc)
+                    .cloned()
+                    .unwrap_or(Value::Blank)
+                    .normalize_zero();
                 if old.remove(&c).unwrap_or(Value::Blank) != v {
                     changed.push(c);
                 }
