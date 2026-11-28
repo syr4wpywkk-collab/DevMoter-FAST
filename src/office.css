@@ -218,6 +218,7 @@
 .office-layout {
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr) 296px;
+  grid-row: 4;
   min-height: 0;
 }
 .office-side,
@@ -443,6 +444,7 @@
   width: auto !important;
 }
 .office-scroll {
+  grid-row: 4;
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
