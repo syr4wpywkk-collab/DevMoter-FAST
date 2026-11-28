@@ -17,10 +17,10 @@
     },
     "docs": {
       "files": 7,
-      "lines": 620,
+      "lines": 621,
       "blank": 149,
       "comment": 0,
-      "code": 471
+      "code": 472
     },
     "config": {
       "files": 8,
@@ -38,10 +38,10 @@
     },
     "total": {
       "files": 30788,
-      "lines": 9882803,
+      "lines": 9882804,
       "blank": 1124860,
       "comment": 1087996,
-      "code": 7669947
+      "code": 7669948
     }
   },
   "categories": {
@@ -98,18 +98,18 @@
     "docs": {
       "total": {
         "files": 7,
-        "lines": 620,
+        "lines": 621,
         "blank": 149,
         "comment": 0,
-        "code": 471
+        "code": 472
       },
       "languages": {
         "Markdown": {
           "files": 7,
-          "lines": 620,
+          "lines": 621,
           "blank": 149,
           "comment": 0,
-          "code": 471
+          "code": 472
         }
       }
     },
