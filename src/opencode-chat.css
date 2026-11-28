@@ -179,7 +179,12 @@ body.opencode-mode { background: var(--canvas-base); }
 .ocx-app .ocx-sidebar-scroll .ocx-sessions { overflow: visible; }
 .ocx-app .ocx-history-icon { background: var(--oc-accent-soft); color: var(--oc-text); }
 .ocx-app .ocx-sidebar-head small { font-size: 12px; }
-.ocx-app .ocx-history-title { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.ocx-app .ocx-sidebar-head > .ocx-history-identity { flex: 1 1 auto; }
+.ocx-app .ocx-sidebar-head:has(.ocx-global-tools-entry) .ocx-history-identity { grid-template-columns: minmax(0, 1fr); }
+.ocx-app .ocx-sidebar-head:has(.ocx-global-tools-entry) .ocx-history-icon { display: none; }
+.ocx-app .ocx-sidebar-head small { max-width: 100%; }
+.ocx-app .ocx-history-title { min-width: 0; display: flex; align-items: center; gap: 8px; overflow: hidden; }
+.ocx-app .ocx-history-title strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ocx-app .ocx-side-status { min-width: 0; display: inline-flex; align-items: center; color: var(--oc-dim); font-size: 12px; font-weight: 400; white-space: nowrap; }
 .ocx-app .ocx-side-status i { width: 6px; height: 6px; flex: 0 0 6px; margin-right: 4px; border-radius: 50%; background: var(--oc-dim); opacity: .6; }
 .ocx-app .ocx-side-status[data-state="idle"] i { background: var(--oc-green); opacity: .7; }
