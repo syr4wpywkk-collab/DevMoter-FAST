@@ -1,0 +1,62 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-apk.yml'
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          if [[ -f "$SDK/platforms/android-35/android.jar" && -x "$SDK/build-tools/35.0.0/aapt2" && -x "$SDK/build-tools/35.0.0/d8" && -x "$SDK/build-tools/35.0.0/apksigner" && -x "$SDK/build-tools/35.0.0/zipalign" ]]; then
+            echo "Using preinstalled Android SDK"
+          else
+            MANAGER="$(command -v sdkmanager || true)"
+            if [[ -z "$MANAGER" ]]; then
+              MANAGER="$(find "$SDK/cmdline-tools" -type f -name sdkmanager -print -quit 2>/dev/null || true)"
+            fi
+            if [[ -z "$MANAGER" ]]; then
+              SDK="$RUNNER_TEMP/android-sdk"
+              mkdir -p "$SDK/cmdline-tools"
+              curl --fail --silent --show-error --location --retry 3 https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o "$RUNNER_TEMP/android-tools.zip"
+              unzip -q "$RUNNER_TEMP/android-tools.zip" -d "$RUNNER_TEMP/android-tools"
+              mv "$RUNNER_TEMP/android-tools/cmdline-tools" "$SDK/cmdline-tools/latest"
+              MANAGER="$SDK/cmdline-tools/latest/bin/sdkmanager"
+            fi
+            (yes || true) | "$MANAGER" --sdk_root="$SDK" --licenses > /dev/null
+            "$MANAGER" --sdk_root="$SDK" "platforms;android-35" "build-tools;35.0.0"
+          fi
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          java -version
+          test -f "$SDK/platforms/android-35/android.jar"
+          test -x "$SDK/build-tools/35.0.0/aapt2"
+      - name: Build and verify APK
+        run: bash android/build-apk.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: DevMoter-FAST-Android-APK
+          path: |
+            android/build/DevMoter-FAST.apk
+            android/build/DevMoter-FAST.apk.sha256
+          if-no-files-found: error
+          retention-days: 14

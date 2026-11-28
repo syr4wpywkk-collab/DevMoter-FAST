@@ -61,3 +61,7 @@ The current source tree does not bundle upstream provider logos, third-party pho
 ## DevMoter Base database engines
 
 `base/engines/` vendors the unmodified sources of PostgreSQL (PostgreSQL License), SQLite (public domain), DuckDB (MIT) and Valkey (BSD-3-Clause), each pinned to an upstream commit in `base/engines/manifest.json`. Each engine keeps its upstream license file (`COPYRIGHT`, `LICENSE.md`, `LICENSE`, `COPYING`); see `base/engines/UPSTREAM.md`. The PolyForm Strict License of `base/` does not apply to them.
+
+## Connection QR codes
+
+**QR Code Generator for JavaScript** — MIT, Copyright (c) 2009 Kazuhiko Arase. Pinned source and license: [vendor/qrcode-generator/NOTICE.md](./vendor/qrcode-generator/NOTICE.md). Used server-side only; no external QR service receives tokens.

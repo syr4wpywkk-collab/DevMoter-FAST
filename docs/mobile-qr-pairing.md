@@ -1,0 +1,9 @@
+# Mobile connection QR pairing (stage 1)
+
+Sign in to the private HTTPS DevMoter server on a trusted browser. Settings → Trusted devices → issue pairing code displays a locally generated QR code and a copyable connection link. The QR contains an HTTPS origin and a 256-bit one-time token in the fragment (not the HTTP query). Open it on an already signed-in browser or paste the link into the Trusted devices form and confirm registration. If not signed in, complete existing owner authentication and reopen the link. Existing Passkey requirements and same-origin mutation checks still apply. This is a device trust enrollment flow, **not** an owner login substitute.
+
+The server stores only the SHA-256 digest of the QR token in its in-memory pairing record, bound to the issuing HTTPS origin. QR and six-digit fallback consume the same record, expire in five minutes, and retain existing issuer permissions and claim rate limits. No external QR service is used. Avoid sharing screenshots or links while active. QR generation is disabled on HTTP; six-digit fallback remains available. Native camera scanning, in-app connection profile import, and an independently reviewed owner-login handoff are follow-up work.
+
+## Native clients (stage 2)
+
+iOS uses VisionKit (supported devices) and Android uses a local ZXing camera scanner. Both can accept a pasted connection link if camera access is unavailable. Confirm the displayed HTTPS server, sign in normally, then press the native Continue pairing control to open the pairing link on the same origin. Confirm the existing trusted-device registration in the web UI. The native apps retain the pending link in memory only and enforce a local five-minute maximum; server expiry remains authoritative. A QR is not owner login. Android's existing cross-origin navigation policy may limit OAuth sign-in; use supported existing login methods. Physical device scanning is not yet verified.

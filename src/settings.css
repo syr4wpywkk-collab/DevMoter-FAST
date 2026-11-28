@@ -905,3 +905,7 @@ html[data-devmoter-density="compact"] .devmoter-settings-card {
     pointer-events: none !important;
   }
 }
+
+.devmoter-pairing-qr { display: grid; justify-items: start; gap: 8px; width: 100%; flex-basis: 100%; }
+.devmoter-pairing-qr img { width: min(240px, 100%); height: auto; image-rendering: pixelated; background: #fff; }
+.devmoter-settings-pairing-code:has(.devmoter-pairing-qr) { flex-wrap: wrap; }

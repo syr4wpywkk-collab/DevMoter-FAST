@@ -240,7 +240,9 @@ export function mountSettingsPanel() {
   let vaultSecrets: Json[] = [];
   let notificationRenderId = 0;
   let accountData: Json | null = null;
-  let issuedPairing: { code: string; expiresAt: number } | null = null;
+  let issuedPairing: { code: string; expiresAt: number; pairingUrl?: string; qrDataUrl?: string } | null = null;
+  let pendingPairingToken = "";
+  let pairingExpiryTimer: number | undefined;
   let githubLink: Json | null = null;
 
   function toast(message: string) {
@@ -303,7 +305,7 @@ export function mountSettingsPanel() {
   }
 
   function setPage(next: SettingsPage) {
-    if (next !== "devices") issuedPairing = null;
+    if (next !== "devices") { issuedPairing = null; pendingPairingToken = ""; }
     page = next;
     scroll.scrollTop = 0;
     void renderPage();
@@ -536,6 +538,7 @@ export function mountSettingsPanel() {
           <small>${escapeHtml(t("settings.devices.issuedCodeHint", { expiresAt: formatDateTime(issuedPairing.expiresAt) }))}</small>
         </div>
         <button type="button" class="devmoter-settings-copy" data-action="device:copy-code">${escapeHtml(t("common.copy"))}</button>
+        ${issuedPairing.pairingUrl && issuedPairing.qrDataUrl ? `<div class="devmoter-pairing-qr"><img alt="${escapeHtml(t("settings.devices.qrLabel"))}" src="${escapeHtml(issuedPairing.qrDataUrl)}" /><small>${escapeHtml(t("settings.devices.qrHint"))}</small><button type="button" data-action="device:copy-link">${escapeHtml(t("settings.devices.copyPairingLink"))}</button></div>` : ""}
       </div>
     ` : "";
     const registeredListHtml = devices.length
@@ -582,7 +585,7 @@ export function mountSettingsPanel() {
         <div class="devmoter-settings-card devmoter-settings-form-card">
           ${canIssuePairing ? `<button type="button" data-action="device:create-code">${escapeHtml(t("settings.devices.createCode"))}</button>` : ""}
           ${pairingCodeCard}
-          <input data-pair-code inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="${escapeHtml(t("settings.devices.pairPlaceholder"))}" />
+          <input data-pair-code type="password" inputmode="text" maxlength="1024" autocomplete="off" autocapitalize="none" spellcheck="false" value="${escapeHtml(pendingPairingToken)}" placeholder="${escapeHtml(t("settings.devices.pairPlaceholder"))}" />
           <button type="button" data-action="device:claim">${escapeHtml(t("settings.devices.pairButton"))}</button>
         </div>
       </section>
@@ -1037,6 +1040,11 @@ export function mountSettingsPanel() {
   function close() {
     const wasOpen = !modal.classList.contains("hidden");
     issuedPairing = null;
+    pendingPairingToken = "";
+    window.clearTimeout(pairingExpiryTimer);
+    scroll.querySelector("[data-issued-pairing]")?.remove();
+    const secretInput = scroll.querySelector<HTMLInputElement>("[data-pair-code]");
+    if (secretInput) secretInput.value = "";
     modal.classList.add("hidden");
     document.body.classList.remove("devmoter-settings-open");
     page = "root";
@@ -1304,11 +1312,23 @@ export function mountSettingsPanel() {
         if (action === "device:create-code") {
           try {
             const result = await request("/api/pairings", { method: "POST" }, true);
+            if (page !== "devices" || modal.classList.contains("hidden")) return;
+            const link = typeof result.pairingUrl === "string" ? result.pairingUrl : "";
+            const image = typeof result.qrDataUrl === "string" ? result.qrDataUrl : "";
+            const safeQr = pairingTokenFromLink(link) && /^data:image\/gif;base64,[A-Za-z0-9+/=]+$/.test(image);
             issuedPairing = {
               code: String(result.code || ""),
-              expiresAt: Number(result.expiresAt || Date.now() + 5 * 60_000)
+              expiresAt: Number(result.expiresAt || Date.now() + 5 * 60_000),
+              ...(safeQr ? { pairingUrl: link, qrDataUrl: image } : {})
             };
-            toast(t("settings.devices.codeToast", { code: issuedPairing.code }));
+            window.clearTimeout(pairingExpiryTimer);
+            const currentPairing = issuedPairing;
+            pairingExpiryTimer = window.setTimeout(() => {
+              if (issuedPairing !== currentPairing) return;
+              issuedPairing = null;
+              scroll.querySelector("[data-issued-pairing]")?.remove();
+            }, Math.max(0, Math.min(300_000, currentPairing.expiresAt - Date.now())));
+            toast(t("settings.devices.pairingCreated"));
             await renderDevices();
           } catch (error) {
             toast(errorMessage(error, t("common.error")));
@@ -1321,13 +1341,24 @@ export function mountSettingsPanel() {
           }
           return;
         }
+        if (action === "device:copy-link") {
+          if (issuedPairing?.pairingUrl && issuedPairing.expiresAt > Date.now()) {
+            toast(await copyText(issuedPairing.pairingUrl) ? t("settings.devices.codeCopied") : t("common.copyFailed"));
+          }
+          return;
+        }
         if (action === "device:claim") {
           const input = scroll.querySelector<HTMLInputElement>("[data-pair-code]");
+          const supplied = input?.value?.trim() || "";
+          const code = /^\d{6}$/.test(supplied) || /^[A-Za-z0-9_-]{43}$/.test(supplied) ? supplied : pairingTokenFromLink(supplied);
+          if (!code) { toast(translateServerMessage("Pairing code is invalid or expired")); return; }
+          pendingPairingToken = "";
+          if (input) input.value = "";
           try {
             await request("/api/pairings/claim", {
               method: "POST",
               body: JSON.stringify({
-                code: input?.value?.trim() || "",
+                code,
                 label: deviceBrowserLabel()
               })
             });
@@ -1478,6 +1509,25 @@ export function mountSettingsPanel() {
     void refresh();
   }
 
+  function pairingTokenFromLink(value: string): string {
+    try {
+      const parsed = new URL(value);
+      if (parsed.protocol !== "https:" || parsed.origin !== window.location.origin || parsed.username || parsed.password || parsed.pathname !== "/" || parsed.search) return "";
+      return /^#devmoter-pair=([A-Za-z0-9_-]{43})$/.exec(parsed.hash)?.[1] || "";
+    } catch { return ""; }
+  }
+
+  function receivePairingLink() {
+    if (!window.location.hash.startsWith("#devmoter-pair=")) return;
+    const token = pairingTokenFromLink(window.location.href);
+    try { window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search); }
+    catch { return; }
+    if (!token) return;
+    pendingPairingToken = token;
+    open("devices");
+  }
+  window.addEventListener("hashchange", receivePairingLink);
+  receivePairingLink();
   trigger.addEventListener("click", () => open("root"));
   window.addEventListener("devmoter:open-settings", event => {
     const requested = (event as CustomEvent<{ page?: SettingsPage }>).detail?.page;
