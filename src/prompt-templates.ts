@@ -2,6 +2,7 @@ import "./prompt-templates.css";
 import { createSheetHeader } from "./sheet-header.mjs";
 import { t, translateServerMessage } from "./i18n";
 import { apiErrorMessage } from "./api-error.mjs";
+import { createDeviceGate, isDeviceAuthError, responseError } from "./device-gate.mjs";
 import {
   draftNeedsConfirmation,
   expandTemplate,
@@ -33,7 +34,7 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (deviceToken) headers.set("x-devmoter-device-token", deviceToken);
   const res = await fetch(path, { ...init, headers, cache: method === "GET" ? "no-store" : undefined });
   const payload = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(apiErrorMessage(payload, res.status));
+  if (!res.ok) throw responseError(res.status, apiErrorMessage(payload, res.status));
   return payload as T;
 }
 
@@ -100,21 +101,34 @@ export function openPromptTemplates() {
   function close() {
     sheet.remove();
     panel = null;
-    document.removeEventListener("keydown", onKeydown);
+    document.removeEventListener("keydown", onKeydown, true);
     if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
     returnFocus = null;
   }
   function onKeydown(event: KeyboardEvent) {
+    // Settings opened over the sheet (to register this device) handles its own Esc;
+    // capture runs before Settings closes, so that Esc never also closes this sheet.
+    if (document.body.classList.contains("devmoter-settings-open")) return;
     if (event.key === "Escape" && panel) close();
   }
-  document.addEventListener("keydown", onKeydown);
+  document.addEventListener("keydown", onKeydown, true);
 
   function say(message: string, kind: "info" | "error" = "info") {
+    status.parentElement?.querySelector(".pt-inline-gate")?.remove();
     status.textContent = message;
     status.dataset.kind = kind;
   }
-  function report(error: unknown) {
+  // An unregistered browser gets the shared Trusted device gate, as in Knowledge.
+  // `keepForm` leaves an open editor in place so an unsaved draft is not lost; its gate
+  // opens Trusted devices over the sheet without closing it.
+  function report(error: unknown, keepForm = false) {
+    if (isDeviceAuthError(error) && !keepForm) {
+      say("");
+      body.replaceChildren(createDeviceGate(document, { error, onRegister: close }));
+      return;
+    }
     say(error instanceof Error ? error.message : String(error), "error");
+    if (isDeviceAuthError(error)) status.after(createDeviceGate(document, { error, compact: true, className: "pt-inline-gate" }));
   }
   function projectLabel(id: string | null) {
     if (!id) return t("promptTemplates.scopeGlobal");
@@ -260,7 +274,7 @@ export function openPromptTemplates() {
         scope = scopeControl.value;
         say(t("common.saved"));
         showList();
-      }).catch(error => { save.disabled = false; report(error); });
+      }).catch(error => { save.disabled = false; report(error, true); });
     });
     body.append(form);
     name.focus();

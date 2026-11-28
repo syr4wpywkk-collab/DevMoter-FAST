@@ -16,6 +16,8 @@ import {
   normalizeVisibleSurface
 } from "./feature-flags.mjs";
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function escapeHtml(value: unknown) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -58,6 +60,7 @@ type WorkspaceActions = {
   openTools: () => void;
   openTerminal: () => void;
   openBrowser?: () => void;
+  resolveProjectName?: (projectId: string) => Promise<string | null>;
 };
 
 /**
@@ -146,11 +149,27 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
   const closeButton = root.querySelector<HTMLButtonElement>("[data-workspace-menu-close]")!;
   const menu = root.querySelector<HTMLElement>(".dm-task-first-menu")!;
 
+  // The stored value is a project id (UUID); the shell resolves it to a name.
+  const projectNames = new Map<string, string>();
   const updateProject = () => {
     // Project selection is owned by the existing backend; this is a label only.
     const value = localStorage.getItem("opencode-pocket-project") || "";
+    const named = projectNames.get(value);
+    if (named) {
+      projectLabel.textContent = named.slice(0, 80);
+      return;
+    }
     const normalized = value.replace(/\\/g, "/").replace(/\/+$/, "");
-    projectLabel.textContent = normalized.split("/").filter(Boolean).pop()?.slice(0, 80) || t("nav.workspaceFallback");
+    const tail = normalized.split("/").filter(Boolean).pop() || "";
+    projectLabel.textContent = (UUID_PATTERN.test(tail) ? "" : tail.slice(0, 80)) || t("nav.workspaceFallback");
+  };
+  const loadProjectName = async () => {
+    const value = localStorage.getItem("opencode-pocket-project") || "";
+    if (!value || projectNames.has(value) || !actions.resolveProjectName) return;
+    const name = await actions.resolveProjectName(value).catch(() => null);
+    if (!name) return;
+    projectNames.set(value, name);
+    updateProject();
   };
 
   // One state, one transition. The ☰ button opens the drawer; the drawer close
@@ -168,6 +187,7 @@ export function mountTaskFirstWorkspace(actions: WorkspaceActions) {
     menuButton.setAttribute("aria-expanded", String(next));
     if (next) {
       updateProject();
+      void loadProjectName();
       // Short screens scroll the drawer; it always opens at the top (brand first).
       drawer.scrollTop = 0;
       menu.scrollTop = 0;
