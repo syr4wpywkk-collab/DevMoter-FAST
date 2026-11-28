@@ -20,6 +20,7 @@
 - `UPPER("")` -> `""`.
 
 ## Open questions
-- Unicode mapping differences vs Excel: `ß` (Excel -> `ß` historically,
-  Unicode full mapping -> `SS`), Turkish `i`/`İ`, Greek final sigma —
-  record measured fixtures per reference implementation version.
+- Characters are mapped one to one, so the length never changes: `ß`,
+  whose Unicode uppercase is `SS`, stays `ß` (`UPPER("straße")` ->
+  `"STRAßE"`). Turkish `i`/`İ` and Greek final sigma still need measured
+  fixtures.

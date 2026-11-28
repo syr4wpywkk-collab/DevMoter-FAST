@@ -184,6 +184,43 @@ fn volatile_cell_reevaluates_every_pass() {
 }
 
 #[test]
+fn volatile_value_is_stable_across_reads() {
+    let mut e = engine();
+    set(&mut e, "B1", "=RAND()");
+    let first = e.get_value("Sheet1", "B1").unwrap();
+    assert_eq!(e.get_value("Sheet1", "B1").unwrap(), first);
+    assert_eq!(e.eval_formula("Sheet1", "=B1").unwrap(), first);
+
+    // An input change or an explicit recalculation reruns RAND().
+    set_num(&mut e, "A9", 1.0);
+    let r = e.recalculate().unwrap();
+    assert!(evaluated_addrs(&r).contains("B1"));
+    let after_edit = e.get_value("Sheet1", "B1").unwrap();
+    assert_eq!(e.get_value("Sheet1", "B1").unwrap(), after_edit);
+}
+
+#[test]
+fn rejected_edit_keeps_volatile_value() {
+    let mut e = engine();
+    set(&mut e, "B1", "=RAND()");
+    let first = e.get_value("Sheet1", "B1").unwrap();
+    assert!(
+        e.set_cell("Sheet1", "C1", CellInput::Formula("1+".into()))
+            .is_err()
+    );
+    assert_eq!(e.get_value("Sheet1", "B1").unwrap(), first);
+}
+
+#[test]
+fn dynamic_reference_rereads_after_sheet_added() {
+    let mut e = engine();
+    set(&mut e, "A1", "=ISERROR(INDIRECT(\"Data!B1\"))");
+    assert_eq!(e.get_value("Sheet1", "A1").unwrap(), Value::Boolean(true));
+    e.add_sheet("Data").unwrap();
+    assert_eq!(e.get_value("Sheet1", "A1").unwrap(), Value::Boolean(false));
+}
+
+#[test]
 fn volatile_cell_removed_when_formula_retires() {
     let mut e = engine();
     set(&mut e, "B1", "=RAND()");
@@ -291,4 +328,28 @@ fn partial_cycle_detected_on_differential_recalc() {
     let r = e.recalculate().unwrap();
     assert_eq!(r.cycle_cells.len(), 2);
     assert_eq!(evaluated_addrs(&r), HashSet::new());
+}
+
+#[test]
+fn dynamic_reference_reads_target_evaluated_later() {
+    let mut e = engine();
+    set(&mut e, "B1", "=1");
+    set(&mut e, "B2", "=B1*2");
+    set(&mut e, "A1", "=INDIRECT(\"B2\")+0");
+    assert_eq!(e.get_value("Sheet1", "A1").unwrap(), Value::Number(2.0));
+    set(&mut e, "B1", "=5");
+    assert_eq!(e.get_value("Sheet1", "A1").unwrap(), Value::Number(10.0));
+}
+
+#[test]
+fn dynamic_reference_cycle_stays_circular_on_reads() {
+    let mut e = engine();
+    set(&mut e, "A1", "=IFERROR(B1,0)+1+INDIRECT(\"C1\")");
+    set(&mut e, "B1", "=A1");
+    for _ in 0..3 {
+        assert_eq!(
+            e.get_value("Sheet1", "A1").unwrap(),
+            Value::Error(calc_core::CalcError::Circ)
+        );
+    }
 }
