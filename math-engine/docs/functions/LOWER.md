@@ -16,5 +16,6 @@
 - `LOWER("AbC123")` -> `"abc123"`.
 
 ## Open questions
-- Unicode differences vs Excel (e.g. `İ` -> `i̇` combining-dot form,
-  locale-sensitive Turkish rules) — record fixtures.
+- Characters are mapped one to one; `İ`, whose Unicode lowercase is
+  `i` plus a combining dot, is kept. Locale-sensitive Turkish rules still
+  need fixtures.

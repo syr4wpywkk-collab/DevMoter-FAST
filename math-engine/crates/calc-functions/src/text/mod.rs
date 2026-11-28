@@ -2,6 +2,26 @@
 
 use calc_core::registry::Function;
 
+/// Uppercase one character, keeping it when Unicode maps it to several
+/// (`ß` stays `ß`), so text length never changes — as Excel does.
+pub(crate) fn upper_char(c: char) -> char {
+    let mut mapped = c.to_uppercase();
+    match (mapped.next(), mapped.next()) {
+        (Some(u), None) => u,
+        _ => c,
+    }
+}
+
+/// Lowercase one character, keeping it when Unicode maps it to several
+/// (`İ` would become `i` plus a combining dot).
+pub(crate) fn lower_char(c: char) -> char {
+    let mut mapped = c.to_lowercase();
+    match (mapped.next(), mapped.next()) {
+        (Some(l), None) => l,
+        _ => c,
+    }
+}
+
 mod arraytotext;
 mod asc;
 mod bahttext;
