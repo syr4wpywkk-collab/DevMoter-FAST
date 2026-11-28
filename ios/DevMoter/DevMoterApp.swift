@@ -7,13 +7,25 @@ struct ConnectionProfile: Identifiable, Codable {
     var origin: URL
 
     static func validatedOrigin(_ value: String) -> URL? {
-        guard let components = URLComponents(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
+        guard var components = URLComponents(string: value.trimmingCharacters(in: .whitespacesAndNewlines)),
               components.scheme?.lowercased() == "https",
               let host = components.host, !host.isEmpty,
               components.user == nil, components.password == nil,
               components.query == nil, components.fragment == nil,
-              components.path.isEmpty || components.path == "/" else { return nil }
+              (components.port == nil || (1...65535).contains(components.port!)),
+              components.percentEncodedPath.isEmpty || components.percentEncodedPath == "/" else { return nil }
+        components.scheme = "https"
+        components.host = host.lowercased()
+        if components.port == 443 { components.port = nil }
+        components.path = "/"
         return components.url
+    }
+
+    func matchesOrigin(_ url: URL?) -> Bool {
+        guard let url, let a = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let b = URLComponents(url: origin, resolvingAgainstBaseURL: false) else { return false }
+        return a.scheme?.lowercased() == "https" && a.user == nil && a.password == nil &&
+            a.host?.lowercased() == b.host?.lowercased() && (a.port ?? 443) == (b.port ?? 443)
     }
 }
 
@@ -48,7 +60,11 @@ struct ProfilesView: View {
                         profiles.remove(atOffsets: offsets)
                         persist()
                         for id in removed {
-                            WKWebsiteDataStore.remove(forIdentifier: id) { _ in }
+                            WKWebsiteDataStore.remove(forIdentifier: id) { removalError in
+                                if removalError != nil {
+                                    DispatchQueue.main.async { error = "プロファイルのWebデータを消去できませんでした。" }
+                                }
+                            }
                         }
                     }
                 }
@@ -68,7 +84,14 @@ struct ProfilesView: View {
             }
             .navigationTitle("DevMoter")
             .onAppear {
-                profiles = (try? JSONDecoder().decode([ConnectionProfile].self, from: savedProfiles)) ?? []
+                if let decoded = try? JSONDecoder().decode([ConnectionProfile].self, from: savedProfiles) {
+                    profiles = decoded.compactMap { profile in
+                        guard let origin = ConnectionProfile.validatedOrigin(profile.origin.absoluteString) else { return nil }
+                        return ConnectionProfile(id: profile.id, name: profile.name, origin: origin)
+                    }
+                } else if !savedProfiles.isEmpty {
+                    error = "保存された接続設定を読み込めませんでした。"
+                }
             }
         }
     }
@@ -95,17 +118,21 @@ struct ServerView: View {
     let profile: ConnectionProfile
     @State private var error = ""
     @State private var reloadID = UUID()
+    @State private var homeID = UUID()
+    @State private var isLoading = false
 
     var body: some View {
         VStack(spacing: 0) {
             if !error.isEmpty {
                 Text(error).font(.footnote).foregroundStyle(.red).padding()
             }
-            ServerWebView(profile: profile, error: $error).id(reloadID)
+            if isLoading { ProgressView().frame(maxWidth: .infinity).padding(.vertical, 4) }
+            ServerWebView(profile: profile, error: $error, isLoading: $isLoading, reloadID: reloadID, homeID: homeID)
         }
         .navigationTitle(profile.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            Button("ホーム", systemImage: "house") { homeID = UUID() }
             Button("再読み込み", systemImage: "arrow.clockwise") {
                 error = ""
                 reloadID = UUID()
@@ -117,6 +144,9 @@ struct ServerView: View {
 struct ServerWebView: UIViewRepresentable {
     let profile: ConnectionProfile
     @Binding var error: String
+    @Binding var isLoading: Bool
+    var reloadID: UUID
+    var homeID: UUID
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -127,14 +157,31 @@ struct ServerWebView: UIViewRepresentable {
         view.navigationDelegate = context.coordinator
         view.uiDelegate = context.coordinator
         view.allowsBackForwardNavigationGestures = true
+        view.isInspectable = false
         view.load(URLRequest(url: profile.origin))
         return view
     }
 
-    func updateUIView(_ view: WKWebView, context: Context) {}
+    func updateUIView(_ view: WKWebView, context: Context) {
+        let coordinator = context.coordinator
+        let goHome = coordinator.parent.homeID != homeID
+        let reload = coordinator.parent.reloadID != reloadID
+        coordinator.parent = self
+        if goHome { view.load(URLRequest(url: profile.origin)) }
+        else if reload {
+            if profile.matchesOrigin(view.url) { view.reload() }
+            else { view.load(URLRequest(url: profile.origin)) }
+        }
+    }
+
+    static func dismantleUIView(_ view: WKWebView, coordinator: Coordinator) {
+        view.stopLoading()
+        view.navigationDelegate = nil
+        view.uiDelegate = nil
+    }
 
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
-        let parent: ServerWebView
+        var parent: ServerWebView
         init(_ parent: ServerWebView) { self.parent = parent }
 
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
@@ -144,7 +191,10 @@ struct ServerWebView: UIViewRepresentable {
                 return
             }
             // OAuth may navigate to a provider and return to the server in this store.
-            guard url.scheme?.lowercased() == "https" || url.absoluteString == "about:blank" else {
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            let isHTTPS = components?.scheme?.lowercased() == "https" && components?.host != nil &&
+                components?.user == nil && components?.password == nil
+            guard isHTTPS || (url.absoluteString == "about:blank" && navigationAction.targetFrame?.isMainFrame == false) else {
                 parent.error = "HTTPS以外のページは開けません。"
                 decisionHandler(.cancel)
                 return
@@ -155,9 +205,17 @@ struct ServerWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                      for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
             if navigationAction.targetFrame == nil, let url = navigationAction.request.url,
-               url.scheme?.lowercased() == "https" {
-                // Verification links open in Safari; the server's device flow polls in this web view.
-                UIApplication.shared.open(url)
+               let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+               components.scheme?.lowercased() == "https", let host = components.host,
+               components.user == nil, components.password == nil {
+                if parent.profile.matchesOrigin(url) {
+                    webView.load(navigationAction.request)
+                } else {
+                    let alert = UIAlertController(title: "外部ブラウザで開く", message: host, preferredStyle: .alert)
+                    alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel))
+                    alert.addAction(UIAlertAction(title: "開く", style: .default) { _ in UIApplication.shared.open(url) })
+                    _ = present(alert, from: webView)
+                }
             }
             return nil
         }
@@ -166,12 +224,15 @@ struct ServerWebView: UIViewRepresentable {
             guard let root = webView.window?.rootViewController else { return false }
             var presenter = root
             while let next = presenter.presentedViewController { presenter = next }
+            guard presenter.viewIfLoaded?.window != nil, !(presenter is UIAlertController),
+                  !presenter.isBeingDismissed, !presenter.isBeingPresented else { return false }
             presenter.present(alert, animated: true)
             return true
         }
 
         func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
                      initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+            guard parent.profile.matchesOrigin(frame.request.url), frame.isMainFrame else { completionHandler(); return }
             let alert = UIAlertController(title: frame.request.url?.host, message: message, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })
             if !present(alert, from: webView) { completionHandler() }
@@ -179,19 +240,64 @@ struct ServerWebView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
                      initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+            guard parent.profile.matchesOrigin(frame.request.url), frame.isMainFrame else { completionHandler(false); return }
             let alert = UIAlertController(title: frame.request.url?.host, message: message, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel) { _ in completionHandler(false) })
             alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(true) })
             if !present(alert, from: webView) { completionHandler(false) }
         }
 
+        func webView(_ webView: WKWebView, didReceive challenge: URLAuthenticationChallenge,
+                     completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+            let space = challenge.protectionSpace
+            if space.authenticationMethod == NSURLAuthenticationMethodServerTrust {
+                completionHandler(.performDefaultHandling, nil)
+                return
+            }
+            guard space.authenticationMethod == NSURLAuthenticationMethodHTTPBasic,
+                  !space.isProxy(), space.protocol?.lowercased() == "https",
+                  space.host.lowercased() == parent.profile.origin.host?.lowercased(),
+                  space.port == (parent.profile.origin.port ?? 443),
+                  challenge.previousFailureCount < 3 else {
+                completionHandler(.cancelAuthenticationChallenge, nil)
+                return
+            }
+            let alert = UIAlertController(title: "サーバー認証", message: parent.profile.origin.absoluteString, preferredStyle: .alert)
+            alert.addTextField { field in field.placeholder = "ユーザー名"; field.autocapitalizationType = .none; field.autocorrectionType = .no }
+            alert.addTextField { field in field.placeholder = "パスワード"; field.isSecureTextEntry = true }
+            alert.addAction(UIAlertAction(title: "キャンセル", style: .cancel) { _ in completionHandler(.cancelAuthenticationChallenge, nil) })
+            alert.addAction(UIAlertAction(title: "ログイン", style: .default) { [weak alert] _ in
+                guard let fields = alert?.textFields, fields.count == 2 else { completionHandler(.cancelAuthenticationChallenge, nil); return }
+                let credential = URLCredential(user: fields[0].text ?? "", password: fields[1].text ?? "", persistence: .forSession)
+                fields[1].text = nil
+                completionHandler(.useCredential, credential)
+            })
+            if !present(alert, from: webView) { completionHandler(.cancelAuthenticationChallenge, nil) }
+        }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            parent.error = ""
+            parent.isLoading = true
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            parent.isLoading = false
+        }
+
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            parent.isLoading = false
+            parent.error = "Web画面が停止しました。再読み込みしてください。"
+        }
+
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            parent.isLoading = false
             if (error as NSError).code != NSURLErrorCancelled {
                 parent.error = "接続できませんでした: \(error.localizedDescription)"
             }
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            parent.isLoading = false
             if (error as NSError).code != NSURLErrorCancelled {
                 parent.error = "読み込めませんでした: \(error.localizedDescription)"
             }
