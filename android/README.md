@@ -8,7 +8,17 @@ Use JDK 17, Android SDK platform 35, build-tools 35.0.0, and zip. Install SDK co
 
     bash android/build-apk.sh
 
-Output: android/build/DevMoter-FAST.apk and DevMoter-FAST.apk.sha256. Local builds use the Android debug keystore unless a custom keystore and signing environment variables are supplied. CI debug keys are ephemeral: APKs from different CI runs may not update each other. Use a persistent securely managed key before distributing releases. Never commit signing keys or passwords.
+Output: android/build/DevMoter-FAST.apk and DevMoter-FAST.apk.sha256. Local builds use the Android debug keystore unless a custom keystore and signing environment variables are supplied. Never commit signing keys or passwords.
+
+## Persistent release signing
+
+Android only updates an installed app when the new APK has the same signing key, so CI signs with one long-lived release key (RSA 4096, valid 30 years). Create it once on your own machine with `gh` signed in:
+
+    bash scripts/android-signing-key.sh
+
+This stores `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS` as repository secrets and the certificate fingerprint as the `ANDROID_SIGNING_CERT_SHA256` variable. Back up the keystore and its password offline; losing them means installed APKs cannot be updated in place.
+
+`build-apk.sh` moves the secrets into unexported shell variables at start, so build tools never inherit them; it writes the keystore to the private build directory only for the `apksigner` call, passes the password only to that process, then clears the variables and deletes the keystore. The build fails if the signing certificate does not match the fingerprint. Push and manual builds use the release key; pull request builds never receive it and stay debug-signed. Without the secrets, builds fall back to an ephemeral debug key with a warning.
 
 GitHub Actions: Android APK → successful run → Artifacts → DevMoter-FAST-Android-APK. Extract the ZIP and install the APK on an Android test device.
 

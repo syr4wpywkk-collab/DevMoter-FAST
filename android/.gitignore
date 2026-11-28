@@ -1,3 +1,5 @@
 /build/
 *.keystore
 *.jks
+*.p12
+*.password
