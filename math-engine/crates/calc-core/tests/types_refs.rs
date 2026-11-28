@@ -120,6 +120,11 @@ fn to_number_from_percent_text() {
         Value::Text("50%%".into()).to_number().unwrap(),
         50.0 / 100.0 / 100.0
     );
+    assert!(Value::Text("%".repeat(32767)).to_number().is_err());
+    assert_eq!(
+        Value::Text(format!("5{}", "%".repeat(32766))).to_number(),
+        Ok(0.0)
+    );
 }
 
 #[test]
