@@ -298,6 +298,10 @@ fn boolean_coerces_in_arithmetic() {
 #[test]
 fn percent_text_coerces() {
     assert_eq!(eval_num(&mut engine(), r#"="5%"+0"#), 0.05);
+    assert_eq!(
+        eval(&mut engine(), r#"=("35%"+0)=35%"#),
+        Value::Boolean(true)
+    );
 }
 
 #[test]
@@ -875,6 +879,19 @@ fn bool_cell_arithmetic() {
     e.set_cell("Sheet1", "A1", CellInput::Value(Value::Boolean(true)))
         .unwrap();
     assert_eq!(eval_num(&mut e, "=A1+5"), 6.0);
+}
+
+#[test]
+fn implicit_text_conversion_matches_value() {
+    let mut e = engine();
+    for formula in [
+        "\"1,000\"+0",
+        "VALUE(\"1,000\")",
+        "\"$1,000\"+0",
+        "VALUE(\"$1,000\")",
+    ] {
+        assert_eq!(eval_num(&mut e, formula), 1000.0, "{formula}");
+    }
 }
 
 #[test]
