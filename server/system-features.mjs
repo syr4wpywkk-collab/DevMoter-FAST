@@ -1,3 +1,4 @@
+import { makePairingQR, isPairingToken } from "./pairing-qr.mjs";
 import { diagnosePublicOrigin } from "./origin-diagnostics.mjs";
 import { readCookie } from "./cookies.mjs";
 import { access, mkdir, readFile, rename, writeFile } from "node:fs/promises";
@@ -398,14 +399,17 @@ export function createSystemFeatures({
     const code = String(randomInt(100000, 1000000));
     const id = randomUUID();
     const expiresAt = currentNow + PAIRING_TTL_MS;
+    const origin = expectedRequestOrigin(req, publicOrigin, { trustedProxies });
+    const qr = makePairingQR(origin);
     pairings.set(id, {
       id,
       codeHash: sha256(code),
+      ...(qr ? { qrTokenHash: sha256(qr.token), qrOrigin: qr.origin } : {}),
       approvedByDeviceId: current?.id || null,
       createdAt: currentNow,
       expiresAt
     });
-    return { pairingId: id, code, expiresAt };
+    return { pairingId: id, code, expiresAt, ...(qr ? { pairingUrl: qr.url, qrDataUrl: qr.dataUrl } : {}) };
   }
 
   function pruneClaimAttempts(currentNow) {
@@ -427,12 +431,17 @@ export function createSystemFeatures({
 
     const normalizedCode = String(code || "").trim();
     const codeHash = sha256(normalizedCode);
+    const qrToken = isPairingToken(normalizedCode);
+    const claimOrigin = qrToken ? expectedRequestOrigin(req, publicOrigin, { trustedProxies }) : null;
     for (const [id, pairing] of pairings) {
       if (pairing.expiresAt <= currentNow) {
         pairings.delete(id);
         continue;
       }
-      if (!safeEqualHex(pairing.codeHash, codeHash)) continue;
+      const matches = qrToken
+        ? Boolean(claimOrigin && pairing.qrOrigin === claimOrigin && safeEqualHex(pairing.qrTokenHash, codeHash))
+        : /^\d{6}$/.test(normalizedCode) && safeEqualHex(pairing.codeHash, codeHash);
+      if (!matches) continue;
       pairings.delete(id);
       claimAttempts.delete(callerKey);
       const issued = await issueDevice(label, { approvedByDeviceId: pairing.approvedByDeviceId });
