@@ -22,9 +22,11 @@ printf '%s\n' "$password" > "$KEYSTORE.password"
 base64 < "$KEYSTORE" | tr -d '\n' | gh secret set ANDROID_KEYSTORE_BASE64 --repo "$REPO"
 printf '%s' "$password" | gh secret set ANDROID_KEYSTORE_PASSWORD --repo "$REPO"
 printf '%s' "$ALIAS" | gh secret set ANDROID_KEY_ALIAS --repo "$REPO"
+# Read the certificate through openssl so the fingerprint does not depend on keytool's locale.
+fingerprint="$(DEVMOTER_KS_PASS="$password" keytool -exportcert -rfc -storetype PKCS12 -keystore "$KEYSTORE" -alias "$ALIAS" -storepass:env DEVMOTER_KS_PASS \
+  | openssl x509 -noout -fingerprint -sha256 | sed 's/^.*=//')"
 password=""
-fingerprint="$(keytool -list -v -storetype PKCS12 -keystore "$KEYSTORE" -alias "$ALIAS" -storepass:file "$KEYSTORE.password" \
-  | sed -n 's/^[[:space:]]*SHA256: //p' | head -1)"
+[[ "$fingerprint" =~ ^([0-9A-Fa-f]{2}:){31}[0-9A-Fa-f]{2}$ ]] || { echo "Could not read the certificate SHA-256 fingerprint" >&2; exit 1; }
 gh variable set ANDROID_SIGNING_CERT_SHA256 --repo "$REPO" --body "$fingerprint"
 cat <<MSG
 Release key created and stored as GitHub secrets for $REPO.
