@@ -135,10 +135,49 @@ fn literal_row_and_column_shapes() {
 }
 
 #[test]
-fn literal_usable_in_scalar_context() {
+fn operators_apply_element_wise_with_broadcast() {
     let mut e = engine();
-    // Scalar coercion of an array fails like any other array value.
-    assert_eq!(err(&eval(&mut e, "={1,2}+1")), CalcError::Value);
+    let cells = |v: Value| -> Vec<Value> {
+        let a = array(v);
+        a.iter().cloned().collect()
+    };
+    let n = |xs: &[f64]| xs.iter().map(|&x| Value::Number(x)).collect::<Vec<_>>();
+    assert_eq!(cells(eval(&mut e, "={1,2}+1")), n(&[2.0, 3.0]));
+    assert_eq!(cells(eval(&mut e, "=-{1,2}")), n(&[-1.0, -2.0]));
+    assert_eq!(cells(eval(&mut e, "={50,200}%")), n(&[0.5, 2.0]));
+    let grid = array(eval(&mut e, "={1,2}+{10;20}"));
+    assert_eq!((grid.rows(), grid.cols()), (2, 2));
+    assert_eq!(
+        grid.iter().cloned().collect::<Vec<_>>(),
+        n(&[11.0, 12.0, 21.0, 22.0])
+    );
+    let table = array(eval(&mut e, "=SEQUENCE(9)*SEQUENCE(1,9)"));
+    assert_eq!((table.rows(), table.cols()), (9, 9));
+    assert_eq!(table.get(8, 8), Some(&Value::Number(81.0)));
+    assert_eq!(
+        cells(eval(&mut e, "={1,2;3,4}*{10,100}")),
+        n(&[10.0, 200.0, 30.0, 400.0])
+    );
+    assert_eq!(
+        cells(eval(&mut e, "={1,2,3}+{1,2}")),
+        vec![
+            Value::Number(2.0),
+            Value::Number(4.0),
+            Value::Error(CalcError::NA)
+        ]
+    );
+    assert_eq!(
+        cells(eval(&mut e, "={1,2}>{0,5}")),
+        vec![Value::Boolean(true), Value::Boolean(false)]
+    );
+    assert_eq!(
+        cells(eval(&mut e, "={1,0}/{1,0}")),
+        vec![Value::Number(1.0), Value::Error(CalcError::DivZero)]
+    );
+    assert_eq!(
+        err(&eval(&mut e, "=SEQUENCE(1001)*SEQUENCE(1,1001)")),
+        CalcError::Value
+    );
 }
 
 // ---------- spill ----------
@@ -380,4 +419,15 @@ fn clearing_obstruction_updates_formulas_reading_it() {
     assert_eq!(num(&get(&mut e, "E1")), 3.0);
     assert_eq!(num(&get(&mut e, "F1")), 30.0);
     assert_eq!(num(&get(&mut e, "G1")), 3.0);
+}
+
+#[test]
+fn scalar_error_operand_broadcasts_over_array() {
+    let mut e = engine();
+    for formula in ["#N/A+{1,2}", "{1,2}+#N/A"] {
+        let a = array(eval(&mut e, formula));
+        assert_eq!((a.rows(), a.cols()), (1, 2), "{formula}");
+        assert!(a.iter().all(|v| err(v) == CalcError::NA), "{formula}");
+    }
+    assert_eq!(err(&eval(&mut e, "#N/A+1")), CalcError::NA);
 }
